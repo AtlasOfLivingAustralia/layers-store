@@ -26,7 +26,7 @@ import org.springframework.scheduling.annotation.Async;
 
 /**
  * DAO for the Object object
- * 
+ *
  * @author ajay
  */
 public interface ObjectDAO {
@@ -54,6 +54,8 @@ public interface ObjectDAO {
 
     public String createUserUploadedObject(String wkt, String name, String description, String userid);
 
+    public String createUserUploadedObject(String wkt, String name, String description, String userid, boolean namesearch);
+
     public boolean updateUserUploadedObject(int pid, String wkt, String name, String description, String userid);
 
     public boolean deleteUserUploadedObject(int pid);
@@ -77,7 +79,7 @@ public interface ObjectDAO {
     public List<Map<String, Object>> pointsOfInterestGeometryIntersect(String wkt);
 
     public List<Map<String, Object>> pointsOfInterestObjectIntersect(String objectPid);
-    
+
     @Async
     public void updateObjectNames();
 }

@@ -18,6 +18,7 @@ import au.csiro.pidclient.AndsPidClient;
 import au.csiro.pidclient.AndsPidClient.HandleType;
 import au.csiro.pidclient.AndsPidResponse;
 import au.csiro.pidclient.business.AndsPidIdentity;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -27,7 +28,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- *
  * @author ajay
  */
 public class PidGenerator {
@@ -46,12 +46,12 @@ public class PidGenerator {
     private static String ANDS_AUTH_DOMAIN_TEST = "csiro.au";
     private static String ANDS_IDENTIFIER_TEST = "ALA";
     private static String ANDS_HOST_TEST = "test.ands.org.au";
-    
+
     private static String ANDS_APPID_PROD = "2c6ed180e966774eee8409f7152b0cc885d07f71";
     private static String ANDS_AUTH_DOMAIN_PROD = "csiro.au";
     private static String ANDS_IDENTIFIER_PROD = "ALA";
     private static String ANDS_HOST_PROD = "services.ands.org.au";
-    
+
     private static boolean isProduction = false;
 
     private Connection getConnection() {
@@ -185,12 +185,11 @@ public class PidGenerator {
         }
 
 
-
         System.out.println("Completed PID threading");
     }
 
     public static void main(String[] args) {
-        
+
         if (args.length > 0) {
             if (args[0].trim().toLowerCase().equals("production")) {
                 isProduction = true;
