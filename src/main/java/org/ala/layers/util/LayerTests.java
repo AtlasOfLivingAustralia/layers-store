@@ -1,11 +1,9 @@
 package org.ala.layers.util;
 
-import com.sun.tools.javac.util.Paths;
 import org.ala.layers.client.Client;
 import org.ala.layers.dto.Field;
 import org.ala.layers.dto.Layer;
 import org.ala.layers.grid.GridCacheReader;
-import org.ala.layers.intersect.Grid;
 import org.ala.layers.intersect.IntersectConfig;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.methods.GetMethod;
@@ -13,7 +11,6 @@ import org.apache.log4j.Logger;
 
 import java.io.File;
 import java.util.List;
-import java.util.Vector;
 
 /**
  * Created by a on 15/05/2014.
