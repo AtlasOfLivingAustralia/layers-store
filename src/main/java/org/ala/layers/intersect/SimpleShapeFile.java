@@ -214,7 +214,11 @@ public class SimpleShapeFile extends Object implements Serializable {
             @Override
             public int compare(PointPos o1, PointPos o2) {
                 if (o1.x == o2.x) {
-                    return ((o1.y - o2.y) > 0) ? 1 : -1;
+                    if(o1.y == o2.y) {
+                        return 0;
+                    } else {
+                        return ((o1.y - o2.y) > 0) ? 1 : -1;
+                    }
                 } else {
                     return ((o1.x - o2.x) > 0) ? 1 : -1;
                 }
