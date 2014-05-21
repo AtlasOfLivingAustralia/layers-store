@@ -300,8 +300,8 @@ public class ObjectDAOImpl implements ObjectDAO {
                 FileUtils.copyFile(zippedShapeFile, os);
             } else if("kml".equals(geomtype)){
                 os.write(KML_HEADER
-                        .replace("<name></name>","<name><![CDATA[" + l.get(0).getName() + "]]</name>")
-                        .replace("<description></description>","<description><![CDATA[" + l.get(0).getDescription() + "]]</description>").getBytes());
+                        .replace("<name></name>","<name><![CDATA[" + l.get(0).getName() + "]]></name>")
+                        .replace("<description></description>","<description><![CDATA[" + l.get(0).getDescription() + "]]></description>").getBytes());
 
                 os.write(l.get(0).getGeometry().getBytes());
                 os.write(KML_FOOTER.getBytes());
