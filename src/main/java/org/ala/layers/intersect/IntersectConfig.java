@@ -150,7 +150,7 @@ public class IntersectConfig {
         occurrenceSpeciesRecordsFilename = getProperty(OCCURRENCE_SPECIES_RECORDS_FILENAME, properties, null);
         uploadedShapesFieldId = getProperty(UPLOADED_SHAPES_FIELD_ID, properties, null);
         apiKeyCheckUrlTemplate = getProperty(API_KEY_CHECK_URL_TEMPLATE, properties, null);
-        isValidUrl(apiKeyCheckUrlTemplate, API_KEY_CHECK_URL_TEMPLATE);
+
         spatialPortalAppName = getProperty(SPATIAL_PORTAL_APP_NAME, properties, null);
     }
 
