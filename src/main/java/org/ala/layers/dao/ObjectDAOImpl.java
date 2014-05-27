@@ -687,13 +687,16 @@ public class ObjectDAOImpl implements ObjectDAO {
         double area_km = SpatialUtil.calculateArea(wkt) / 1000.0 / 1000.0;
 
         try {
+            int object_id = jdbcTemplate.queryForInt("SELECT nextval('objects_id_seq'::regclass)");
+            int metadata_id = jdbcTemplate.queryForInt("SELECT nextval('uploaded_objects_metadata_id_seq'::regclass)");
+
             // Insert shape into geometry table
-            String sql = "INSERT INTO objects (pid, id, name, \"desc\", fid, the_geom, namesearch, bbox, area_km) values (nextval('objects_id_seq'::regclass), nextval('uploaded_objects_metadata_id_seq'::regclass), ?, ?, ?, ST_GeomFromText(?, 4326), ?, ST_AsText(Box2D(ST_GeomFromText(?, 4326))), ?)";
-            jdbcTemplate.update(sql, name, description, IntersectConfig.getUploadedShapesFieldId(), wkt, namesearch, wkt, area_km);
+            String sql = "INSERT INTO objects (pid, id, name, \"desc\", fid, the_geom, namesearch, bbox, area_km) values (?, ? , ?, ?, ?, ST_GeomFromText(?, 4326), ?, ST_AsText(Box2D(ST_GeomFromText(?, 4326))), ?)";
+            jdbcTemplate.update(sql, object_id, metadata_id, name, description, IntersectConfig.getUploadedShapesFieldId(), wkt, namesearch, wkt, area_km);
 
             // Now write to metadata table
-            String sql2 = "INSERT INTO uploaded_objects_metadata (pid, id, user_id, time_last_updated) values (currval('objects_id_seq'::regclass), currval('uploaded_objects_metadata_id_seq'::regclass), ?, now())";
-            jdbcTemplate.update(sql2, userid);
+            String sql2 = "INSERT INTO uploaded_objects_metadata (pid, id, user_id, time_last_updated) values (?, ?, ?, now())";
+            jdbcTemplate.update(sql2, object_id, metadata_id, userid);
 
             // get pid and id of new object
             String sql3 = "SELECT MAX(pid) from uploaded_objects_metadata";
