@@ -70,7 +70,7 @@ public class IntersectConfig {
     static final String ANALYSIS_RESOLUTIONS = "ANALYSIS_RESOLUTIONS";
     static final String OCCURRENCE_SPECIES_RECORDS_FILENAME = "OCCURRENCE_SPECIES_RECORDS_FILENAME";
     static final String UPLOADED_SHAPES_FIELD_ID = "UPLOADED_SHAPES_FIELD_ID";
-    static final String API_KEY_CHECK_URL_TEMPLATE = "API_CHECK_CHECK_URL_TEMPLATE";
+    static final String API_KEY_CHECK_URL_TEMPLATE = "API_KEY_CHECK_URL_TEMPLATE";
     static final String SPATIAL_PORTAL_APP_NAME = "SPATIAL_PORTAL_APP_NAME";
     static final String LAYER_PROPERTIES = "layer.properties";
     static ObjectMapper mapper = new ObjectMapper();
