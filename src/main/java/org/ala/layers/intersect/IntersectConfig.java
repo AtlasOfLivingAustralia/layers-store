@@ -110,7 +110,7 @@ public class IntersectConfig {
             if (is != null) {
                 properties.load(is);
             } else {
-                String msg = "cannot get properties file: " + IntersectConfig.class.getResource(LAYER_PROPERTIES).getFile();
+                String msg = "cannot get properties file: " + pth;
                 logger.warn(msg);
             }
         } catch (IOException ex) {
