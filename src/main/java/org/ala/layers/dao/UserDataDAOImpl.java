@@ -35,10 +35,7 @@ import javax.annotation.Resource;
 import javax.sql.DataSource;
 import java.io.*;
 import java.sql.Blob;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
@@ -460,16 +457,46 @@ public class UserDataDAOImpl implements UserDataDAO {
         List<String> in = listData(id, "QueryField");
 
         if (in != null) {
+            //put original header records in order
+            Collections.sort(in,new Comparator<String>() {
+
+                @Override
+                public int compare(String o1, String o2) {
+
+                    if (o1.startsWith("__f") && o2.startsWith("__f")) {
+                        int i1 = Integer.MAX_VALUE;
+                        int i2 = Integer.MAX_VALUE;
+                        try {
+                            i1 = Integer.parseInt(o1.substring(3));
+                        } catch (Exception e) {
+                        }
+                        try {
+                            i2 = Integer.parseInt(o2.substring(3));
+                        } catch (Exception e) {
+                        }
+                        return i1 - i2;
+                    } else if (o1.startsWith("__f")) {
+                        return -1;
+                    } else if (o2.startsWith("__f")) {
+                        return 1;
+                    } else {
+                        return o1.compareTo(o2);
+                    }
+                }
+            });
             for(int i=0;i<in.size();i++) {
-                qfs.add(getQueryField(id, in.get(i)));
+                //add only original header fields
+                if(in.get(i).startsWith("__f")) {
+                    qfs.add(getQueryField(id, in.get(i)));
+                }
             }
         }
         if (fields != null) {
             String[] fs = fields.split(",");
             for(int i=0;i<fs.length;i++) {
-                if (!in.contains(fs[i])) {
+                //if (!in.contains(fs[i])) {
                     qfs.add(getQueryField(id, fs[i]));
-                }
+                //}
             }
         }
 
