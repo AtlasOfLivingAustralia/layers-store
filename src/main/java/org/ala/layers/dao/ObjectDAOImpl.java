@@ -698,11 +698,7 @@ public class ObjectDAOImpl implements ObjectDAO {
             String sql2 = "INSERT INTO uploaded_objects_metadata (pid, id, user_id, time_last_updated) values (?, ?, ?, now())";
             jdbcTemplate.update(sql2, object_id, metadata_id, userid);
 
-            // get pid and id of new object
-            String sql3 = "SELECT MAX(pid) from uploaded_objects_metadata";
-            int pid = jdbcTemplate.queryForInt(sql3);
-
-            return Integer.toString(pid);
+            return Integer.toString(object_id);
         } catch (DataAccessException ex) {
             throw new IllegalArgumentException("Error writing to database. Check validity of wkt.", ex);
         }

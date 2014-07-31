@@ -29,10 +29,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -48,6 +45,7 @@ import org.geotools.data.shapefile.ShapefileDataStoreFactory;
 import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureSource;
 import org.geotools.data.simple.SimpleFeatureStore;
+import org.geotools.feature.DefaultFeatureCollection;
 import org.geotools.feature.FeatureCollections;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.geojson.feature.FeatureJSON;
@@ -249,8 +247,13 @@ public class GridClassBuilder {
                     SimpleFeatureSource featureSource = newDataStore.getFeatureSource(typeName);
                     SimpleFeatureStore featureStore = (SimpleFeatureStore) featureSource;
                     featureStore.setTransaction(transaction);
-                    SimpleFeatureCollection collection = FeatureCollections.newCollection();
-                    collection.add(sf);
+                    List<SimpleFeature> features = new ArrayList<SimpleFeature>();
+
+                    DefaultFeatureCollection collection = new DefaultFeatureCollection();
+                    collection.addAll(features);
+                    featureStore.setTransaction(transaction);
+
+                    features.add(sf);
                     featureStore.addFeatures(collection);
                     transaction.commit();
                     transaction.close();

@@ -25,6 +25,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,10 +49,12 @@ import org.geotools.data.shapefile.ShapefileDataStoreFactory;
 import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureSource;
 import org.geotools.data.simple.SimpleFeatureStore;
+import org.geotools.feature.DefaultFeatureCollection;
 import org.geotools.feature.FeatureCollections;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
+import org.opengis.feature.Feature;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 
@@ -450,7 +453,9 @@ public class AnalysisLayerUtil {
             SimpleFeatureSource featureSource = newDataStore.getFeatureSource(typeName);
             SimpleFeatureStore featureStore = (SimpleFeatureStore) featureSource;
             featureStore.setTransaction(transaction);
-            SimpleFeatureCollection collection = FeatureCollections.newCollection();
+
+            List<SimpleFeature> features = new ArrayList<SimpleFeature>();
+            SimpleFeatureBuilder featureBuilder = new SimpleFeatureBuilder(TYPE);
 
             FileWriter fw = null;
             try {
@@ -464,11 +469,10 @@ public class AnalysisLayerUtil {
                     Geometry geom = r.read(wkt);
 
                     //create feature
-                    SimpleFeatureBuilder featureBuilder = new SimpleFeatureBuilder(TYPE);
                     featureBuilder.add(geom);
                     featureBuilder.add(count);
                     SimpleFeature f = featureBuilder.buildFeature(String.valueOf(count));
-                    collection.add(f);
+                    features.add(f);
 
                     //write for lookup file
                     if (count > 1) {
@@ -477,9 +481,20 @@ public class AnalysisLayerUtil {
                     fw.write(count + "=" + o.getId());
                     count++;
                 }
-                featureStore.addFeatures(collection);
-                transaction.commit();
-                transaction.close();
+
+                DefaultFeatureCollection collection = new DefaultFeatureCollection();
+                collection.addAll(features);
+                featureStore.setTransaction(transaction);
+                try {
+                    featureStore.addFeatures(collection);
+                    transaction.commit();
+
+                } catch (Exception problem) {
+                    transaction.rollback();
+
+                } finally {
+                    transaction.close();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
                 ret = false;

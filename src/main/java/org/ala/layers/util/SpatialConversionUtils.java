@@ -31,13 +31,18 @@ import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureIterator;
 import org.geotools.data.simple.SimpleFeatureSource;
 import org.geotools.data.simple.SimpleFeatureStore;
+import org.geotools.feature.DefaultFeatureCollection;
 import org.geotools.feature.FeatureCollection;
 import org.geotools.feature.FeatureCollections;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.geotools.geojson.geom.GeometryJSON;
+import org.geotools.geometry.jts.JTS;
+import org.geotools.referencing.CRS;
 import org.geotools.referencing.crs.AbstractCRS;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
+import org.geotools.referencing.operation.DefaultConversion;
+import org.geotools.referencing.operation.DefaultTransformation;
 import org.opengis.feature.Property;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
@@ -51,6 +56,10 @@ import com.vividsolutions.jts.geom.MultiPolygon;
 import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.io.ParseException;
 import com.vividsolutions.jts.io.WKTReader;
+import org.opengis.referencing.operation.Conversion;
+import org.opengis.referencing.operation.MathTransform;
+import org.opengis.referencing.operation.MathTransformFactory;
+import org.opengis.referencing.operation.Transformation;
 
 /**
  * Utilities for converting spatial data between formats
@@ -63,6 +72,8 @@ public class SpatialConversionUtils {
      * log4j logger
      */
     private static final Logger logger = Logger.getLogger(SpatialConversionUtils.class);
+
+    public final static String WKT_MAP_KEY = "WKT_MAP_KEY_****"; //works as long as this is not uploaded as a field in the shapefile
 
     public static List<String> getGeometryCollectionParts(String wkt) {
         if (wkt.matches("GEOMETRYCOLLECTION\\(.+\\)")) {
@@ -172,11 +183,6 @@ public class SpatialConversionUtils {
         ShapefileDataStore store = (ShapefileDataStore) FileDataStoreFinder.getDataStore(shpFile);
         SimpleFeatureType schema = store.getSchema();
 
-        CoordinateReferenceSystem crs = schema.getCoordinateReferenceSystem();
-        if (!((AbstractCRS) crs).equals(DefaultGeographicCRS.WGS84, false)) {
-            throw new IllegalArgumentException("Invalid shape file. Uploaded shapefiles required to be in CRS WGS84. ");
-        }
-
         zf.close();
 
         return Pair.of(shpFile.getParentFile().getName(), shpFile);
@@ -203,7 +209,7 @@ public class SpatialConversionUtils {
             manifestData.add(pairList);
         }
 
-        featureCollection.close(it);
+        it.close();
 
         return manifestData;
     }
@@ -233,18 +239,40 @@ public class SpatialConversionUtils {
         SimpleFeatureCollection featureCollection = featureSource.getFeatures();
         SimpleFeatureIterator it = featureCollection.features();
 
+        //transform CRS to the same as the shapefile (at least try)
+        //default to 4326
+        CoordinateReferenceSystem crs = null;
+        try {
+            crs = store.getSchema().getCoordinateReferenceSystem();
+            if (crs == null) {
+                crs = DefaultGeographicCRS.WGS84;
+            }
+        } catch (Exception e) {
+            logger.error("error with CRS");
+        }
+
         int i = 0;
         while (it.hasNext()) {
             SimpleFeature feature = (SimpleFeature) it.next();
             if (i == featureIndex) {
-                wkt = feature.getDefaultGeometry().toString();
+                Geometry g = (Geometry) feature.getDefaultGeometry();
+
+                try {
+                    wkt = JTS.transform(g, CRS.findMathTransform(crs, DefaultGeographicCRS.WGS84)).toString();
+                } catch (Exception e) {
+                    //log the error and continue anyway
+                    logger.error("failed CRS transformation for: " + shpFile.getPath() + ", continuing with untransformed geometry", e);
+
+                    wkt = g.toString();
+                }
+
                 break;
             }
 
             i++;
         }
 
-        featureCollection.close(it);
+        it.close();
 
         return wkt;
     }
@@ -316,7 +344,7 @@ public class SpatialConversionUtils {
             }
             final SimpleFeatureType TYPE = createFeatureType(wkttype);
 
-            FeatureCollection collection = FeatureCollections.newCollection();
+            List<SimpleFeature> features = new ArrayList<SimpleFeature>();
             SimpleFeatureBuilder featureBuilder = new SimpleFeatureBuilder(TYPE);
 
             WKTReader wkt = new WKTReader();
@@ -336,7 +364,7 @@ public class SpatialConversionUtils {
                     }
 
                     SimpleFeature feature = featureBuilder.buildFeature(null);
-                    collection.add(feature);
+                    features.add(feature);
                 }
             } else {
                 featureBuilder.add(geom);
@@ -350,7 +378,7 @@ public class SpatialConversionUtils {
                 }
 
                 SimpleFeature feature = featureBuilder.buildFeature(null);
-                collection.add(feature);
+                features.add(feature);
             }
 
             ShapefileDataStoreFactory dataStoreFactory = new ShapefileDataStoreFactory();
@@ -371,6 +399,9 @@ public class SpatialConversionUtils {
 
             if (featureSource instanceof SimpleFeatureStore) {
                 SimpleFeatureStore featureStore = (SimpleFeatureStore) featureSource;
+
+                DefaultFeatureCollection collection = new DefaultFeatureCollection();
+                collection.addAll(features);
 
                 featureStore.setTransaction(transaction);
                 try {
