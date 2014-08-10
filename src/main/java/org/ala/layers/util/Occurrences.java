@@ -40,6 +40,7 @@ public class Occurrences {
 
         //TODO: use info from the original analysis request instead of doing this
         boolean isUserData = server.contains("spatial");
+        logger.info("isUserData=" + isUserData + ", server=" + server);
 
         if (isUserData) {
             String url = server + "/userdata/sample?q=" + q + "&fl=" + fields;

@@ -209,7 +209,7 @@ public class SpatialConversionUtils {
             manifestData.add(pairList);
         }
 
-        it.close();
+//        it.close();
 
         return manifestData;
     }
@@ -272,7 +272,7 @@ public class SpatialConversionUtils {
             i++;
         }
 
-        it.close();
+        //it.close();
 
         return wkt;
     }

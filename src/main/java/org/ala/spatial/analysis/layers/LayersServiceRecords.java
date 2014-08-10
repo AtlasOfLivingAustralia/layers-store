@@ -2,6 +2,8 @@ package org.ala.spatial.analysis.layers;
 
 import au.com.bytecode.opencsv.CSVReader;
 import org.ala.layers.intersect.SimpleRegion;
+import org.apache.commons.io.IOUtils;
+import org.codehaus.jackson.util.ByteArrayBuilder;
 
 import java.io.*;
 import java.net.URL;
@@ -12,6 +14,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 /**
  * @author Adam
@@ -32,6 +36,10 @@ public class LayersServiceRecords extends Records {
         int recordsEstimate = 26000000;
         int pageSize = 1000000;
 
+        if (bbox == null) {
+            bbox = new double [] {-180,-90,180,90};
+        }
+
         String bboxTerm = String.format("longitude:%%5B%f%%20TO%%20%f%%5D%%20AND%%20latitude:%%5B%f%%20TO%%20%f%%5D", bbox[0], bbox[2], bbox[1], bbox[3]);
 
         points = new ArrayList<Double>(recordsEstimate);
@@ -47,21 +55,30 @@ public class LayersServiceRecords extends Records {
         }
 
         while (true && start < 300000000) {
-            String url = biocache_service_url + "/userdata/sample?id=" + q;
+            String url = biocache_service_url + "/userdata/sample?q=" + q;
 
-            int tryCount = 0;
-            InputStream is = null;
+            System.out.println("url: " + url);
+
             CSVReader csv = null;
-            int maxTrys = 4;
-            while (tryCount < maxTrys && csv == null) {
-                tryCount++;
-                try {
-                    is = getUrlStream(url);
-                    csv = new CSVReader(new InputStreamReader(is));
-                } catch (Exception e) {
-                    System.out.println("failed try " + tryCount + " of " + maxTrys + ": " + url);
-                    e.printStackTrace();
+
+            try {
+                InputStream is = getUrlStream(url);
+                ZipInputStream zis = new ZipInputStream(is);
+                ZipEntry ze = zis.getNextEntry();
+
+                ByteArrayBuilder bab = new ByteArrayBuilder();
+                byte [] b = new byte[1024];
+                int n;
+                while ((n = zis.read(b,0,1024)) > 0) {
+                    bab.write(b,0,n);
                 }
+
+                csv = new CSVReader(new StringReader(IOUtils.toString(bab.toByteArray(), "UTF-8")));
+
+                is.close();
+            } catch (Exception e) {
+                System.out.println("failed to get userdata as csv for url: " + url);
+                e.printStackTrace();
             }
 
             if (csv == null) {
@@ -131,7 +148,6 @@ public class LayersServiceRecords extends Records {
             }
 
             csv.close();
-            is.close();
 
             if (currentCount == 0 || currentCount < pageSize) {
                 break;
