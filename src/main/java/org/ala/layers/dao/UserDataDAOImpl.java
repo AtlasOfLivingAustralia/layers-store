@@ -376,7 +376,7 @@ public class UserDataDAOImpl implements UserDataDAO {
         double[] points = null;
 
         String ud_header_id = id.split(":")[0];
-        String existing_facet = id.contains(":") ? id.split(":")[0] : null;
+        String existing_facet = id.contains(":") ? id.split(":")[1] : null;
 
         //setup
         ArrayList<Facet> facets = new ArrayList<Facet>();
@@ -432,7 +432,7 @@ public class UserDataDAOImpl implements UserDataDAO {
         //store derived facets
         List<String> refs = listData(ud_header_id, "QueryField");
         for(int i=0;i<refs.size();i++) {
-            getQueryField(id + ":" + next_facet_id, refs.get(i));
+            getQueryField(ud_header_id + ":" + next_facet_id, refs.get(i));
         }
 
         //return it
