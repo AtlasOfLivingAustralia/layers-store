@@ -159,10 +159,16 @@ public class ObjectDAOImpl implements ObjectDAO {
 
     @Override
     public List<Objects> getObjectsById(String id) {
+        return getObjectsById(id, 0, -1);
+    }
+
+    @Override
+    public List<Objects> getObjectsById(String id, int start, int pageSize) {
         // return hibernateTemplate.find("from Objects where id = ?", id);
         logger.info("Getting object info for fid = " + id);
         // String sql = "select * from objects where fid = ?";
-        String sql = "select o.pid as pid, o.id as id, o.name as name, o.desc as description, o.fid as fid, f.name as fieldname, o.bbox, o.area_km from objects o, fields f where o.fid = ? and o.fid = f.id";
+        String limit_offset = " limit " + (pageSize<0?"all":pageSize) + " offset " + start;
+        String sql = "select o.pid as pid, o.id as id, o.name as name, o.desc as description, o.fid as fid, f.name as fieldname, o.bbox, o.area_km from objects o, fields f where o.fid = ? and o.fid = f.id order by o.pid " + limit_offset;
         List<Objects> objects = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Objects.class), id);
 
         updateObjectWms(objects);

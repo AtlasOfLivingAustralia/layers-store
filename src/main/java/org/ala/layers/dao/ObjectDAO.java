@@ -34,6 +34,8 @@ public interface ObjectDAO {
 
     public List<Objects> getObjectsById(String id);
 
+    public List<Objects> getObjectsById(String id, int start, int pageSize);
+
     public String getObjectsGeometryById(String id, String geomtype);
 
     public Objects getObjectByPid(String pid);

@@ -106,7 +106,7 @@ public class SamplingThread extends Thread {
 
     public void intersectGrid(String filename, double[][] points, StringBuilder sb) {
         try {
-            Grid grid = new Grid(filename);
+            Grid grid = new Grid(filename, true);
             float[] values = null;
 
             //values = grid.getValues2(points);

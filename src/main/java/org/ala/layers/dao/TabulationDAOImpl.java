@@ -15,7 +15,9 @@
 package org.ala.layers.dao;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import javax.annotation.Resource;
 import javax.sql.DataSource;
@@ -146,15 +148,40 @@ public class TabulationDAOImpl implements TabulationDAO {
 
     @Override
     public List<Tabulation> getTabulationSingle(String fid, String wkt) {
+        //is it wkt or pid?
+        boolean isPid = wkt.indexOf('(') < 0;
         if (wkt != null && wkt.length() > 0) {
-            String sql = "SELECT fid as fid1, pid as pid1, name as name1,"
-                    + " 'user area' as fid2, 'user area' as pid2, 'user area' as name2, "
-                    + " ST_AsText(newgeom) as geometry FROM "
-                    + "(SELECT fid, pid, name, (ST_INTERSECTION(ST_GEOMFROMTEXT( ? ,4326), the_geom)) as newgeom FROM "
-                    + "objects WHERE fid= ? ) o "
-                    + "WHERE newgeom is not null AND ST_Area(newgeom) > 0;";
+            String sql;
+            List<Tabulation> tabulations;
 
-            List<Tabulation> tabulations = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Tabulation.class), wkt, fid);
+            if (isPid) {
+                sql = "SELECT fid1, pid1, name1,"
+                        + " fid2, pid2, name2, "
+                        + " ST_AsText(newgeom) as geometry FROM "
+                        + "("
+                        + "SELECT a.fid as fid1, a.pid as pid1, a.name as name1, b.fid as fid2, b.pid as pid2, b.name as name2 "
+                        + "(ST_INTERSECTION(b.the_geom, a.the_geom)) as newgeom FROM "
+                        + "(SELECT * FROM objects WHERE fid = ? ) a, (SELECT * FROM objects WHERE pid = ? ) b "
+                        + "WHERE ST_INTERSECTS(ST_GEOMFROMTEXT(a.bbox, 4326), ST_GEOMFROMTEXT(b.bbox ,4326))"
+                        + ") o "
+                        + "WHERE newgeom is not null AND ST_Area(newgeom) > 0;";
+
+                tabulations = jdbcTemplate.query(sql,
+                        ParameterizedBeanPropertyRowMapper.newInstance(Tabulation.class),
+                        fid, wkt);
+            } else {
+                sql = "SELECT fid as fid1, pid as pid1, name as name1,"
+                        + " 'user area' as fid2, 'user area' as pid2, 'user area' as name2, "
+                        + " ST_AsText(newgeom) as geometry FROM "
+                        + "(SELECT fid, pid, name, (ST_INTERSECTION(ST_GEOMFROMTEXT( ? ,4326), the_geom)) as newgeom FROM "
+                        + "objects WHERE fid= ? and ST_INTERSECTS(ST_GEOMFROMTEXT(bbox, 4326), ST_ENVELOPE(ST_GEOMFROMTEXT( ? ,4326)))"
+                        + ") o "
+                        + "WHERE newgeom is not null AND ST_Area(newgeom) > 0;";
+
+                tabulations = jdbcTemplate.query(sql,
+                        ParameterizedBeanPropertyRowMapper.newInstance(Tabulation.class),
+                        wkt, fid, wkt);
+            }
 
             for (Tabulation t : tabulations) {
                 try {

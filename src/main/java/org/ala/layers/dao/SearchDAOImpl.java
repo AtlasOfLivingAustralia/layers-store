@@ -80,7 +80,7 @@ public class SearchDAOImpl implements SearchDAO {
             }
         }
         for (IntersectionFile f : layerIntersectDao.getConfig().getIntersectionFiles().values()) {
-            if (f.getType().equalsIgnoreCase("a") && f.getClasses() != null) {
+            if ("a".equalsIgnoreCase(f.getType()) && f.getClasses() != null) {
                 //search
                 for (Entry<Integer, GridClass> c : f.getClasses().entrySet()) {
                     if ((pos = c.getValue().getName().toLowerCase().indexOf(criteria)) >= 0) {

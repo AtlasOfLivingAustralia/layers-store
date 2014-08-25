@@ -315,8 +315,16 @@ public class SpatialUtil {
         return meters / 20037508.342789244 * 180;
     }
 
+    static public double convertLngToMeters(double lng) {
+        return lng * 20037508.342789244 / 180;
+    }
+
     static public double convertMetersToLat(double meters) {
         return 180.0 / Math.PI * (2 * Math.atan(Math.exp(meters / 20037508.342789244 * Math.PI)) - Math.PI / 2.0);
+    }
+
+    static public double convertLatToMeters(double lat) {
+        return Math.log(Math.tan(((lat / 180.0 * Math.PI) + Math.PI / 2.0) / 2.0)) * 20037508.342789244 / Math.PI;
     }
 
     static public int planeDistance(double lat1, double lng1, double lat2, double lng2, int zoom) {
