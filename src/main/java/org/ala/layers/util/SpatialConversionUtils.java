@@ -258,7 +258,7 @@ public class SpatialConversionUtils {
                 Geometry g = (Geometry) feature.getDefaultGeometry();
 
                 try {
-                    wkt = JTS.transform(g, CRS.findMathTransform(crs, DefaultGeographicCRS.WGS84)).toString();
+                    wkt = JTS.transform(g, CRS.findMathTransform(crs, DefaultGeographicCRS.WGS84, true)).toString();
                 } catch (Exception e) {
                     //log the error and continue anyway
                     logger.error("failed CRS transformation for: " + shpFile.getPath() + ", continuing with untransformed geometry", e);
