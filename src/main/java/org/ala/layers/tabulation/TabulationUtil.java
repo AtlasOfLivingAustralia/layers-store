@@ -15,11 +15,11 @@
 
 package org.ala.layers.tabulation;
 
-import java.io.IOException;
-
 import org.ala.layers.intersect.SimpleRegion;
 import org.ala.layers.intersect.SimpleShapeFile;
 import org.ala.spatial.analysis.layers.Records;
+
+import java.io.IOException;
 
 /**
  * @author Adam

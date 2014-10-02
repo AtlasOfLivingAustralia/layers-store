@@ -16,8 +16,6 @@ package org.ala.layers.dao;
 
 import net.sf.json.JSONObject;
 import org.ala.layers.dto.IntersectionFile;
-import org.ala.layers.dto.Objects;
-import org.ala.layers.dto.Ud_data_x;
 import org.ala.layers.dto.Ud_header;
 import org.ala.layers.intersect.SimpleRegion;
 import org.ala.layers.intersect.SimpleShapeFile;
@@ -27,19 +25,13 @@ import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.simple.ParameterizedBeanPropertyRowMapper;
 import org.springframework.jdbc.core.simple.SimpleJdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.sql.DataSource;
 import java.io.*;
-import java.sql.Blob;
 import java.util.*;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
 
 
 @Service("userDataDao")
@@ -431,7 +423,7 @@ public class UserDataDAOImpl implements UserDataDAO {
 
         //store derived facets
         List<String> refs = listData(ud_header_id, "QueryField");
-        for(int i=0;i<refs.size();i++) {
+        for (int i = 0; i < refs.size(); i++) {
             getQueryField(ud_header_id + ":" + next_facet_id, refs.get(i));
         }
 
@@ -458,7 +450,7 @@ public class UserDataDAOImpl implements UserDataDAO {
 
         if (in != null) {
             //put original header records in order
-            Collections.sort(in,new Comparator<String>() {
+            Collections.sort(in, new Comparator<String>() {
 
                 @Override
                 public int compare(String o1, String o2) {
@@ -484,18 +476,18 @@ public class UserDataDAOImpl implements UserDataDAO {
                     }
                 }
             });
-            for(int i=0;i<in.size();i++) {
+            for (int i = 0; i < in.size(); i++) {
                 //add only original header fields
-                if(in.get(i).startsWith("__f")) {
+                if (in.get(i).startsWith("__f")) {
                     qfs.add(getQueryField(id, in.get(i)));
                 }
             }
         }
         if (fields != null) {
             String[] fs = fields.split(",");
-            for(int i=0;i<fs.length;i++) {
+            for (int i = 0; i < fs.length; i++) {
                 //if (!in.contains(fs[i])) {
-                    qfs.add(getQueryField(id, fs[i]));
+                qfs.add(getQueryField(id, fs[i]));
                 //}
             }
         }
@@ -503,8 +495,8 @@ public class UserDataDAOImpl implements UserDataDAO {
         //make csv
         StringBuilder sb = new StringBuilder();
         //header
-        for(int i=0;i<qfs.size();i++) {
-            if(sb.length() > 0) {
+        for (int i = 0; i < qfs.size(); i++) {
+            if (sb.length() > 0) {
                 sb.append(",");
             }
             sb.append(qfs.get(i).getDisplayName());
@@ -524,7 +516,7 @@ public class UserDataDAOImpl implements UserDataDAO {
                 } catch (Exception e) {
                 }
 
-                if(j > 0) {
+                if (j > 0) {
                     sb.append(",");
                 }
 

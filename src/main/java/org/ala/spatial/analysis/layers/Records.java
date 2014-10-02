@@ -1,13 +1,10 @@
 package org.ala.spatial.analysis.layers;
 
 import au.com.bytecode.opencsv.CSVReader;
+import org.ala.layers.intersect.SimpleRegion;
+import org.apache.commons.io.FileUtils;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
@@ -15,8 +12,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.zip.GZIPInputStream;
-
-import org.ala.layers.intersect.SimpleRegion;
 
 /**
  * @author Adam
@@ -28,6 +23,14 @@ public class Records {
     ArrayList<Short> years;
     String[] lsids;
     int speciesSize;
+    Integer[] sortOrder;
+    int[] sortOrderRowStarts;
+    double soMinLat;
+    double soMinLong;
+    int soHeight;
+    double soResolution;
+    boolean soSortedStarts;
+    boolean soSortedRowStarts;
 
     public Records(String biocache_service_url, String q, double[] bbox, String filename, SimpleRegion region) throws IOException {
         init(biocache_service_url, q, bbox, filename, region, "names_and_lsid");
@@ -35,141 +38,6 @@ public class Records {
 
     public Records(String biocache_service_url, String q, double[] bbox, String filename, SimpleRegion region, String facetField) throws IOException {
         init(biocache_service_url, q, bbox, filename, region, facetField);
-    }
-
-    void init(String biocache_service_url, String q, double[] bbox, String filename, SimpleRegion region, String facetField) throws IOException {
-        int speciesEstimate = 250000;
-        int recordsEstimate = 26000000;
-        int pageSize = 1000000;
-
-        String bboxTerm = null;
-        if (bbox != null) {
-            bboxTerm = String.format("&fq=longitude:%%5B%f%%20TO%%20%f%%5D%%20AND%%20latitude:%%5B%f%%20TO%%20%f%%5D", bbox[0], bbox[2], bbox[1], bbox[3]);
-        } else {
-            bboxTerm = "";
-        }
-
-        points = new ArrayList<Double>(recordsEstimate);
-        lsidIdx = new ArrayList<Integer>(recordsEstimate);
-        years = new ArrayList<Short>(recordsEstimate);
-        HashMap<String, Integer> lsidMap = new HashMap<String, Integer>(speciesEstimate);
-
-        int start = 0;
-
-        RandomAccessFile raf = null;
-        if (filename != null) {
-            raf = new RandomAccessFile(filename, "rw");
-        }
-
-        while (true && start < 300000000) {
-            String url = biocache_service_url + "/webportal/occurrences.gz?q=" + q.replace(" ", "%20") + bboxTerm + "&pageSize=" + pageSize + "&start=" + start + "&fl=longitude,latitude," + facetField + ",year";
-
-            int tryCount = 0;
-            InputStream is = null;
-            CSVReader csv = null;
-            int maxTrys = 4;
-            while (tryCount < maxTrys && csv == null) {
-                tryCount++;
-                try {
-                    is = getUrlStream(url);
-                    csv = new CSVReader(new InputStreamReader(new GZIPInputStream(is)));
-                } catch (Exception e) {
-                    System.out.println("failed try " + tryCount + " of " + maxTrys + ": " + url);
-                    e.printStackTrace();
-                }
-            }
-
-            if (csv == null) {
-                throw new IOException("failed to get records from biocache.");
-            }
-
-            String[] line;
-            int[] header = new int[4]; //to contain [0]=lsid, [1]=longitude, [2]=latitude, [3]=year
-            int row = start;
-            int currentCount = 0;
-            while ((line = csv.readNext()) != null) {
-                if (raf != null) {
-                    for (int i = 0; i < line.length; i++) {
-                        if (i > 0) {
-                            raf.write(",".getBytes());
-                        }
-                        raf.write(line[i].getBytes());
-                    }
-                    raf.write("\n".getBytes());
-                }
-                currentCount++;
-                if (currentCount == 1) {
-                    //determine header
-                    for (int i = 0; i < line.length; i++) {
-                        if (line[i].equals(facetField)) {
-                            header[0] = i;
-                        }
-                        if (line[i].equals("longitude")) {
-                            header[1] = i;
-                        }
-                        if (line[i].equals("latitude")) {
-                            header[2] = i;
-                        }
-                        if (line[i].equals("year")) {
-                            header[3] = i;
-                        }
-                    }
-                    System.out.println("header info:" + header[0] + "," + header[1] + "," + header[2] + "," + header[3]);
-                } else {
-                    if (line.length >= 3) {
-                        try {
-                            double longitude = Double.parseDouble(line[header[1]]);
-                            double latitude = Double.parseDouble(line[header[2]]);
-                            if (region == null || region.isWithin_EPSG900913(longitude, latitude)) {
-                                points.add(longitude);
-                                points.add(latitude);
-                                String species = line[header[0]];
-                                Integer idx = lsidMap.get(species);
-                                if (idx == null) {
-                                    idx = lsidMap.size();
-                                    lsidMap.put(species, idx);
-                                }
-                                lsidIdx.add(idx);
-                                years.add(Short.parseShort(line[header[3]]));
-                            }
-                        } catch (Exception e) {
-                        } finally {
-                            if (lsidIdx.size() * 2 < points.size()) {
-                                points.remove(points.size() - 1);
-                                points.remove(points.size() - 1);
-                            } else if (years.size() < lsidIdx.size()) {
-                                years.add((short) 0);
-                            }
-                        }
-                    }
-                }
-                row++;
-            }
-            if (start == 0) {
-                start = row - 1; //offset for header
-            } else {
-                start = row;
-            }
-
-            csv.close();
-            is.close();
-
-            if (currentCount == 0 || currentCount < pageSize) {
-                break;
-            }
-        }
-
-        if (raf != null) {
-            raf.close();
-        }
-
-        //make lsid list
-        lsids = new String[lsidMap.size()];
-        for (Entry<String, Integer> e : lsidMap.entrySet()) {
-            lsids[e.getValue()] = e.getKey();
-        }
-
-        System.out.println("Got " + getRecordsSize() + " records of " + getSpeciesSize() + " species");
     }
 
     public Records(String filename) throws IOException {
@@ -387,6 +255,197 @@ public class Records {
         System.out.println("\nGot " + getRecordsSize() + " records of " + getSpeciesSize() + " species");
     }
 
+    static InputStream getUrlStream(String url) throws IOException {
+        System.out.print("getting : " + url + " ... ");
+        long start = System.currentTimeMillis();
+        URLConnection c = new URL(url).openConnection();
+        InputStream is = c.getInputStream();
+        System.out.print((System.currentTimeMillis() - start) + "ms\n");
+        return is;
+    }
+
+    public static void main(String[] args) {
+        System.out.println("args[0] = path to save the records file");
+        System.out.println("args[1] = biocache service URL");
+
+        if (args.length > 0) {
+            Records.download(args[0], args[1]);
+        }
+    }
+
+    public static void download(String dir, String biocacheServiceUrl) {
+        try {
+            //split by longitude
+            for (int i = -180; i < 180; i++) {
+                double longitude1 = i;
+                double longitude2 = i + 0.9999999999999;
+                //adjust last longitude2
+                if (i == 179) {
+                    longitude2 = 180;
+                }
+                new Records(biocacheServiceUrl, "*:*"
+                        , new double[]{longitude1, -90, longitude2, 90}
+                        , dir + "." + i, null);
+            }
+
+            //join
+            BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(dir));
+            for (int i = -180; i < 180; i++) {
+                BufferedReader br = new BufferedReader(new FileReader(dir + "." + i));
+
+                String line;
+                while ((line = br.readLine()) != null) {
+                    bos.write(line.getBytes());
+                    bos.write("\n".getBytes());
+                }
+
+                FileUtils.deleteQuietly(new File(dir + "." + i));
+
+                br.close();
+            }
+            bos.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    void init(String biocache_service_url, String q, double[] bbox, String filename, SimpleRegion region, String facetField) throws IOException {
+        int speciesEstimate = 250000;
+        int recordsEstimate = 26000000;
+        int pageSize = 500000;
+
+        String bboxTerm = null;
+        if (bbox != null) {
+            bboxTerm =
+                    "&fq=longitude:%5B" + bbox[0] + "%20TO%20" + bbox[2]
+                            + "%5D&fq=latitude:%5B" + bbox[1] + "%20TO%20" + bbox[3] + "%5D";
+        } else {
+            bboxTerm = "";
+        }
+
+        points = new ArrayList<Double>(recordsEstimate);
+        lsidIdx = new ArrayList<Integer>(recordsEstimate);
+        years = new ArrayList<Short>(recordsEstimate);
+        HashMap<String, Integer> lsidMap = new HashMap<String, Integer>(speciesEstimate);
+
+        int start = 0;
+
+        RandomAccessFile raf = null;
+        if (filename != null) {
+            raf = new RandomAccessFile(filename, "rw");
+        }
+
+        while (true && start < 300000000) {
+            String url = biocache_service_url + "/webportal/occurrences.gz?q=" + q.replace(" ", "%20") + bboxTerm + "&pageSize=" + pageSize + "&start=" + start + "&fl=longitude,latitude," + facetField + ",year";
+
+            int tryCount = 0;
+            InputStream is = null;
+            CSVReader csv = null;
+            int maxTrys = 4;
+            while (tryCount < maxTrys && csv == null) {
+                tryCount++;
+                try {
+                    is = getUrlStream(url);
+                    csv = new CSVReader(new InputStreamReader(new GZIPInputStream(is)));
+                } catch (Exception e) {
+                    System.out.println("failed try " + tryCount + " of " + maxTrys + ": " + url);
+                    e.printStackTrace();
+                }
+            }
+
+            if (csv == null) {
+                throw new IOException("failed to get records from biocache.");
+            }
+
+            String[] line;
+            int[] header = new int[4]; //to contain [0]=lsid, [1]=longitude, [2]=latitude, [3]=year
+            int row = start;
+            int currentCount = 0;
+            while ((line = csv.readNext()) != null) {
+                if (raf != null) {
+                    for (int i = 0; i < line.length; i++) {
+                        if (i > 0) {
+                            raf.write(",".getBytes());
+                        }
+                        raf.write(line[i].getBytes());
+                    }
+                    raf.write("\n".getBytes());
+                }
+                currentCount++;
+                if (currentCount == 1) {
+                    //determine header
+                    for (int i = 0; i < line.length; i++) {
+                        if (line[i].equals(facetField)) {
+                            header[0] = i;
+                        }
+                        if (line[i].equals("longitude")) {
+                            header[1] = i;
+                        }
+                        if (line[i].equals("latitude")) {
+                            header[2] = i;
+                        }
+                        if (line[i].equals("year")) {
+                            header[3] = i;
+                        }
+                    }
+                    System.out.println("header info:" + header[0] + "," + header[1] + "," + header[2] + "," + header[3]);
+                } else {
+                    if (line.length >= 3) {
+                        try {
+                            double longitude = Double.parseDouble(line[header[1]]);
+                            double latitude = Double.parseDouble(line[header[2]]);
+                            if (region == null || region.isWithin_EPSG900913(longitude, latitude)) {
+                                points.add(longitude);
+                                points.add(latitude);
+                                String species = line[header[0]];
+                                Integer idx = lsidMap.get(species);
+                                if (idx == null) {
+                                    idx = lsidMap.size();
+                                    lsidMap.put(species, idx);
+                                }
+                                lsidIdx.add(idx);
+                                years.add(Short.parseShort(line[header[3]]));
+                            }
+                        } catch (Exception e) {
+                        } finally {
+                            if (lsidIdx.size() * 2 < points.size()) {
+                                points.remove(points.size() - 1);
+                                points.remove(points.size() - 1);
+                            } else if (years.size() < lsidIdx.size()) {
+                                years.add((short) 0);
+                            }
+                        }
+                    }
+                }
+                row++;
+            }
+            if (start == 0) {
+                start = row - 1; //offset for header
+            } else {
+                start = row;
+            }
+
+            csv.close();
+            is.close();
+
+            if (currentCount == 0 || currentCount < pageSize) {
+                break;
+            }
+        }
+
+        if (raf != null) {
+            raf.close();
+        }
+
+        //make lsid list
+        lsids = new String[lsidMap.size()];
+        for (Entry<String, Integer> e : lsidMap.entrySet()) {
+            lsids[e.getValue()] = e.getKey();
+        }
+
+        System.out.println("Got " + getRecordsSize() + " records of " + getSpeciesSize() + " species");
+    }
+
     public String getSpecies(int pos) {
         return lsids[lsidIdx.get(pos)];
     }
@@ -423,15 +482,6 @@ public class Records {
         speciesSize = lsids.length;
         lsids = null;
     }
-
-    Integer[] sortOrder;
-    int[] sortOrderRowStarts;
-    double soMinLat;
-    double soMinLong;
-    int soHeight;
-    double soResolution;
-    boolean soSortedStarts;
-    boolean soSortedRowStarts;
 
     public int[] sortedRowStarts(double minLat, int height, double resolution) {
         if (sortOrder != null && soMinLat == minLat
@@ -555,14 +605,5 @@ public class Records {
 
     public double getSortedLatitude(int pos) {
         return points.get(sortOrder[pos] * 2 + 1);
-    }
-
-    static InputStream getUrlStream(String url) throws IOException {
-        System.out.print("getting : " + url + " ... ");
-        long start = System.currentTimeMillis();
-        URLConnection c = new URL(url).openConnection();
-        InputStream is = c.getInputStream();
-        System.out.print((System.currentTimeMillis() - start) + "ms\n");
-        return is;
     }
 }

@@ -14,6 +14,8 @@
  ***************************************************************************/
 package org.ala.layers.intersect;
 
+import org.apache.log4j.Logger;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -22,8 +24,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Comparator;
-
-import org.apache.log4j.Logger;
 
 /**
  * Grid.java
@@ -37,10 +37,6 @@ import org.apache.log4j.Logger;
  */
 public class Grid { //  implements Serializable
 
-    /**
-     * Log4j instance
-     */
-    protected Logger logger = Logger.getLogger(this.getClass());
     final static int maxGridsLoaded = 1;
     static ArrayList<Grid> all_grids = new ArrayList<Grid>();
     final double noDataValueDefault = -3.4E38;
@@ -54,10 +50,14 @@ public class Grid { //  implements Serializable
     public String datatype;
     // properties
     public double minval, maxval;
-    byte nbytes;
     public String filename;
-    float[] grid_data = null;
     public String units;
+    /**
+     * Log4j instance
+     */
+    protected Logger logger = Logger.getLogger(this.getClass());
+    byte nbytes;
+    float[] grid_data = null;
 
     /**
      * loads grd for gri file reference

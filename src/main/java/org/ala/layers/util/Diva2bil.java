@@ -14,10 +14,11 @@
  ***************************************************************************/
 package org.ala.layers.util;
 
-import java.io.*;
-import java.nio.*;
-
 import org.ala.layers.intersect.IniReader;
+
+import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 public class Diva2bil {
 

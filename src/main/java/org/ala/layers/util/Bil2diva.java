@@ -14,16 +14,18 @@
  ***************************************************************************/
 package org.ala.layers.util;
 
-import java.util.*;
-import java.text.*;
 import java.io.*;
-import java.nio.*;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
 
 public class Bil2diva {
 
     public static void main(String[] args) {
-        args = new String[]{"/data/bio1-9_30s_bil/bio_1", "/data/bio_1", "degrees C"};
+        //args = new String[]{"/data/bio1-9_30s_bil/bio_1", "/data/bio_1", "degrees C"};
 
         if (args.length < 3) {
             System.out.println("hdr bil to diva.  Must be: \n"

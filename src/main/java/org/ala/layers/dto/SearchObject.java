@@ -34,6 +34,17 @@ public class SearchObject {
     private String fid;
     private String fieldname;
 
+    public static SearchObject create(String id, String pid, String name, String description, String fid, String fieldname) {
+        SearchObject so = new SearchObject();
+        so.id = id;
+        so.pid = pid;
+        so.description = description;
+        so.name = name;
+        so.fid = fid;
+        so.fieldname = fieldname;
+        return so;
+    }
+
     public String getFid() {
         return fid;
     }
@@ -80,16 +91,5 @@ public class SearchObject {
 
     public void setPid(String pid) {
         this.pid = pid;
-    }
-
-    public static SearchObject create(String id, String pid, String name, String description, String fid, String fieldname) {
-        SearchObject so = new SearchObject();
-        so.id = id;
-        so.pid = pid;
-        so.description = description;
-        so.name = name;
-        so.fid = fid;
-        so.fieldname = fieldname;
-        return so;
     }
 }

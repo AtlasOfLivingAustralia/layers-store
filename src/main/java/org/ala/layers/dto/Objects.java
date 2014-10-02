@@ -137,12 +137,12 @@ public class Objects {
         this.degrees = degrees;
     }
 
-    public void setWmsurl(String wmsurl) {
-        this.wmsurl = wmsurl;
-    }
-
     public String getWmsurl() {
         return wmsurl;
+    }
+
+    public void setWmsurl(String wmsurl) {
+        this.wmsurl = wmsurl;
     }
 
     @Override

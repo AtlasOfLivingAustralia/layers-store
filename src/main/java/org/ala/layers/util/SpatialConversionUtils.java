@@ -1,21 +1,12 @@
 package org.ala.layers.util;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.Serializable;
-import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
-import java.util.zip.ZipOutputStream;
-
+import com.google.common.io.Files;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryCollection;
+import com.vividsolutions.jts.geom.MultiPolygon;
+import com.vividsolutions.jts.geom.Polygon;
+import com.vividsolutions.jts.io.ParseException;
+import com.vividsolutions.jts.io.WKTReader;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
@@ -32,34 +23,23 @@ import org.geotools.data.simple.SimpleFeatureIterator;
 import org.geotools.data.simple.SimpleFeatureSource;
 import org.geotools.data.simple.SimpleFeatureStore;
 import org.geotools.feature.DefaultFeatureCollection;
-import org.geotools.feature.FeatureCollection;
-import org.geotools.feature.FeatureCollections;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.geotools.geojson.geom.GeometryJSON;
 import org.geotools.geometry.jts.JTS;
 import org.geotools.referencing.CRS;
-import org.geotools.referencing.crs.AbstractCRS;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
-import org.geotools.referencing.operation.DefaultConversion;
-import org.geotools.referencing.operation.DefaultTransformation;
 import org.opengis.feature.Property;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.feature.type.GeometryType;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
-import com.google.common.io.Files;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryCollection;
-import com.vividsolutions.jts.geom.MultiPolygon;
-import com.vividsolutions.jts.geom.Polygon;
-import com.vividsolutions.jts.io.ParseException;
-import com.vividsolutions.jts.io.WKTReader;
-import org.opengis.referencing.operation.Conversion;
-import org.opengis.referencing.operation.MathTransform;
-import org.opengis.referencing.operation.MathTransformFactory;
-import org.opengis.referencing.operation.Transformation;
+import java.io.*;
+import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipOutputStream;
 
 /**
  * Utilities for converting spatial data between formats
@@ -68,12 +48,11 @@ import org.opengis.referencing.operation.Transformation;
  */
 public class SpatialConversionUtils {
 
+    public final static String WKT_MAP_KEY = "WKT_MAP_KEY_****"; //works as long as this is not uploaded as a field in the shapefile
     /**
      * log4j logger
      */
     private static final Logger logger = Logger.getLogger(SpatialConversionUtils.class);
-
-    public final static String WKT_MAP_KEY = "WKT_MAP_KEY_****"; //works as long as this is not uploaded as a field in the shapefile
 
     public static List<String> getGeometryCollectionParts(String wkt) {
         if (wkt.matches("GEOMETRYCOLLECTION\\(.+\\)")) {
@@ -306,36 +285,6 @@ public class SpatialConversionUtils {
         return zipFile;
     }
 
-    protected static class BaseFileNameInDirectoryFilter implements IOFileFilter {
-
-        private String baseFileName;
-        private File parentDir;
-        private List<File> excludedFiles;
-
-        public BaseFileNameInDirectoryFilter(String baseFileName, File parentDir, List<File> excludedFiles) {
-            this.baseFileName = baseFileName;
-            this.parentDir = parentDir;
-            this.excludedFiles = new ArrayList<File>(excludedFiles);
-        }
-
-        @Override
-        public boolean accept(File file) {
-            if (excludedFiles.contains(file)) {
-                return false;
-            }
-            return file.getParentFile().equals(parentDir) && file.getName().startsWith(baseFileName);
-        }
-
-        @Override
-        public boolean accept(File dir, String name) {
-            if (excludedFiles.contains(new File(dir, name))) {
-                return false;
-            }
-            return dir.equals(parentDir) && name.startsWith(baseFileName);
-        }
-
-    }
-
     public static File saveShapefile(File shpfile, String wktString, String name, String description) {
         try {
             String wkttype = "POLYGON";
@@ -490,5 +439,35 @@ public class SpatialConversionUtils {
         double[] pt = {x, y};
 
         return pt;
+    }
+
+    protected static class BaseFileNameInDirectoryFilter implements IOFileFilter {
+
+        private String baseFileName;
+        private File parentDir;
+        private List<File> excludedFiles;
+
+        public BaseFileNameInDirectoryFilter(String baseFileName, File parentDir, List<File> excludedFiles) {
+            this.baseFileName = baseFileName;
+            this.parentDir = parentDir;
+            this.excludedFiles = new ArrayList<File>(excludedFiles);
+        }
+
+        @Override
+        public boolean accept(File file) {
+            if (excludedFiles.contains(file)) {
+                return false;
+            }
+            return file.getParentFile().equals(parentDir) && file.getName().startsWith(baseFileName);
+        }
+
+        @Override
+        public boolean accept(File dir, String name) {
+            if (excludedFiles.contains(new File(dir, name))) {
+                return false;
+            }
+            return dir.equals(parentDir) && name.startsWith(baseFileName);
+        }
+
     }
 }

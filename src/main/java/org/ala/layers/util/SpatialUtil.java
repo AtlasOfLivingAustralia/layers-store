@@ -13,6 +13,10 @@ import java.util.HashMap;
 public class SpatialUtil {
 
     static HashMap<Double, double[]> commonGridLatitudeArea = new HashMap<Double, double[]>();
+    static double meters_per_pixel = 78271.5170; //at zoom level 1
+    static private int map_zoom = 21;
+    static private int map_offset = 268435456; // half the Earth's circumference at zoom level 21
+    static private double map_radius = map_offset / Math.PI;
 
     //calculateArea from FilteringResultsWCController
     static public double calculateArea(double[][] areaarr) {
@@ -279,11 +283,6 @@ public class SpatialUtil {
 
         return 2 * Math.asin(Math.sqrt(Math.pow(Math.sin((c - d) / 2), 2) + Math.cos(c) * Math.cos(d) * Math.pow(Math.sin((Uc(lng1) - Uc(lng2)) / 2), 2)));
     }
-
-    static private int map_zoom = 21;
-    static private int map_offset = 268435456; // half the Earth's circumference at zoom level 21
-    static private double map_radius = map_offset / Math.PI;
-    static double meters_per_pixel = 78271.5170; //at zoom level 1
 
     static public int convertLngToPixel(double lng) {
         return (int) Math.round(map_offset + map_radius * lng * Math.PI / 180);

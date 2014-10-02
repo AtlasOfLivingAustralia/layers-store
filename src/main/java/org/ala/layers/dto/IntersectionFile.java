@@ -43,75 +43,75 @@ public class IntersectionFile {
         this.classes = classes;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
     public String getName() {
         return name;
     }
 
-    public void setFilePath(String filePath) {
-        this.filePath = filePath;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getFilePath() {
         return filePath;
     }
 
-    public void setShapeFields(String shapeFields) {
-        this.shapeFields = shapeFields;
+    public void setFilePath(String filePath) {
+        this.filePath = filePath;
     }
 
     public String getShapeFields() {
         return shapeFields;
     }
 
-    public void setLayerName(String layerName) {
-        this.layerName = layerName;
+    public void setShapeFields(String shapeFields) {
+        this.shapeFields = shapeFields;
     }
 
     public String getLayerName() {
         return layerName;
     }
 
-    public void setFieldId(String fieldId) {
-        this.fieldId = fieldId;
+    public void setLayerName(String layerName) {
+        this.layerName = layerName;
     }
 
     public String getFieldId() {
         return fieldId;
     }
 
-    public void setClasses(HashMap<Integer, GridClass> classes) {
-        this.classes = classes;
+    public void setFieldId(String fieldId) {
+        this.fieldId = fieldId;
     }
 
     public HashMap<Integer, GridClass> getClasses() {
         return classes;
     }
 
-    public void setLayerPid(String layerPid) {
-        this.layerPid = layerPid;
+    public void setClasses(HashMap<Integer, GridClass> classes) {
+        this.classes = classes;
     }
 
     public String getLayerPid() {
         return layerPid;
     }
 
-    public void setFieldName(String fieldName) {
-        this.fieldName = fieldName;
+    public void setLayerPid(String layerPid) {
+        this.layerPid = layerPid;
     }
 
     public String getFieldName() {
         return fieldName;
     }
 
-    public void setType(String type) {
-        this.type = type;
+    public void setFieldName(String fieldName) {
+        this.fieldName = fieldName;
     }
 
     public String getType() {
         return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 }

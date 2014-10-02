@@ -14,16 +14,13 @@
  ***************************************************************************/
 package org.ala.layers.dto;
 
-import java.util.Date;
-import java.util.List;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-
 import org.codehaus.jackson.map.annotate.JsonSerialize;
+
+import javax.persistence.*;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * This class serves as a model object for the "fields" table
@@ -32,7 +29,6 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
  */
 @Entity
 @Table(name = "fields")
-//@XStreamAlias("field")
 @JsonSerialize(include = JsonSerialize.Inclusion.NON_DEFAULT)
 public class Field {
 
@@ -72,6 +68,9 @@ public class Field {
     private Boolean analysis;
     @Column(name = "addtomap")
     private Boolean addtomap;
+
+    @Column(name = "number_of_objects")
+    private Integer number_of_objects;
     private List<Objects> objects;
 
     public List<Objects> getObjects() {
@@ -216,5 +215,37 @@ public class Field {
 
     public void setAddtomap(Boolean addtomap) {
         this.addtomap = addtomap;
+    }
+
+    public Integer getNumber_of_objects() {
+        return number_of_objects;
+    }
+
+    public void setNumber_of_objects(Integer number_of_objects) {
+        this.number_of_objects = number_of_objects;
+    }
+
+    public Map<String, Object> toMap() {
+        Map<String, Object> m = new HashMap<String, Object>();
+
+        m.put("analysis", analysis);
+        m.put("layerbranch", layerbranch);
+        m.put("intersect", intersect);
+        m.put("defaultlayer", defaultlayer);
+        m.put("name", name);
+        m.put("notes", namesearch);
+        m.put("path", lastUpdated);
+        m.put("desc", desc);
+        m.put("enabled", enabled);
+        m.put("spid", spid);
+        m.put("addtomap", addtomap);
+        m.put("indb", indb);
+        m.put("sdesc", sdesc);
+        m.put("sname", sname);
+        m.put("sid", sid);
+        m.put("type", type);
+        m.put("id", id);
+
+        return m;
     }
 }

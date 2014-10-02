@@ -14,21 +14,21 @@
  ***************************************************************************/
 package org.ala.layers.grid;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import org.ala.layers.dao.LayerIntersectDAO;
+import org.ala.layers.intersect.Grid;
+import org.apache.commons.io.FileUtils;
+import org.apache.log4j.Logger;
+
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
-
-import org.ala.layers.intersect.Grid;
 
 /**
  * @author Adam
  */
 public class GridCacheBuilder {
+    private static final Logger LOGGER = Logger.getLogger(GridCacheBuilder.class);
 
     public static void main(String[] args) throws IOException {
 //        args = new String[]{"e:\\layers\\ready\\diva", "e:\\layers\\ready\\diva_cache"};
@@ -45,6 +45,55 @@ public class GridCacheBuilder {
         for (int i = 0; i < groups.size(); i++) {
             writeGroup(args[1], groups.get(i));
         }
+    }
+
+    public static void all(String divaGridDir, String outputDir, LayerIntersectDAO layerIntersectDAO) {
+        //load up all diva grids in a directory
+        ArrayList<Grid> grids = loadGridHeaders(divaGridDir);
+
+        //identify groups
+        ArrayList<ArrayList<Grid>> groups = identifyGroups(grids);
+
+        File tmpDir = new File(outputDir + "/tmp/");
+        try {
+            FileUtils.forceMkdir(tmpDir);
+
+            //delete existing files, if any
+            for (File f : tmpDir.listFiles()) {
+                if (f.isFile()) {
+                    FileUtils.deleteQuietly(f);
+                }
+            }
+        } catch (IOException e) {
+            LOGGER.error("failed to create or empty tmp dir in: " + outputDir, e);
+        }
+        //write large enough groups
+        for (int i = 0; i < groups.size(); i++) {
+            try {
+                writeGroup(tmpDir.getPath(), groups.get(i));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        //delete existing files
+        for (File f : new File(outputDir).listFiles()) {
+            if (f.isFile()) {
+                FileUtils.deleteQuietly(f);
+            }
+        }
+
+        //move new files
+        for (File f : tmpDir.listFiles()) {
+            try {
+                FileUtils.moveFile(f, new File(f.getPath().replace("/tmp/", "")));
+            } catch (IOException e) {
+                LOGGER.error("failed to move new grid cache file: " + f.getPath());
+            }
+        }
+
+        //reload grid cache
+        layerIntersectDAO.reload();
     }
 
     private static ArrayList<Grid> loadGridHeaders(String directory) {

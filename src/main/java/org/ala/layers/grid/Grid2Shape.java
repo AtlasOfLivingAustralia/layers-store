@@ -14,26 +14,16 @@
  ***************************************************************************/
 package org.ala.layers.grid;
 
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.LinearRing;
-import com.vividsolutions.jts.geom.Polygon;
-import com.vividsolutions.jts.geom.MultiPolygon;
+import com.vividsolutions.jts.geom.*;
+import org.geotools.geometry.jts.JTSFactoryFinder;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.AbstractMap.SimpleEntry;
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-
-import org.geotools.geometry.jts.JTSFactoryFinder;
 
 /**
  * @author Adam

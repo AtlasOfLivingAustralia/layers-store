@@ -4,20 +4,17 @@
  */
 package org.ala.layers.legend;
 
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.Serializable;
-import javax.imageio.ImageIO;
-
 import org.ala.layers.intersect.Grid;
 import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
-import org.codehaus.jackson.map.annotate.JsonDeserialize;
+
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.Serializable;
 
 /**
  * @author Adam
@@ -37,15 +34,13 @@ import org.codehaus.jackson.map.annotate.JsonDeserialize;
 @JsonIgnoreProperties({"minMax", "cutoffs"})
 public abstract class Legend implements Serializable {
 
-    final static String LEGEND_KEY = "/legend_key.png";
-
     /*
      * Colours are all set as transparent for no reason
      *
      * There are groups+1 colours
      */
     final public static int[] colours = {0x00002DD0, 0x00005BA2, 0x00008C73, 0x0000B944, 0x0000E716, 0x00A0FF00, 0x00FFFF00, 0x00FFC814, 0x00FFA000, 0x00FF5B00, 0x00FF0000};
-
+    final static String LEGEND_KEY = "/legend_key.png";
     /*
          * for determining the records that are equal to the maximum value
          */
@@ -100,6 +95,54 @@ public abstract class Legend implements Serializable {
     int divisions;
 
     /**
+     * colourize input between provided ranges.
+     *
+     * @param d   value to colourize as float
+     * @param min minimum of range as float
+     * @param max maximum of range as float
+     * @return colour of d scaled between min and max as int ARGB with A == 0xFF.
+     * Defaults to black.
+     */
+    public static int getColour(double d, double min, double max) {
+        if (Double.isNaN(d) || d < min || d > max) {
+            return 0xFFFFFFFF;
+        }
+        double range = max - min;
+        double a = (d - min) / range;
+
+        //10 colour steps
+        int pos = (int) (a);  //fit 0 to 10
+        if (pos == 10) {
+            pos--;
+        }
+        double lower = (pos / 10.0) * range + min;
+        double upper = ((pos + 1) / 10.0) * range + min;
+
+        //translate value to 0-1 position between the colours
+        double v = (d - lower) / (upper - lower);
+        double vt = 1 - v;
+
+        //there are groups+1 colours
+        int red = (int) ((colours[pos] & 0x00FF0000) * vt + (colours[pos + 1] & 0x00FF0000) * v);
+        int green = (int) ((colours[pos] & 0x0000FF00) * vt + (colours[pos + 1] & 0x0000FF00) * v);
+        int blue = (int) ((colours[pos] & 0x00000FF) * vt + (colours[pos + 1] & 0x000000FF) * v);
+
+        return (red & 0x00FF0000) | (green & 0x0000FF00) | (blue & 0x000000FF) | 0xFF000000;
+    }
+
+    public static int getLinearColour(double d, double min, double max, int startColour, int endColour) {
+        //translate value to 0-1 position between the colours
+        double v = (d - min) / (max - min);
+        double vt = 1 - v;
+
+        int red = (int) ((startColour & 0x00FF0000) * vt + (endColour & 0x00FF0000) * v);
+        int green = (int) ((startColour & 0x0000FF00) * vt + (endColour & 0x0000FF00) * v);
+        int blue = (int) ((startColour & 0x00000FF) * vt + (endColour & 0x000000FF) * v);
+
+        return (red & 0x00FF0000) | (green & 0x0000FF00) | (blue & 0x000000FF) | 0xFF000000;
+    }
+
+    /**
      * generate the legend cutoff points.
      * <p/>
      * default number of cutoffs = 10
@@ -125,6 +168,10 @@ public abstract class Legend implements Serializable {
      * @return name as String
      */
     abstract public String getTypeName();
+
+    public void setTypeName(String typeName) {
+        //does nothing
+    }
 
     /**
      * some common values
@@ -397,54 +444,6 @@ public abstract class Legend implements Serializable {
     }
 
     /**
-     * colourize input between provided ranges.
-     *
-     * @param d   value to colourize as float
-     * @param min minimum of range as float
-     * @param max maximum of range as float
-     * @return colour of d scaled between min and max as int ARGB with A == 0xFF.
-     * Defaults to black.
-     */
-    public static int getColour(double d, double min, double max) {
-        if (Double.isNaN(d) || d < min || d > max) {
-            return 0xFFFFFFFF;
-        }
-        double range = max - min;
-        double a = (d - min) / range;
-
-        //10 colour steps
-        int pos = (int) (a);  //fit 0 to 10
-        if (pos == 10) {
-            pos--;
-        }
-        double lower = (pos / 10.0) * range + min;
-        double upper = ((pos + 1) / 10.0) * range + min;
-
-        //translate value to 0-1 position between the colours
-        double v = (d - lower) / (upper - lower);
-        double vt = 1 - v;
-
-        //there are groups+1 colours
-        int red = (int) ((colours[pos] & 0x00FF0000) * vt + (colours[pos + 1] & 0x00FF0000) * v);
-        int green = (int) ((colours[pos] & 0x0000FF00) * vt + (colours[pos + 1] & 0x0000FF00) * v);
-        int blue = (int) ((colours[pos] & 0x00000FF) * vt + (colours[pos + 1] & 0x000000FF) * v);
-
-        return (red & 0x00FF0000) | (green & 0x0000FF00) | (blue & 0x000000FF) | 0xFF000000;
-    }
-
-    public static int getLinearColour(double d, double min, double max, int startColour, int endColour) {
-        //translate value to 0-1 position between the colours
-        double v = (d - min) / (max - min);
-        double vt = 1 - v;
-
-        int red = (int) ((startColour & 0x00FF0000) * vt + (endColour & 0x00FF0000) * v);
-        int green = (int) ((startColour & 0x0000FF00) * vt + (endColour & 0x0000FF00) * v);
-        int blue = (int) ((startColour & 0x00000FF) * vt + (endColour & 0x000000FF) * v);
-
-        return (red & 0x00FF0000) | (green & 0x0000FF00) | (blue & 0x000000FF) | 0xFF000000;
-    }
-
-    /**
      * get cutoff values as String
      * <p/>
      * includes group sizes if calculated
@@ -462,6 +461,10 @@ public abstract class Legend implements Serializable {
             }
         }
         return sb.toString();
+    }
+
+    public void setCutoffs(float[] cutoffs) {
+        this.cutoffs = cutoffs;
     }
 
     /**
@@ -487,6 +490,10 @@ public abstract class Legend implements Serializable {
      */
     public float[] getCutoffFloats() {
         return cutoffs;
+    }
+
+    public void setCutoffFloats(float[] cutoffs) {
+        this.cutoffs = cutoffs;
     }
 
     /**
@@ -610,8 +617,8 @@ public abstract class Legend implements Serializable {
         return this.cutoffMins;
     }
 
-    public void setCutoffs(float[] cutoffs) {
-        this.cutoffs = cutoffs;
+    public void setCutoffMinFloats(float[] cutoffMins) {
+        this.cutoffMins = cutoffMins;
     }
 
     public float[] getCutoffMins() {
@@ -700,17 +707,5 @@ public abstract class Legend implements Serializable {
 
     public void setDivisions(int divisions) {
         this.divisions = divisions;
-    }
-
-    public void setCutoffFloats(float[] cutoffs) {
-        this.cutoffs = cutoffs;
-    }
-
-    public void setCutoffMinFloats(float[] cutoffMins) {
-        this.cutoffMins = cutoffMins;
-    }
-
-    public void setTypeName(String typeName) {
-        //does nothing
     }
 }

@@ -5,7 +5,6 @@
 package org.ala.layers.legend;
 
 import org.ala.layers.legend.QueryField.FieldType;
-import org.codehaus.jackson.map.annotate.JsonDeserialize;
 
 import java.io.Serializable;
 import java.util.Comparator;
@@ -16,8 +15,6 @@ import java.util.HashMap;
  */
 public class LegendObject implements Serializable {
 
-    Legend numericLegend;
-    FieldType fieldType;
     //categorical legend
     final public static int[] colours = {0x003366CC, 0x00DC3912, 0x00FF9900, 0x00109618, 0x00990099, 0x000099C6, 0x00DD4477, 0x0066AA00, 0x00B82E2E, 0x00316395, 0x00994499, 0x0022AA99, 0x00AAAA11, 0x006633CC, 0x00E67300, 0x008B0707, 0x00651067, 0x00329262, 0x005574A6, 0x003B3EAC, 0x00B77322, 0x0016D620, 0x00B91383, 0x00F4359E, 0x009C5935, 0x00A9C413, 0x002A778D, 0x00668D1C, 0x00BEA413, 0x000C5922, 0x00743411};
     final public static int DEFAULT_COLOUR = 0x00FFFFFF;
@@ -25,6 +22,8 @@ public class LegendObject implements Serializable {
     //[0] is colour, [1] is count
     protected HashMap<String, int[]> categories;
     protected String[] categoryNameOrder;
+    Legend numericLegend;
+    FieldType fieldType;
     String colourMode;
 
     public LegendObject() {
@@ -64,6 +63,12 @@ public class LegendObject implements Serializable {
             this.categories.put(category, data);
             categoryNameOrder[i] = category;
         }
+    }
+
+    public static String getRGB(int colour) {
+        return ((colour >> 16) & 0x000000ff) + ","
+                + ((colour >> 8) & 0x000000ff) + ","
+                + (colour & 0x000000ff);
     }
 
     /**
@@ -144,6 +149,10 @@ public class LegendObject implements Serializable {
         return sb.toString();
     }
 
+    public void setTable(String table) {
+
+    }
+
     public int getColour(String value) {
         if (numericLegend != null) {
             try {
@@ -175,12 +184,6 @@ public class LegendObject implements Serializable {
         }
     }
 
-    public static String getRGB(int colour) {
-        return ((colour >> 16) & 0x000000ff) + ","
-                + ((colour >> 8) & 0x000000ff) + ","
-                + (colour & 0x000000ff);
-    }
-
     public float[] getMinMax() {
         if (numericLegend != null) {
             return numericLegend.getMinMax();
@@ -188,6 +191,10 @@ public class LegendObject implements Serializable {
             float[] d = {0, categoryNameOrder.length};
             return d;
         }
+    }
+
+    public void setMinMax(float[] minmax) {
+
     }
 
     public String[] getCategoryNameOrder() {
@@ -228,13 +235,5 @@ public class LegendObject implements Serializable {
 
     public void setCategories(HashMap<String, int[]> categories) {
         this.categories = categories;
-    }
-
-    public void setTable(String table) {
-
-    }
-
-    public void setMinMax(float[] minmax) {
-
     }
 }

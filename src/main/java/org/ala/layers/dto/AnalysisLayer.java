@@ -12,19 +12,19 @@ public class AnalysisLayer {
     Field field;
     Layer layer;
 
-    public void setField(Field field) {
-        this.field = field;
-    }
-
     public Field getField() {
         return field;
     }
 
-    public void setLayer(Layer layer) {
-        this.layer = layer;
+    public void setField(Field field) {
+        this.field = field;
     }
 
     public Layer getLayer() {
         return layer;
+    }
+
+    public void setLayer(Layer layer) {
+        this.layer = layer;
     }
 }

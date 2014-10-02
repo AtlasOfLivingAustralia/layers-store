@@ -14,26 +14,6 @@
  ***************************************************************************/
 package org.ala.layers.tabulation;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.Properties;
-import java.util.TreeMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.CountDownLatch;
-
 import org.ala.layers.client.Client;
 import org.ala.layers.dao.FieldDAO;
 import org.ala.layers.dao.LayerDAO;
@@ -42,61 +22,68 @@ import org.ala.layers.dao.ObjectDAO;
 import org.ala.layers.dto.Field;
 import org.ala.layers.dto.Layer;
 import org.ala.layers.dto.Objects;
+import org.ala.layers.dto.Tabulation;
 import org.ala.layers.intersect.Grid;
+import org.ala.layers.intersect.SimpleRegion;
 import org.ala.layers.intersect.SimpleShapeFile;
 import org.ala.layers.util.SpatialUtil;
 import org.ala.spatial.analysis.layers.Records;
+import org.apache.log4j.Logger;
+
+import java.io.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * @author Adam
  */
 public class TabulationGenerator {
 
+    private static final Logger LOGGER = Logger.getLogger(TabulationGenerator.class);
     static int CONCURRENT_THREADS = 6;
-    // static String db_url = "jdbc:postgresql://localhost:5432/layersdb";
     static String db_url = "jdbc:postgresql://ala-maps-db.vm.csiro.au:5432/layersdb";
     static String db_usr = "postgres";
     static String db_pwd = "postgres";
-
     static String allFidPairsSQL = "SELECT " + "(CASE WHEN f1.id < f2.id THEN f1.id ELSE f2.id END) as fid1, " + "(CASE WHEN f1.id < f2.id THEN f2.id ELSE f1.id END) as fid2, "
             + "(CASE WHEN f1.id < f2.id THEN f1.domain ELSE f2.domain END) as domain1, " + "(CASE WHEN f1.id < f2.id THEN f2.domain ELSE f1.domain END) as domain2 " + "FROM "
             + "(select f3.id, f3.intersect, l1.domain from fields f3, layers l1 where f3.spid='' || l1.id) f1, "
             + "(select f4.id, f4.intersect, l2.domain from fields f4, layers l2 where f4.spid='' || l2.id) f2 " + "WHERE f1.id != f2.id " + "AND f1.intersect=true AND f2.intersect=true "
             + "group by fid1, fid2, domain1, domain2 " + "order by fid1, fid2";
-
     static String existingTabulationssql = "SELECT fid1, fid2 from tabulation group by fid1, fid2";
-
     static String fidPairsToProcessSQL = "SELECT a.fid1, a.domain1, a.fid2, a.domain2 FROM (" + allFidPairsSQL + ") a WHERE (a.fid1, a.fid2) NOT IN (" + existingTabulationssql
             + ") group by a.fid1, a.fid2, a.domain1, a.domain2;";
+    private static Records recordsOne = null;
+    private static Connection connection;
 
     private static Connection getConnection() {
-        Connection conn = null;
-        try {
-            Class.forName("org.postgresql.Driver");
-            // String url =
-            // "jdbc:postgresql://ala-devmaps-db.vm.csiro.au:5432/layersdb";
-            String url = db_url;
-            conn = DriverManager.getConnection(url, db_usr, db_pwd);
+        if (connection == null) {
+            Connection conn = null;
+            try {
+                Class.forName("org.postgresql.Driver");
+                String url = db_url;
+                conn = DriverManager.getConnection(url, db_usr, db_pwd);
 
-        } catch (Exception e) {
-            System.out.println("Unable to create Connection");
-            e.printStackTrace(System.out);
+            } catch (Exception e) {
+                System.out.println("Unable to create Connection");
+                e.printStackTrace(System.out);
+            }
+            connection = conn;
         }
 
-        return conn;
+        return connection;
     }
 
     static public void main(String[] args) throws IOException {
         System.out.println("args[0] = threadcount," + "\nargs[1] = db connection string," + "\n args[2] = db username," + "\n args[3] = password,"
                 + "\n args[4] = (optional) specify one step to run, " + "'1' pair objects, '3' delete invalid objects, '4' area, '5' occurrences, '6' grid x grid comparisons"
                 + "\n args[5] = (required when args[4]=5 or 6) path to records file,");
-        // args = new String[] {
-        // "6",
-        // "jdbc:postgresql://ala-maps-db.vic.csiro.au:5432/layersdb",
-        // "postgres",
-        // "postgres",
-        // "1",
-        // "e:\\_records.csv\\_records.csv"};
+
         if (args.length >= 5) {
             CONCURRENT_THREADS = Integer.parseInt(args[0]);
             db_url = args[1];
@@ -174,6 +161,39 @@ public class TabulationGenerator {
                 System.out.println("Please provide a valid path to the species occurrence file");
             }
         }
+
+        if (connection != null) {
+            try {
+                connection.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static void all(String recordsFilePath, Connection connection) {
+
+        updatePairObjects();
+
+        deleteInvalidObjects();
+
+        while (updateArea() > 0) ;
+
+        File f = new File(recordsFilePath);
+        //not going to reopen the records file
+        if (f.exists() && recordsOne == null) {
+            try {
+                recordsOne = new Records(f.getAbsolutePath());
+            } catch (IOException e) {
+                LOGGER.error("failed to open records file: " + recordsFilePath, e);
+            }
+
+            updateOccurrencesSpecies2(recordsOne, CONCURRENT_THREADS);
+
+            updatePairObjectsGridToGrid(recordsOne);
+        } else {
+            System.out.println("Please provide a valid path to the species occurrence file");
+        }
     }
 
     private static void updatePairObjects() {
@@ -220,14 +240,6 @@ public class TabulationGenerator {
             }
         } catch (Exception ex) {
             ex.printStackTrace();
-        } finally {
-            if (conn != null) {
-                try {
-                    conn.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
         }
     }
 
@@ -290,14 +302,6 @@ public class TabulationGenerator {
             }
         } catch (Exception ex) {
             ex.printStackTrace();
-        } finally {
-            if (conn != null) {
-                try {
-                    conn.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
         }
     }
 
@@ -654,77 +658,10 @@ public class TabulationGenerator {
             return size;
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
-            if (conn != null) {
-                try {
-                    conn.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
         }
+
         return 0;
     }
-
-//    private static int updateOccurrencesSpecies(Records records) {
-//        Connection conn = null;
-//        try {
-//            conn = getConnection();
-//            String sql = "SELECT pid1, pid2, ST_AsText(the_geom) as wkt FROM tabulation WHERE pid1 is not null AND occurrences is null " + " limit 100";
-//            if (conn == null) {
-//                System.out.println("connection is null");
-//            } else {
-//                System.out.println("connection is not null");
-//            }
-//            Statement s1 = conn.createStatement();
-//            ResultSet rs1 = s1.executeQuery(sql);
-//
-//            LinkedBlockingQueue<String[]> data = new LinkedBlockingQueue<String[]>();
-//            while (rs1.next()) {
-//                data.put(new String[] { rs1.getString("pid1"), rs1.getString("pid2"), rs1.getString("wkt") });
-//            }
-//
-//            System.out.println("next " + data.size());
-//
-//            int size = data.size();
-//
-//            if (size == 0) {
-//                return 0;
-//            }
-//
-//            CountDownLatch cdl = new CountDownLatch(data.size());
-//
-//            OccurrencesSpeciesThread[] threads = new OccurrencesSpeciesThread[CONCURRENT_THREADS];
-//            for (int j = 0; j < CONCURRENT_THREADS; j++) {
-//
-//                threads[j] = new OccurrencesSpeciesThread(data, cdl, getConnection().createStatement(), records);
-//                threads[j].start();
-//            }
-//
-//            cdl.await();
-//
-//            for (int j = 0; j < CONCURRENT_THREADS; j++) {
-//                try {
-//                    threads[j].s.getConnection().close();
-//                } catch (Exception e) {
-//                    e.printStackTrace();
-//                }
-//                threads[j].interrupt();
-//            }
-//            return size;
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        } finally {
-//            if (conn != null) {
-//                try {
-//                    conn.close();
-//                } catch (Exception e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//        }
-//        return 0;
-//    }
 
     private static int updateOccurrencesSpecies2(Records records, int threadCount) {
         FieldDAO fieldDao = Client.getFieldDao();
@@ -871,24 +808,13 @@ public class TabulationGenerator {
             // set nulls
             statement.execute("UPDATE tabulation SET occurrences=0 WHERE occurrences is null;");
             statement.execute("UPDATE tabulation SET species=0 WHERE species is null;");
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            if (conn != null) {
-                try {
-                    conn.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }
 
-        try {
             for (int i = 0; i < files.size(); i++) {
                 System.out.println("FILE: " + files.get(i).getPath());
                 files.get(i).delete();
             }
         } catch (Exception e) {
+            e.printStackTrace();
         }
         return 0;
     }
@@ -919,14 +845,6 @@ public class TabulationGenerator {
             conn.createStatement().execute(sql);
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
-            if (conn != null) {
-                try {
-                    conn.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
         }
     }
 
@@ -964,6 +882,91 @@ public class TabulationGenerator {
         }
 
         return sqlUpdates;
+    }
+
+    public static List<Tabulation> calc(String fid, String wkt) {
+        List<Tabulation> tabulations = new ArrayList<Tabulation>();
+
+        List<Double> resolutions = Client.getLayerIntersectDao().getConfig().getAnalysisResolutions();
+        Double resolution = resolutions.get(0);
+
+        // check if resolution needs changing
+        resolution = Double.parseDouble(confirmResolution(new String[]{fid}, String.valueOf(resolution)));
+
+        // get extents for all layers
+        double[][] field1Extents = getLayerExtents(String.valueOf(resolution), fid);
+        System.out.println("Extents for " + fid + ": " + field1Extents);
+
+        SimpleRegion sr = SimpleShapeFile.parseWKT(wkt);
+        double[][] field2Extents = sr.getBoundingBox();
+
+        double[][] extents = internalExtents(field1Extents, field2Extents);
+        System.out.println("Internal extents: " + extents);
+        if (!isValidExtents(extents)) {
+            System.out.println("Warning, no overlap between grids: " + fid);
+            return tabulations;
+        }
+
+        // get mask and adjust extents for filter
+        int width = 0, height = 0;
+        System.out.println("resolution: " + resolution);
+        height = (int) Math.ceil((extents[1][1] - extents[0][1]) / resolution);
+        width = (int) Math.ceil((extents[1][0] - extents[0][0]) / resolution);
+
+        // prep grid file
+        String pth1 = getLayerPath("" + resolution, fid);
+        System.out.println("PATH 1: " + pth1);
+        Grid grid1 = new Grid(pth1);
+        //grid1.getGrid();
+        Properties p1 = new Properties();
+        try {
+            p1.load(new FileReader(pth1 + ".txt"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // pids
+        List<Objects> objects1 = Client.getObjectDao().getObjectsById(fid);
+
+        HashMap<String, Pair> map = new HashMap<String, Pair>();
+
+        // build intersections by category pairs
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                if (sr.isWithin(extents[0][0] + resolution * i, extents[0][1] + resolution * j)) {
+                    // area
+                    int v1 = (int) grid1.getValues3(new double[][]{{extents[0][0] + resolution * i, extents[0][1] + resolution * j}}, 1024 * 1024)[0];
+                    String key = v1 + " " + v1;
+                    Pair p = map.get(key);
+                    if (p == null) {
+                        p = new Pair(key);
+                        map.put(key, p);
+                    }
+                    p.area += SpatialUtil.cellArea(resolution, extents[0][1] + resolution * j) * 1000000; // convert
+                    // sqkm
+                    // to
+                    // sqm
+                }
+            }
+        }
+
+        // sql statements to put pairs into tabulation
+        StringBuilder sb = new StringBuilder();
+        for (Entry<String, Pair> p : map.entrySet()) {
+            if (p1.get(p.getValue().v1) != null) {
+                Tabulation t = new Tabulation();
+                t.setFid1(fid);
+                t.setName1(p1.getProperty(p.getValue().v1));
+                t.setFid2("");
+                t.setArea(p.getValue().area);
+                t.setPid1(p.getValue().v1);
+                t.setPid2("");
+
+                tabulations.add(t);
+            }
+        }
+
+        return tabulations;
     }
 }
 

@@ -15,11 +15,11 @@
 
 package org.ala.layers.dao;
 
-import java.util.List;
-import java.util.Map;
-
 import org.ala.layers.dto.Distribution;
 import org.ala.layers.dto.Facet;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * DAO for the Field object

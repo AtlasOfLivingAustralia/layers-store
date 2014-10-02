@@ -100,12 +100,20 @@ public class Distribution {
         return estuarine_fl;
     }
 
+    public void setEstuarine_fl(Boolean estuarine_fl) {
+        this.estuarine_fl = estuarine_fl;
+    }
+
     public void setEstuarine_fl(Integer estuarine_fl) {
         this.estuarine_fl = estuarine_fl != null && estuarine_fl > 0 ? true : false;
     }
 
     public Boolean getCoastal_fl() {
         return coastal_fl;
+    }
+
+    public void setCoastal_fl(Boolean coastal_fl) {
+        this.coastal_fl = coastal_fl;
     }
 
     public void setCoastal_fl(Integer coastal_fl) {
@@ -116,20 +124,12 @@ public class Distribution {
         return desmersal_fl;
     }
 
-    public void setEstuarine_fl(Boolean estuarine_fl) {
-        this.estuarine_fl = estuarine_fl;
-    }
-
-    public void setCoastal_fl(Boolean coastal_fl) {
-        this.coastal_fl = coastal_fl;
+    public void setDesmersal_fl(Integer desmersal_fl) {
+        this.desmersal_fl = desmersal_fl != null && desmersal_fl > 0 ? true : false;
     }
 
     public void setDesmersal_fl(Boolean desmersal_fl) {
         this.desmersal_fl = desmersal_fl;
-    }
-
-    public void setDesmersal_fl(Integer desmersal_fl) {
-        this.desmersal_fl = desmersal_fl != null && desmersal_fl > 0 ? true : false;
     }
 
     public String getCaab_species_number() {
@@ -148,16 +148,20 @@ public class Distribution {
         this.caab_family_number = caab_family_number;
     }
 
-    public void setGid(Long gid) {
-        this.gid = gid;
-    }
-
     public Long getGid() {
         return gid;
     }
 
+    public void setGid(Long gid) {
+        this.gid = gid;
+    }
+
     public void setSpcode(Long spcode) {
         this.spcode = spcode;
+    }
+
+    public Long getSpcode() {
+        return spcode;
     }
 
     public void setSpcode(Double spcode) {
@@ -166,168 +170,164 @@ public class Distribution {
         }
     }
 
-    public Long getSpcode() {
-        return spcode;
+    public String getScientific() {
+        return scientific;
     }
 
     public void setScientific(String scientific) {
         this.scientific = scientific;
     }
 
-    public String getScientific() {
-        return scientific;
+    public String getAuthority_() {
+        return authority_;
     }
 
     public void setAuthority_(String authority) {
         this.authority_ = authority;
     }
 
-    public String getAuthority_() {
-        return authority_;
+    public String getCommon_nam() {
+        return common_nam;
     }
 
     public void setCommon_nam(String common_nam) {
         this.common_nam = common_nam;
     }
 
-    public String getCommon_nam() {
-        return common_nam;
+    public String getFamily() {
+        return family;
     }
 
     public void setFamily(String family) {
         this.family = family;
     }
 
-    public String getFamily() {
-        return family;
+    public String getGenus_name() {
+        return genus_name;
     }
 
     public void setGenus_name(String genus_name) {
         this.genus_name = genus_name;
     }
 
-    public String getGenus_name() {
-        return genus_name;
+    public String getSpecific_n() {
+        return specific_n;
     }
 
     public void setSpecific_n(String specific_n) {
         this.specific_n = specific_n;
     }
 
-    public String getSpecific_n() {
-        return specific_n;
+    public Double getMin_depth() {
+        return min_depth;
     }
 
     public void setMin_depth(Double min_depth) {
         this.min_depth = min_depth;
     }
 
-    public Double getMin_depth() {
-        return min_depth;
+    public Double getMax_depth() {
+        return max_depth;
     }
 
     public void setMax_depth(Double max_depth) {
         this.max_depth = max_depth;
     }
 
-    public Double getMax_depth() {
-        return max_depth;
+    public Double getPelagic_fl() {
+        return pelagic_fl;
     }
 
     public void setPelagic_fl(Double pelagic_fl) {
         this.pelagic_fl = pelagic_fl;
     }
 
-    public Double getPelagic_fl() {
-        return pelagic_fl;
+    public String getMetadata_u() {
+        return metadata_u;
     }
 
     public void setMetadata_u(String metadata_u) {
         this.metadata_u = metadata_u;
     }
 
-    public String getMetadata_u() {
-        return metadata_u;
+    public String getGeometry() {
+        return geometry;
     }
 
     public void setGeometry(String geometry) {
         this.geometry = geometry;
     }
 
-    public String getGeometry() {
-        return geometry;
+    public String getWmsurl() {
+        return wmsurl;
     }
 
     public void setWmsurl(String wmsurl) {
         this.wmsurl = wmsurl;
     }
 
-    public String getWmsurl() {
-        return wmsurl;
+    public String getLsid() {
+        return lsid;
     }
 
     public void setLsid(String lsid) {
         this.lsid = lsid;
     }
 
-    public String getLsid() {
-        return lsid;
+    public String getType() {
+        return type;
     }
 
     public void setType(String type) {
         this.type = type;
     }
 
-    public String getType() {
-        return type;
+    public String getArea_name() {
+        return area_name;
     }
 
     public void setArea_name(String area_name) {
         this.area_name = area_name;
     }
 
-    public String getArea_name() {
-        return area_name;
+    public String getPid() {
+        return pid;
     }
 
     public void setPid(String pid) {
         this.pid = pid;
     }
 
-    public String getPid() {
-        return pid;
+    public String getChecklist_name() {
+        return checklist_name;
     }
 
     public void setChecklist_name(String checklist_name) {
         this.checklist_name = checklist_name;
     }
 
-    public String getChecklist_name() {
-        return checklist_name;
+    public Double getArea_km() {
+        return area_km;
     }
 
     public void setArea_km(Double area_km) {
         this.area_km = area_km;
     }
 
-    public Double getArea_km() {
-        return area_km;
+    public String getNotes() {
+        return notes;
     }
 
     public void setNotes(String notes) {
         this.notes = notes;
     }
 
-    public String getNotes() {
-        return notes;
+    public Long getGeom_idx() {
+        return geom_idx;
     }
 
     public void setGeom_idx(Long geom_idx) {
         this.geom_idx = geom_idx;
-    }
-
-    public Long getGeom_idx() {
-        return geom_idx;
     }
 
     public String getGroup_name() {

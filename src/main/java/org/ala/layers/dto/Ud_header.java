@@ -18,7 +18,8 @@ package org.ala.layers.dto;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 import javax.persistence.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
 
 @Entity
 @Table(name = "ud_header")

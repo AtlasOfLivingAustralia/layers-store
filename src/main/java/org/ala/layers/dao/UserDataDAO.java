@@ -15,12 +15,9 @@
 
 package org.ala.layers.dao;
 
-import org.ala.layers.dto.Tabulation;
 import org.ala.layers.dto.Ud_header;
 import org.ala.layers.legend.QueryField;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 

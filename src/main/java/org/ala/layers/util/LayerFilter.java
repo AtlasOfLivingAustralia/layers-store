@@ -36,6 +36,35 @@ public class LayerFilter extends Object implements Serializable {
         this.maximum_value = max;
     }
 
+    public static LayerFilter[] parseLayerFilters(String s) {
+        if (s.toUpperCase().startsWith("ENVELOPE(")) {
+            s = s.substring("ENVELOPE(".length(), s.length() - 1); //remove 'envelope(..)' wrapper
+        }
+
+        String[] terms = s.split(":");
+
+        LayerFilter[] lf = new LayerFilter[terms.length];
+
+        int i = 0;
+        for (String t : terms) {
+            System.out.println("parsing filter term: " + t);
+            lf[i] = parseLayerFilter(t);
+            i++;
+        }
+
+        return lf;
+    }
+
+    public static LayerFilter parseLayerFilter(String s) {
+        if (s.toUpperCase().startsWith("ENVELOPE(")) {
+            s = s.substring("ENVELOPE(".length(), s.length() - 1); //remove 'envelope(..)' wrapper
+        }
+
+        String[] tokens = s.split(",");
+
+        return new LayerFilter(tokens[0], Double.parseDouble(tokens[1]), Double.parseDouble(tokens[2]));
+    }
+
     /**
      * gets layer name
      *
@@ -69,34 +98,5 @@ public class LayerFilter extends Object implements Serializable {
 
     public boolean isValid(double value) {
         return !Double.isNaN(value) && value >= minimum_value && value <= maximum_value;
-    }
-
-    public static LayerFilter[] parseLayerFilters(String s) {
-        if (s.toUpperCase().startsWith("ENVELOPE(")) {
-            s = s.substring("ENVELOPE(".length(), s.length() - 1); //remove 'envelope(..)' wrapper
-        }
-
-        String[] terms = s.split(":");
-
-        LayerFilter[] lf = new LayerFilter[terms.length];
-
-        int i = 0;
-        for (String t : terms) {
-            System.out.println("parsing filter term: " + t);
-            lf[i] = parseLayerFilter(t);
-            i++;
-        }
-
-        return lf;
-    }
-
-    public static LayerFilter parseLayerFilter(String s) {
-        if (s.toUpperCase().startsWith("ENVELOPE(")) {
-            s = s.substring("ENVELOPE(".length(), s.length() - 1); //remove 'envelope(..)' wrapper
-        }
-
-        String[] tokens = s.split(",");
-
-        return new LayerFilter(tokens[0], Double.parseDouble(tokens[1]), Double.parseDouble(tokens[2]));
     }
 }

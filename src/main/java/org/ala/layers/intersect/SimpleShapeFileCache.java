@@ -14,10 +14,9 @@
  ***************************************************************************/
 package org.ala.layers.intersect;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-
 import org.apache.log4j.Logger;
+
+import java.util.HashMap;
 
 /**
  * @author Adam

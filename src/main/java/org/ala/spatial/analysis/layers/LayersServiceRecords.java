@@ -5,15 +5,13 @@ import org.ala.layers.intersect.SimpleRegion;
 import org.apache.commons.io.IOUtils;
 import org.codehaus.jackson.util.ByteArrayBuilder;
 
-import java.io.*;
-import java.net.URL;
-import java.net.URLConnection;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.RandomAccessFile;
+import java.io.StringReader;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map.Entry;
-import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -37,7 +35,7 @@ public class LayersServiceRecords extends Records {
         int pageSize = 1000000;
 
         if (bbox == null) {
-            bbox = new double [] {-180,-90,180,90};
+            bbox = new double[]{-180, -90, 180, 90};
         }
 
         String bboxTerm = String.format("longitude:%%5B%f%%20TO%%20%f%%5D%%20AND%%20latitude:%%5B%f%%20TO%%20%f%%5D", bbox[0], bbox[2], bbox[1], bbox[3]);
@@ -67,10 +65,10 @@ public class LayersServiceRecords extends Records {
                 ZipEntry ze = zis.getNextEntry();
 
                 ByteArrayBuilder bab = new ByteArrayBuilder();
-                byte [] b = new byte[1024];
+                byte[] b = new byte[1024];
                 int n;
-                while ((n = zis.read(b,0,1024)) > 0) {
-                    bab.write(b,0,n);
+                while ((n = zis.read(b, 0, 1024)) > 0) {
+                    bab.write(b, 0, n);
                 }
 
                 csv = new CSVReader(new StringReader(IOUtils.toString(bab.toByteArray(), "UTF-8")));

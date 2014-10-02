@@ -15,11 +15,11 @@
 
 package org.ala.layers.intersect;
 
+import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
-import javax.imageio.ImageIO;
 
 /**
  * SimpleRegion enables point to shape intersections, where the shape
@@ -32,7 +32,6 @@ import javax.imageio.ImageIO;
  */
 public class SimpleRegion extends Object implements Serializable {
 
-    static final long serialVersionUID = -5509351896749940566L;
     /**
      * shape type not declared
      */
@@ -68,6 +67,7 @@ public class SimpleRegion extends Object implements Serializable {
      * ABSENCE state for grid intersection output
      */
     public static final int GI_ABSENCE = 0;
+    static final long serialVersionUID = -5509351896749940566L;
     /**
      * assigned shape type
      */
@@ -94,12 +94,104 @@ public class SimpleRegion extends Object implements Serializable {
      * radius for type CIRCLE in m
      */
     double radius;
+    private int map_offset = 268435456; // half the Earth's circumference at zoom level 21
+    private double map_radius = map_offset / Math.PI;
 
     /**
      * Constructor for a SimpleRegion with no shape
      */
     public SimpleRegion() {
         type = UNDEFINED;
+    }
+
+    /**
+     * defines a region by a points string, POLYGON only
+     * <p/>
+     * TODO: define better format for parsing, including BOUNDING_BOX and CIRCLE
+     *
+     * @param pointsString points separated by ',' with longitude and latitude separated by ':'
+     * @return SimpleRegion object
+     */
+    public static SimpleRegion parseSimpleRegion(String pointsString) {
+        if (pointsString.equalsIgnoreCase("none")) {
+            return null;
+        }
+        SimpleRegion simpleregion = new SimpleRegion();
+
+        ArrayList<Double> points = new ArrayList<Double>();
+
+        int pos;
+        int lastpos = 0;
+        while ((pos = Math.min(pointsString.indexOf(',', lastpos), pointsString.indexOf(' ', lastpos))) > 0) {
+            try {
+                points.add(Double.parseDouble(pointsString.substring(lastpos, pos)));
+            } catch (Exception e) {
+                points.add(0.0);
+            }
+            lastpos = pos + 1;
+        }
+        //one coordinate pair left
+        pos = pointsString.indexOf(' ', lastpos);
+        try {
+            points.add(Double.parseDouble(pointsString.substring(lastpos, pos)));
+            lastpos = pos + 1;
+        } catch (Exception e) {
+            points.add(0.0);
+        }
+        try {
+            points.add(Double.parseDouble(pointsString.substring(lastpos, pointsString.length())));
+        } catch (Exception e) {
+            points.add(0.0);
+        }
+
+        //test for box
+        //  get min/max long/lat
+        //  each point has only one identical lat or long to previous point
+        //  4 or 5 points (start and end points may be identical)
+        if (((points.size() == 8 && (points.get(0) != points.get(6) || points.get(1) != points.get(7)))
+                || (points.size() == 5 && points.get(0) == points.get(8)
+                && points.get(1) == points.get(9)))) {
+
+            //get min/max long/lat
+            double minlong = 0, minlat = 0, maxlong = 0, maxlat = 0;
+            for (int i = 0; i < points.size(); i += 2) {
+                if (i == 0 || minlong > points.get(i)) {
+                    minlong = points.get(i);
+                }
+                if (i == 0 || maxlong < points.get(i)) {
+                    maxlong = points.get(i);
+                }
+                if (i == 0 || minlat > points.get(i + 1)) {
+                    minlat = points.get(i + 1);
+                }
+                if (i == 0 || maxlat < points.get(i + 1)) {
+                    maxlat = points.get(i + 1);
+                }
+            }
+
+            //  each point has only one identical lat or long to previous point
+            int prev_idx = 6;
+            int i = 0;
+            for (i = 0; i < 8; i += 2) {
+                if ((points.get(i) == points.get(prev_idx))
+                        == (points.get(i + 1) == points.get(prev_idx + 1))) {
+                    break;
+                }
+                prev_idx = i;
+            }
+            //it is a box if no 'break' occurred
+            if (i == 8) {
+                simpleregion.setBox(minlong, minlat, maxlong, maxlat);
+                return simpleregion;
+            }
+        }
+
+        double[] pointsArray = new double[points.size()];
+        for (int i = 0; i < points.size(); i++) {
+            pointsArray[i] = points.get(i);
+        }
+        simpleregion.setPolygon(pointsArray);
+        return simpleregion;
     }
 
     /**
@@ -581,96 +673,6 @@ public class SimpleRegion extends Object implements Serializable {
             }
         }
         return data;
-    }
-
-    /**
-     * defines a region by a points string, POLYGON only
-     * <p/>
-     * TODO: define better format for parsing, including BOUNDING_BOX and CIRCLE
-     *
-     * @param pointsString points separated by ',' with longitude and latitude separated by ':'
-     * @return SimpleRegion object
-     */
-    public static SimpleRegion parseSimpleRegion(String pointsString) {
-        if (pointsString.equalsIgnoreCase("none")) {
-            return null;
-        }
-        SimpleRegion simpleregion = new SimpleRegion();
-
-        ArrayList<Double> points = new ArrayList<Double>();
-
-        int pos;
-        int lastpos = 0;
-        while ((pos = Math.min(pointsString.indexOf(',', lastpos), pointsString.indexOf(' ', lastpos))) > 0) {
-            try {
-                points.add(Double.parseDouble(pointsString.substring(lastpos, pos)));
-            } catch (Exception e) {
-                points.add(0.0);
-            }
-            lastpos = pos + 1;
-        }
-        //one coordinate pair left
-        pos = pointsString.indexOf(' ', lastpos);
-        try {
-            points.add(Double.parseDouble(pointsString.substring(lastpos, pos)));
-            lastpos = pos + 1;
-        } catch (Exception e) {
-            points.add(0.0);
-        }
-        try {
-            points.add(Double.parseDouble(pointsString.substring(lastpos, pointsString.length())));
-        } catch (Exception e) {
-            points.add(0.0);
-        }
-
-        //test for box
-        //  get min/max long/lat
-        //  each point has only one identical lat or long to previous point
-        //  4 or 5 points (start and end points may be identical)
-        if (((points.size() == 8 && (points.get(0) != points.get(6) || points.get(1) != points.get(7)))
-                || (points.size() == 5 && points.get(0) == points.get(8)
-                && points.get(1) == points.get(9)))) {
-
-            //get min/max long/lat
-            double minlong = 0, minlat = 0, maxlong = 0, maxlat = 0;
-            for (int i = 0; i < points.size(); i += 2) {
-                if (i == 0 || minlong > points.get(i)) {
-                    minlong = points.get(i);
-                }
-                if (i == 0 || maxlong < points.get(i)) {
-                    maxlong = points.get(i);
-                }
-                if (i == 0 || minlat > points.get(i + 1)) {
-                    minlat = points.get(i + 1);
-                }
-                if (i == 0 || maxlat < points.get(i + 1)) {
-                    maxlat = points.get(i + 1);
-                }
-            }
-
-            //  each point has only one identical lat or long to previous point
-            int prev_idx = 6;
-            int i = 0;
-            for (i = 0; i < 8; i += 2) {
-                if ((points.get(i) == points.get(prev_idx))
-                        == (points.get(i + 1) == points.get(prev_idx + 1))) {
-                    break;
-                }
-                prev_idx = i;
-            }
-            //it is a box if no 'break' occurred
-            if (i == 8) {
-                simpleregion.setBox(minlong, minlat, maxlong, maxlat);
-                return simpleregion;
-            }
-        }
-
-        double[] pointsArray = new double[points.size()];
-        for (int i = 0; i < points.size(); i++) {
-            pointsArray[i] = points.get(i);
-        }
-        simpleregion.setPolygon(pointsArray);
-        return simpleregion;
     }
 
     public double getWidth() {
@@ -1540,9 +1542,6 @@ public class SimpleRegion extends Object implements Serializable {
         }
         return data;
     }
-
-    private int map_offset = 268435456; // half the Earth's circumference at zoom level 21
-    private double map_radius = map_offset / Math.PI;
 
     public int convertLngToPixel(double lng) {
         return (int) Math.round(map_offset + map_radius * lng * Math.PI / 180);

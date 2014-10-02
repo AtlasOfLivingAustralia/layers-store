@@ -26,51 +26,51 @@ public class GridClass {
     Integer minShapeIdx;
     Integer maxShapeIdx;
 
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
     public Integer getId() {
         return id;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setId(Integer id) {
+        this.id = id;
     }
 
     public String getName() {
         return name;
     }
 
-    public void setArea_km(Double area_km) {
-        this.area_km = area_km;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public Double getArea_km() {
         return area_km;
     }
 
-    public void setBbox(String bbox) {
-        this.bbox = bbox;
+    public void setArea_km(Double area_km) {
+        this.area_km = area_km;
     }
 
     public String getBbox() {
         return bbox;
     }
 
-    public void setMinShapeIdx(Integer minShapeIdx) {
-        this.minShapeIdx = minShapeIdx;
+    public void setBbox(String bbox) {
+        this.bbox = bbox;
     }
 
     public Integer getMinShapeIdx() {
         return minShapeIdx;
     }
 
-    public void setMaxShapeIdx(Integer maxShapeIdx) {
-        this.maxShapeIdx = maxShapeIdx;
+    public void setMinShapeIdx(Integer minShapeIdx) {
+        this.minShapeIdx = minShapeIdx;
     }
 
     public Integer getMaxShapeIdx() {
         return maxShapeIdx;
+    }
+
+    public void setMaxShapeIdx(Integer maxShapeIdx) {
+        this.maxShapeIdx = maxShapeIdx;
     }
 }

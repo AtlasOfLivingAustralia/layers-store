@@ -14,18 +14,6 @@
  ***************************************************************************/
 package org.ala.layers.intersect;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Properties;
-
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 import org.ala.layers.dao.FieldDAO;
@@ -34,12 +22,19 @@ import org.ala.layers.dto.Field;
 import org.ala.layers.dto.GridClass;
 import org.ala.layers.dto.IntersectionFile;
 import org.ala.layers.dto.Layer;
-import org.ala.layers.grid.GridClassBuilder;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.util.*;
+import java.util.Map.Entry;
 
 /**
  * @author Adam
@@ -48,11 +43,6 @@ public class IntersectConfig {
 
     public static final String GEOSERVER_URL_PLACEHOLDER = "<COMMON_GEOSERVER_URL>";
     public static final String GEONETWORK_URL_PLACEHOLDER = "<COMMON_GEONETWORK_URL>";
-
-    /**
-     * log4j logger
-     */
-    private static final Logger logger = Logger.getLogger(IntersectConfig.class);
     static final String ALASPATIAL_OUTPUT_PATH = "ALASPATIAL_OUTPUT_PATH";
     static final String LAYER_FILES_PATH = "LAYER_FILES_PATH";
     static final String ANALYSIS_LAYER_FILES_PATH = "ANALYSIS_LAYER_FILES_PATH";
@@ -72,24 +62,26 @@ public class IntersectConfig {
     static final String UPLOADED_SHAPES_FIELD_ID = "UPLOADED_SHAPES_FIELD_ID";
     static final String API_KEY_CHECK_URL_TEMPLATE = "API_KEY_CHECK_URL_TEMPLATE";
     static final String SPATIAL_PORTAL_APP_NAME = "SPATIAL_PORTAL_APP_NAME";
+    static final String BIOCACHE_SERVICE_URL = "BIOCACHE_SERVICE_URL";
+    static final String GEOSERVER_USERNAME = "GEOSERVER_USERNAME";
+    static final String GEOSERVER_PASSWORD = "GEOSERVER_PASSWORD";
+    static final String SHP2PGSQL_PATH = "SHP2PGSQL_PATH";
     static final String LAYER_PROPERTIES = "layer.properties";
+    /**
+     * log4j logger
+     */
+    private static final Logger logger = Logger.getLogger(IntersectConfig.class);
     static ObjectMapper mapper = new ObjectMapper();
-    private FieldDAO fieldDao;
-    private LayerDAO layerDao;
     static String layerFilesPath;
     static String analysisLayerFilesPath;
     static String alaspatialOutputPath;
     static String layerIndexUrl;
     static int batchThreadCount;
     static long configReloadWait;
-    long lastReload;
     static String preloadedShapeFiles;
     static int gridBufferSize;
-    SimpleShapeFileCache shapeFileCache;
-    HashMap<String, IntersectionFile> intersectionFiles;
     static String gridCachePath;
     static int gridCacheReaderCount;
-    HashMap<String, HashMap<Integer, GridClass>> classGrids;
     static boolean localSampling;
     static String geoserverUrl;
     static String geonetworkUrl;
@@ -99,7 +91,10 @@ public class IntersectConfig {
     static String uploadedShapesFieldId;
     static String apiKeyCheckUrlTemplate;
     static String spatialPortalAppName;
-
+    static String biocacheServiceUrl;
+    static String geoserverUsername;
+    static String geoserverPassword;
+    static String shp2pgsqlPath;
     static {
         Properties properties = new Properties();
         InputStream is = null;
@@ -141,6 +136,8 @@ public class IntersectConfig {
         gridCacheReaderCount = (int) getPositiveLongProperty(GRID_CACHE_READER_COUNT, properties, 10);
         localSampling = getProperty(LOCAL_SAMPLING, properties, "true").toLowerCase().equals("true");
         geoserverUrl = getProperty(GEOSERVER_URL, properties, null);
+        geoserverUsername = getProperty(GEOSERVER_USERNAME, properties, null);
+        geoserverPassword = getProperty(GEOSERVER_PASSWORD, properties, null);
         isValidUrl(geoserverUrl, GEOSERVER_URL);
         geonetworkUrl = getProperty(GEONETWORK_URL, properties, null);
         isValidUrl(geonetworkUrl, GEONETWORK_URL);
@@ -152,14 +149,31 @@ public class IntersectConfig {
         apiKeyCheckUrlTemplate = getProperty(API_KEY_CHECK_URL_TEMPLATE, properties, null);
 
         spatialPortalAppName = getProperty(SPATIAL_PORTAL_APP_NAME, properties, null);
+
+        biocacheServiceUrl = getProperty(BIOCACHE_SERVICE_URL, properties, null);
+
+        shp2pgsqlPath = getProperty(SHP2PGSQL_PATH, properties, null);
+    }
+    long lastReload;
+    SimpleShapeFileCache shapeFileCache;
+    HashMap<String, IntersectionFile> intersectionFiles;
+    HashMap<String, HashMap<Integer, GridClass>> classGrids;
+    private FieldDAO fieldDao;
+    private LayerDAO layerDao;
+
+    public IntersectConfig(FieldDAO fieldDao, LayerDAO layerDao) {
+        this.fieldDao = fieldDao;
+        this.layerDao = layerDao;
+
+        load();
     }
 
     private static void isValidPath(String path, String desc) {
         File f = new File(path);
 
-        if(!f.exists()) {
+        if (!f.exists()) {
             logger.error("Config error. Property \"" + desc + "\" with value \"" + path + "\"  is not a valid local file path.  It does not exist.");
-        } else if(!f.isDirectory()) {
+        } else if (!f.isDirectory()) {
             logger.error("Config error. Property \"" + desc + "\" with value \"" + path + "\"  is not a valid local file path.  It is not a directory.");
         } else if (!f.canRead()) {
             logger.error("Config error. Property \"" + desc + "\" with value \"" + path + "\"  is not a valid local file path.  Not permitted to READ.");
@@ -172,9 +186,9 @@ public class IntersectConfig {
     private static void isValidPathGDAL(String path, String desc) {
         File f = new File(path);
 
-        if(!f.exists()) {
+        if (!f.exists()) {
             logger.error("Config error. Property \"" + desc + "\" with value \"" + path + "\" is not a valid local file path.  It does not exist.");
-        } else if(!f.isDirectory()) {
+        } else if (!f.isDirectory()) {
             logger.error("Config error. Property \"" + desc + "\" with value \"" + path + "\"  is not a valid local file path.  It is not a directory.");
         } else if (!f.canRead()) {
             logger.error("Config error. Property \"" + desc + "\" with value \"" + path + "\"  is not a valid local file path.  Not permitted to READ.");
@@ -182,9 +196,9 @@ public class IntersectConfig {
 
         //look for GDAL file "gdalwarp"
         File g = new File(path + File.separator + "gdalwarp");
-        if(!f.exists()) {
+        if (!f.exists()) {
             logger.error("Config error. Property \"" + desc + "\" with value \"" + path + "\"  is not a valid local file path.  gdalwarp does not exist.");
-        } else if(!g.canExecute()) {
+        } else if (!g.canExecute()) {
             logger.error("Config error. Property \"" + desc + "\" with value \"" + path + "\"  is not a valid local file path.  gdalwarp not permitted to EXECUTE.");
         }
     }
@@ -196,7 +210,7 @@ public class IntersectConfig {
         try {
             int result = client.executeMethod(get);
 
-            if(result != 200) {
+            if (result != 200) {
                 logger.error("Config error. Property \"" + desc + "\" with value \"" + url + "\"  is not a valid URL.  Error executing GET request, response=" + result);
             }
         } catch (Exception e) {
@@ -205,28 +219,8 @@ public class IntersectConfig {
 
     }
 
-    public IntersectConfig(FieldDAO fieldDao, LayerDAO layerDao) {
-        this.fieldDao = fieldDao;
-        this.layerDao = layerDao;
-
-        load();
-    }
-
     public static void setPreloadedShapeFiles(String preloadedShapeFiles) {
         IntersectConfig.preloadedShapeFiles = preloadedShapeFiles;
-    }
-
-    public void load() {
-        lastReload = System.currentTimeMillis();
-
-        try {
-            updateIntersectionFiles();
-            updateShapeFileCache();
-        } catch (Exception e) {
-            //if it fails, set reload wait low
-            logger.error("load failed, retry in 30s", e);
-            configReloadWait = 30000;
-        }
     }
 
     static String getProperty(String property, Properties properties, String defaultValue) {
@@ -269,6 +263,123 @@ public class IntersectConfig {
 
     static public int getThreadCount() {
         return batchThreadCount;
+    }
+
+    static public int getGridBufferSize() {
+        return gridBufferSize;
+    }
+
+    static public String getGridCachePath() {
+        return gridCachePath;
+    }
+
+    static public int getGridCacheReaderCount() {
+        return gridCacheReaderCount;
+    }
+
+    static private HashMap<Integer, GridClass> getGridClasses(String filePath, String type) throws IOException {
+        HashMap<Integer, GridClass> classes = null;
+        if (type.equals("Contextual")) {
+            if (new File(filePath + ".gri").exists()
+                    && new File(filePath + ".grd").exists()
+                    && new File(filePath + ".txt").exists()) {
+                File gridClassesFile = new File(filePath + ".classes.json");
+                if (gridClassesFile.exists()) {
+                    classes = mapper.readValue(gridClassesFile, new TypeReference<Map<Integer, GridClass>>() {
+                    });
+                    logger.info("found grid classes for " + gridClassesFile.getPath());
+                } else {
+                    logger.error("classes unavailable for " + gridClassesFile.getPath() + ", build classes offline");
+                    //                logger.info("building " + gridClassesFile.getPath());
+                    //                long start = System.currentTimeMillis();
+                    //                classes = GridClassBuilder.buildFromGrid(filePath);
+                    //                logger.info("finished building " + gridClassesFile.getPath() + " in " + (System.currentTimeMillis() - start) + " ms");
+                }
+            } else if (new File(filePath + ".gri").exists()
+                    && new File(filePath + ".grd").exists()) {
+                logger.error("missing grid classes for " + filePath);
+            }
+        } else {
+
+        }
+        return classes;
+    }
+
+    static public long getConfigReloadWait() {
+        return configReloadWait;
+    }
+
+    static public String getGeoserverUrl() {
+        return geoserverUrl;
+    }
+
+    static public String getGeonetworkUrl() {
+        return geonetworkUrl;
+    }
+
+    static public String getAnalysisLayerFilesPath() {
+        return analysisLayerFilesPath;
+    }
+
+    static public String getGdalPath() {
+        return gdalPath;
+    }
+
+    static public List<Double> getAnalysisResolutions() {
+        return analysisResolutions;
+    }
+
+    static private List<Double> getDoublesFrom(String property) {
+        List<Double> l = new ArrayList<Double>();
+        if (property != null) {
+            for (String s : property.split(",")) {
+                try {
+                    Double d = Double.parseDouble(s.trim());
+                    if (d != null && !d.isNaN()) {
+                        l.add(d);
+                    } else {
+                        logger.warn("Cannot parse '" + s + "' to Double");
+                    }
+                } catch (Exception e) {
+                    logger.warn("Cannot parse '" + s + "' to Double", e);
+                }
+            }
+        }
+        java.util.Collections.sort(l);
+        return l;
+    }
+
+    static public String getOccurrenceSpeciesRecordsFilename() {
+        return occurrenceSpeciesRecordsFilename;
+    }
+
+    static public String getUploadedShapesFieldId() {
+        return uploadedShapesFieldId;
+    }
+
+    static public String getApiKeyCheckUrlTemplate() {
+        return apiKeyCheckUrlTemplate;
+    }
+
+    static public String getSpatialPortalAppName() {
+        return spatialPortalAppName;
+    }
+
+    public String getBiocacheServiceUrl() {
+        return biocacheServiceUrl;
+    }
+
+    public void load() {
+        lastReload = System.currentTimeMillis();
+
+        try {
+            updateIntersectionFiles();
+            updateShapeFileCache();
+        } catch (Exception e) {
+            //if it fails, set reload wait low
+            logger.error("load failed, retry in 30s", e);
+            configReloadWait = 30000;
+        }
     }
 
     public IntersectionFile getIntersectionFile(String fieldId) {
@@ -514,50 +625,6 @@ public class IntersectConfig {
         return shapeFileCache;
     }
 
-    static public int getGridBufferSize() {
-        return gridBufferSize;
-    }
-
-    static public String getGridCachePath() {
-        return gridCachePath;
-    }
-
-    static public int getGridCacheReaderCount() {
-        return gridCacheReaderCount;
-    }
-
-    static private HashMap<Integer, GridClass> getGridClasses(String filePath, String type) throws IOException {
-        HashMap<Integer, GridClass> classes = null;
-        if (type.equals("Contextual")) {
-            if(new File(filePath + ".gri").exists()
-                && new File(filePath + ".grd").exists()
-                && new File(filePath + ".txt").exists()) {
-                File gridClassesFile = new File(filePath + ".classes.json");
-                if (gridClassesFile.exists()) {
-                    classes = mapper.readValue(gridClassesFile, new TypeReference<Map<Integer, GridClass>>() {
-                    });
-                    logger.info("found grid classes for " + gridClassesFile.getPath());
-                } else {
-                    logger.error("classes unavailable for " + gridClassesFile.getPath() + ", build classes offline");
-    //                logger.info("building " + gridClassesFile.getPath());
-    //                long start = System.currentTimeMillis();
-    //                classes = GridClassBuilder.buildFromGrid(filePath);
-    //                logger.info("finished building " + gridClassesFile.getPath() + " in " + (System.currentTimeMillis() - start) + " ms");
-                }
-            } else if(new File(filePath + ".gri").exists()
-                    && new File(filePath + ".grd").exists()) {
-                logger.error("missing grid classes for " + filePath);
-            }
-        } else {
-
-        }
-        return classes;
-    }
-
-    static public long getConfigReloadWait() {
-        return configReloadWait;
-    }
-
     public boolean requiresReload() {
         return lastReload + configReloadWait >= System.currentTimeMillis();
     }
@@ -578,62 +645,6 @@ public class IntersectConfig {
             }
         }
         return fields;
-    }
-
-    static public String getGeoserverUrl() {
-        return geoserverUrl;
-    }
-
-    static public String getGeonetworkUrl() {
-        return geonetworkUrl;
-    }
-
-    static public String getAnalysisLayerFilesPath() {
-        return analysisLayerFilesPath;
-    }
-
-    static public String getGdalPath() {
-        return gdalPath;
-    }
-
-    static public List<Double> getAnalysisResolutions() {
-        return analysisResolutions;
-    }
-
-    static private List<Double> getDoublesFrom(String property) {
-        List<Double> l = new ArrayList<Double>();
-        if (property != null) {
-            for (String s : property.split(",")) {
-                try {
-                    Double d = Double.parseDouble(s.trim());
-                    if (d != null && !d.isNaN()) {
-                        l.add(d);
-                    } else {
-                        logger.warn("Cannot parse '" + s + "' to Double");
-                    }
-                } catch (Exception e) {
-                    logger.warn("Cannot parse '" + s + "' to Double", e);
-                }
-            }
-        }
-        java.util.Collections.sort(l);
-        return l;
-    }
-
-    static public String getOccurrenceSpeciesRecordsFilename() {
-        return occurrenceSpeciesRecordsFilename;
-    }
-
-    static public String getUploadedShapesFieldId() {
-        return uploadedShapesFieldId;
-    }
-
-    static public String getApiKeyCheckUrlTemplate() {
-        return apiKeyCheckUrlTemplate;
-    }
-
-    static public String getSpatialPortalAppName() {
-        return spatialPortalAppName;
     }
 
     public Map<String, IntersectionFile> getIntersectionFiles() {
@@ -713,5 +724,17 @@ public class IntersectConfig {
         } else {
             return null;
         }
+    }
+
+    public String getGeoserverUsername() {
+        return geoserverUsername;
+    }
+
+    public String getGeoserverPassword() {
+        return geoserverPassword;
+    }
+
+    public String getShp2pgsqlPath() {
+        return shp2pgsqlPath;
     }
 }

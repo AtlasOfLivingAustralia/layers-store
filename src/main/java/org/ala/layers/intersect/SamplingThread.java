@@ -14,15 +14,15 @@
  ***************************************************************************/
 package org.ala.layers.intersect;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.LinkedBlockingQueue;
-
 import org.ala.layers.dao.IntersectCallback;
 import org.ala.layers.dto.GridClass;
 import org.ala.layers.dto.IntersectionFile;
 import org.apache.log4j.Logger;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * @author Adam
@@ -66,11 +66,12 @@ public class SamplingThread extends Thread {
                 try {
                     StringBuilder sb = new StringBuilder();
                     sample(points, intersectionFiles[pos], sb);
-                    this.callback.setCurrentLayer(intersectionFiles[pos]);
                     output.set(pos, sb.toString());
                 } catch (Exception e) {
                     logger.error(e.getMessage(), e);
                 }
+
+                this.callback.setCurrentLayer(intersectionFiles[pos]);
                 cdl.countDown();
             }
         } catch (Exception e) {

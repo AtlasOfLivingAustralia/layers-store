@@ -14,14 +14,14 @@
  ***************************************************************************/
 package org.ala.layers.stats;
 
+import org.ala.layers.util.SpatialUtil;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
-
-import org.ala.layers.util.SpatialUtil;
 
 /**
  * This class generates bbox and area_km attributes for entries in the objects table.

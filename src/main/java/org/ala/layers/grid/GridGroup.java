@@ -14,6 +14,8 @@
  ***************************************************************************/
 package org.ala.layers.grid;
 
+import org.ala.layers.intersect.IniReader;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -23,13 +25,20 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import org.ala.layers.intersect.IniReader;
-
 /**
  * @author Adam
  */
 public class GridGroup {
 
+    public Boolean byteorderLSB;
+    public int ncols, nrows;
+    public double nodatavalue;
+    public Boolean valid;
+    public double[] values;
+    public double xmin, xmax, ymin, ymax;
+    public double xres, yres;
+    public String datatype;
+    public String filename;
     ArrayList<String> names;
     ArrayList<String> files;
     float[] cell;
@@ -40,16 +49,7 @@ public class GridGroup {
     Long bufferOffset;
     byte[] b;
     int size;
-    public Boolean byteorderLSB;
-    public int ncols, nrows;
-    public double nodatavalue;
-    public Boolean valid;
-    public double[] values;
-    public double xmin, xmax, ymin, ymax;
-    public double xres, yres;
-    public String datatype;
     byte nbytes;
-    public String filename;
 
     public GridGroup(String fname) throws IOException {
         filename = fname;

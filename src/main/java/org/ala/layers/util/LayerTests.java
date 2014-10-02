@@ -53,7 +53,7 @@ public class LayerTests {
         List<Layer> layers = Client.getLayerDao().getLayersForAdmin();
 
         //test layers
-        for(Layer l : layers) {
+        for (Layer l : layers) {
             TestLayer(l);
         }
     }
@@ -86,7 +86,7 @@ public class LayerTests {
                 "layersdb.layers:" + id + "computed displaypath: '" + l.getDisplaypath() + "' is invalid.");
         testError(l.getPath_orig() != null && isValidFilePrefix(l.getPath_orig()),
                 "layersdb.layers:" + id + "path_orig does not exist. (some tests skipped)");
-        if(l.getId() != null) {
+        if (l.getId() != null) {
             testError(l.getUid() != null && l.getUid().equals(String.valueOf(l.getId())),
                     "layersdb.layers:" + id + "uid is not the same as the id.");
         }
@@ -127,7 +127,8 @@ public class LayerTests {
         try {
             f = Client.getFieldDao().getFieldById(Client.getLayerIntersectDao().getConfig().getIntersectionFile(l.getName()).getFieldId());
             valid = (f != null);
-        } catch (Exception e) {}
+        } catch (Exception e) {
+        }
         testError(valid, "layersdb.layers:" + id + "missing an associated field in the fields table");
 
         //test analysis grids, only need one valid grid file
@@ -136,15 +137,15 @@ public class LayerTests {
             String r = "";
             for (Double d : IntersectConfig.getAnalysisResolutions()) {
                 try {
-                    if(isValidFilePrefix(IntersectConfig.getAnalysisLayerFilesPath() + d + File.separator + f.getId())){
+                    if (isValidFilePrefix(IntersectConfig.getAnalysisLayerFilesPath() + d + File.separator + f.getId())) {
                         valid = true;
                         break;
                     }
                 } catch (Exception e) {
                 }
-                r +=  d + ", ";
+                r += d + ", ";
             }
-            testError(valid,"layersdb.layers:" + id + "error using analysis transformed grid file at ANALYSIS_LAYER_FILES_PATH: " + IntersectConfig.getAnalysisLayerFilesPath()
+            testError(valid, "layersdb.layers:" + id + "error using analysis transformed grid file at ANALYSIS_LAYER_FILES_PATH: " + IntersectConfig.getAnalysisLayerFilesPath()
                     + " for any of the ANALYSIS_RESOLUTIONS: " + r);
         }
 
@@ -173,14 +174,14 @@ public class LayerTests {
     }
 
     private static boolean isValidFilePrefix(String filePrefix) {
-        String path = filePrefix.substring(0,filePrefix.lastIndexOf(File.separator));
+        String path = filePrefix.substring(0, filePrefix.lastIndexOf(File.separator));
         String prefix = filePrefix.substring(path.length() + 1);
 
         File f = new File(IntersectConfig.getLayerFilesPath() + path);
 
-        if(f.exists() && f.isDirectory()) {
+        if (f.exists() && f.isDirectory()) {
             for (File c : f.listFiles()) {
-                if(c.getName().startsWith(prefix)) {
+                if (c.getName().startsWith(prefix)) {
                     return true;
                 }
             }

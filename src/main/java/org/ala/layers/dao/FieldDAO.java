@@ -15,9 +15,9 @@
 
 package org.ala.layers.dao;
 
-import java.util.List;
-
 import org.ala.layers.dto.Field;
+
+import java.util.List;
 
 /**
  * DAO for the Field object
@@ -27,7 +27,13 @@ import org.ala.layers.dto.Field;
 public interface FieldDAO {
     public List<Field> getFields();
 
+    List<Field> getFields(boolean enabledFieldsOnly);
+
     public Field getFieldById(String id);
 
+    Field getFieldById(String id, boolean enabledFieldsOnly);
+
     public List<Field> getFieldsByDB();
+
+    void addField(Field field);
 }

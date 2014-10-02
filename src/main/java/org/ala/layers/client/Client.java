@@ -14,13 +14,14 @@
  ***************************************************************************/
 package org.ala.layers.client;
 
-import java.util.Iterator;
-import java.util.List;
-
 import org.ala.layers.dao.*;
 import org.ala.layers.dto.Layer;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.access.ContextSingletonBeanFactoryLocator;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Main CLI class to hook into layers-store
@@ -49,7 +50,13 @@ public class Client {
 
     static void initContext() {
         if (gContext == null) {
-            gContext = new ClassPathXmlApplicationContext("spring/app-config.xml");
+            Object obj = ContextSingletonBeanFactoryLocator.getInstance();
+            if (obj != null && obj instanceof ApplicationContext
+                    && ((ApplicationContext) obj).getBean("layerDao") != null) {
+                gContext = (ApplicationContext) obj;
+            } else {
+                gContext = new ClassPathXmlApplicationContext("spring/app-config.xml");
+            }
         }
     }
 

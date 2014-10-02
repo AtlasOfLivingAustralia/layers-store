@@ -15,10 +15,9 @@
 
 package org.ala.layers.dao;
 
-import java.util.List;
-import java.util.Map;
-
 import org.ala.layers.dto.Tabulation;
+
+import java.util.List;
 
 /**
  * DAO for the Field object

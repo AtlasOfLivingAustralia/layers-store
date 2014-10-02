@@ -14,12 +14,12 @@
  ***************************************************************************/
 package org.ala.layers.dao;
 
+import org.ala.layers.dto.IntersectionFile;
+import org.ala.layers.intersect.IntersectConfig;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Vector;
-
-import org.ala.layers.dto.IntersectionFile;
-import org.ala.layers.intersect.IntersectConfig;
 
 /**
  * @author adam

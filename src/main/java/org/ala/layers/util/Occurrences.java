@@ -1,18 +1,13 @@
 package org.ala.layers.util;
 
-import au.com.bytecode.opencsv.CSVReader;
-import org.ala.layers.intersect.SimpleRegion;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.util.ByteArrayBuilder;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -51,10 +46,10 @@ public class Occurrences {
                 ZipEntry ze = zis.getNextEntry();
 
                 ByteArrayBuilder bab = new ByteArrayBuilder();
-                byte [] b = new byte[1024];
+                byte[] b = new byte[1024];
                 int n;
-                while ((n = zis.read(b,0,1024)) > 0) {
-                    bab.write(b,0,n);
+                while ((n = zis.read(b, 0, 1024)) > 0) {
+                    bab.write(b, 0, n);
                 }
 
                 String csv = IOUtils.toString(bab.toByteArray(), "UTF-8");

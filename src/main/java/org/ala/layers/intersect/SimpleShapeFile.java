@@ -14,11 +14,7 @@
  ***************************************************************************/
 package org.ala.layers.intersect;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.ObjectInputStream;
-import java.io.Serializable;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
@@ -67,6 +63,11 @@ public class SimpleShapeFile extends Object implements Serializable {
      */
     String[] singleLookup;
 
+    protected SimpleShapeFile() {
+    }
+
+    ;
+
     /**
      * Constructor for a SimpleShapeFile, requires .dbf and .shp files present
      * on the fileprefix provided.
@@ -104,6 +105,119 @@ public class SimpleShapeFile extends Object implements Serializable {
      * save partial file (enough to reload and use intersect function)
      *
      * @param filename
+     */
+    static public ComplexRegion loadShapeInRegion(String filename, int idx) {
+        ComplexRegion cr = null;
+        try {
+            FileInputStream fis = new FileInputStream(filename + "_" + idx);
+            BufferedInputStream bis = new BufferedInputStream(fis);
+            ObjectInputStream ois = new ObjectInputStream(bis);
+            cr = (ComplexRegion) ois.readObject();
+            ois.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return cr;
+    }
+
+    /**
+     * defines a region by a points string, POLYGON only
+     * <p/>
+     * TODO: define better format for parsing, including BOUNDING_BOX and CIRCLE
+     *
+     * @param pointsString points separated by ',' with longitude and latitude separated by ':'
+     * @return SimpleRegion object
+     */
+    public static SimpleRegion parseWKT(String pointsString) {
+        if (pointsString == null) {
+            return null;
+        }
+
+        ArrayList<ArrayList<SimpleRegion>> regions = new ArrayList<ArrayList<SimpleRegion>>();
+
+        if (pointsString.startsWith("GEOMETRYCOLLECTION")) {
+            regions.addAll(parseGeometryCollection(pointsString.substring("GEOMETRYCOLLECTION(".length(), pointsString.length() - 1)));
+        } else if (pointsString.startsWith("MULTIPOLYGON")) {
+            regions.addAll(parseMultipolygon(pointsString.substring("MULTIPOLYGON(((".length(), pointsString.length() - 3)));
+        } else if (pointsString.startsWith("POLYGON")) {
+            regions.add(parsePolygon(pointsString.substring("POLYGON((".length(), pointsString.length() - 2)));
+        }
+
+        if (regions.size() == 0) {
+            return null;
+        } else if (regions.size() == 1 && regions.get(0).size() == 1) {
+            return regions.get(0).get(0);
+        } else {
+            ComplexRegion cr = new ComplexRegion();
+            for (int i = 0; i < regions.size(); i++) {
+                cr.addSet(regions.get(i));
+            }
+            cr.useMask(-1, -1, -1);
+            return cr;
+        }
+    }
+
+    static ArrayList<ArrayList<SimpleRegion>> parseGeometryCollection(String pointsString) {
+        ArrayList<String> stringsList = new ArrayList<String>();
+
+        int posStart = minPos(pointsString, "POLYGON", "MULTIPOLYGON", 0);
+        int posEnd = minPos(pointsString, "POLYGON", "MULTIPOLYGON", posStart + 10);
+        while (posEnd > 0) {
+            stringsList.add(pointsString.substring(posStart, posEnd - 1));
+            posStart = posEnd;
+            posEnd = minPos(pointsString, "POLYGON", "MULTIPOLYGON", posStart + 10);
+        }
+        stringsList.add(pointsString.substring(posStart, pointsString.length()));
+
+        ArrayList<ArrayList<SimpleRegion>> regions = new ArrayList<ArrayList<SimpleRegion>>();
+        for (int i = 0; i < stringsList.size(); i++) {
+            if (stringsList.get(i).startsWith("MULTIPOLYGON")) {
+                //remove trailing ")))"
+                regions.addAll(parseMultipolygon(stringsList.get(i).substring("MULTIPOLYGON(((".length(), stringsList.get(i).length() - 3)));
+            } else if (stringsList.get(i).startsWith("POLYGON")) {
+                //remove trailing "))"
+                regions.add(parsePolygon(stringsList.get(i).substring("POLYGON((".length(), stringsList.get(i).length() - 2)));
+            }
+        }
+
+        return regions;
+    }
+
+    static ArrayList<ArrayList<SimpleRegion>> parseMultipolygon(String multipolygon) {
+        ArrayList<ArrayList<SimpleRegion>> regions = new ArrayList<ArrayList<SimpleRegion>>();
+        String[] splitMultipolygon = multipolygon.split("\\)\\),\\(\\(");
+        for (int j = 0; j < splitMultipolygon.length; j++) {
+            regions.add(parsePolygon(splitMultipolygon[j]));
+        }
+        return regions;
+    }
+
+    static ArrayList<SimpleRegion> parsePolygon(String polygon) {
+        ArrayList<SimpleRegion> regions = new ArrayList<SimpleRegion>();
+        for (String p : polygon.split("\\),\\(")) {
+            regions.add(SimpleRegion.parseSimpleRegion(p));
+        }
+        return regions;
+    }
+
+    static int minPos(String lookIn, String lookFor1, String lookFor2, int startPos) {
+        int pos, p1, p2;
+        p1 = lookIn.indexOf(lookFor1, startPos);
+        p2 = lookIn.indexOf(lookFor2, startPos);
+        if (p1 < 0) {
+            pos = p2;
+        } else if (p2 < 0) {
+            pos = p1;
+        } else {
+            pos = Math.min(p1, p2);
+        }
+        return pos;
+    }
+
+    /**
+     * save partial file (enough to reload and use intersect function)
+     *
+     * @param filename
      * @return true when successful
      */
     public boolean loadRegion(String filename) {
@@ -124,25 +238,6 @@ public class SimpleShapeFile extends Object implements Serializable {
             }
         }
         return false;
-    }
-
-    /**
-     * save partial file (enough to reload and use intersect function)
-     *
-     * @param filename
-     */
-    static public ComplexRegion loadShapeInRegion(String filename, int idx) {
-        ComplexRegion cr = null;
-        try {
-            FileInputStream fis = new FileInputStream(filename + "_" + idx);
-            BufferedInputStream bis = new BufferedInputStream(fis);
-            ObjectInputStream ois = new ObjectInputStream(bis);
-            cr = (ComplexRegion) ois.readObject();
-            ois.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return cr;
     }
 
     /**
@@ -214,7 +309,7 @@ public class SimpleShapeFile extends Object implements Serializable {
             @Override
             public int compare(PointPos o1, PointPos o2) {
                 if (o1.x == o2.x) {
-                    if(o1.y == o2.y) {
+                    if (o1.y == o2.y) {
                         return 0;
                     } else {
                         return ((o1.y - o2.y) > 0) ? 1 : -1;
@@ -321,100 +416,6 @@ public class SimpleShapeFile extends Object implements Serializable {
 
     public String[] getColumnLookup() {
         return singleLookup;
-    }
-
-    /**
-     * defines a region by a points string, POLYGON only
-     * <p/>
-     * TODO: define better format for parsing, including BOUNDING_BOX and CIRCLE
-     *
-     * @param pointsString points separated by ',' with longitude and latitude separated by ':'
-     * @return SimpleRegion object
-     */
-    public static SimpleRegion parseWKT(String pointsString) {
-        if (pointsString == null) {
-            return null;
-        }
-
-        ArrayList<ArrayList<SimpleRegion>> regions = new ArrayList<ArrayList<SimpleRegion>>();
-
-        if (pointsString.startsWith("GEOMETRYCOLLECTION")) {
-            regions.addAll(parseGeometryCollection(pointsString.substring("GEOMETRYCOLLECTION(".length(), pointsString.length() - 1)));
-        } else if (pointsString.startsWith("MULTIPOLYGON")) {
-            regions.addAll(parseMultipolygon(pointsString.substring("MULTIPOLYGON(((".length(), pointsString.length() - 3)));
-        } else if (pointsString.startsWith("POLYGON")) {
-            regions.add(parsePolygon(pointsString.substring("POLYGON((".length(), pointsString.length() - 2)));
-        }
-
-        if (regions.size() == 0) {
-            return null;
-        } else if (regions.size() == 1 && regions.get(0).size() == 1) {
-            return regions.get(0).get(0);
-        } else {
-            ComplexRegion cr = new ComplexRegion();
-            for (int i = 0; i < regions.size(); i++) {
-                cr.addSet(regions.get(i));
-            }
-            cr.useMask(-1, -1, -1);
-            return cr;
-        }
-    }
-
-    static ArrayList<ArrayList<SimpleRegion>> parseGeometryCollection(String pointsString) {
-        ArrayList<String> stringsList = new ArrayList<String>();
-
-        int posStart = minPos(pointsString, "POLYGON", "MULTIPOLYGON", 0);
-        int posEnd = minPos(pointsString, "POLYGON", "MULTIPOLYGON", posStart + 10);
-        while (posEnd > 0) {
-            stringsList.add(pointsString.substring(posStart, posEnd - 1));
-            posStart = posEnd;
-            posEnd = minPos(pointsString, "POLYGON", "MULTIPOLYGON", posStart + 10);
-        }
-        stringsList.add(pointsString.substring(posStart, pointsString.length()));
-
-        ArrayList<ArrayList<SimpleRegion>> regions = new ArrayList<ArrayList<SimpleRegion>>();
-        for (int i = 0; i < stringsList.size(); i++) {
-            if (stringsList.get(i).startsWith("MULTIPOLYGON")) {
-                //remove trailing ")))"
-                regions.addAll(parseMultipolygon(stringsList.get(i).substring("MULTIPOLYGON(((".length(), stringsList.get(i).length() - 3)));
-            } else if (stringsList.get(i).startsWith("POLYGON")) {
-                //remove trailing "))"
-                regions.add(parsePolygon(stringsList.get(i).substring("POLYGON((".length(), stringsList.get(i).length() - 2)));
-            }
-        }
-
-        return regions;
-    }
-
-    static ArrayList<ArrayList<SimpleRegion>> parseMultipolygon(String multipolygon) {
-        ArrayList<ArrayList<SimpleRegion>> regions = new ArrayList<ArrayList<SimpleRegion>>();
-        String[] splitMultipolygon = multipolygon.split("\\)\\),\\(\\(");
-        for (int j = 0; j < splitMultipolygon.length; j++) {
-            regions.add(parsePolygon(splitMultipolygon[j]));
-        }
-        return regions;
-    }
-
-    static ArrayList<SimpleRegion> parsePolygon(String polygon) {
-        ArrayList<SimpleRegion> regions = new ArrayList<SimpleRegion>();
-        for (String p : polygon.split("\\),\\(")) {
-            regions.add(SimpleRegion.parseSimpleRegion(p));
-        }
-        return regions;
-    }
-
-    static int minPos(String lookIn, String lookFor1, String lookFor2, int startPos) {
-        int pos, p1, p2;
-        p1 = lookIn.indexOf(lookFor1, startPos);
-        p2 = lookIn.indexOf(lookFor2, startPos);
-        if (p1 < 0) {
-            pos = p2;
-        } else if (p2 < 0) {
-            pos = p1;
-        } else {
-            pos = Math.min(p1, p2);
-        }
-        return pos;
     }
 }
 
@@ -1336,9 +1337,6 @@ class DBFField extends Object implements Serializable {
     byte[] data;        //placeholder for reading byte blocks
     /* don't care autoinc */
 
-    void test() {
-    }
-
     /**
      * constructor for DBFField with first byte separated from
      * rest of the data structure
@@ -1384,6 +1382,9 @@ class DBFField extends Object implements Serializable {
         for (i = 0; i < 13; i++) {
             buffer.get();
         }
+    }
+
+    void test() {
     }
 
     /**
@@ -1456,6 +1457,7 @@ class DBFRecords extends Object implements Serializable {
 
         try {
             /* load all records */
+            System.out.println("start reading shapefile: " + filename);
             FileInputStream fis = new FileInputStream(filename);
             FileChannel fc = fis.getChannel();
             ByteBuffer buffer = ByteBuffer.allocate((int) fc.size() - header.getRecordsOffset());
@@ -1486,6 +1488,7 @@ class DBFRecords extends Object implements Serializable {
         records = new ArrayList();
         isvalid = false;
 
+        System.out.println("reading shapefile: " + filename);
         try {
             /* load all records */
             FileInputStream fis = new FileInputStream(filename);

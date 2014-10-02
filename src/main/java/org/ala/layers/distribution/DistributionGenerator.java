@@ -15,14 +15,14 @@
 
 package org.ala.layers.distribution;
 
+import org.ala.layers.util.SpatialUtil;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
-
-import org.ala.layers.util.SpatialUtil;
 
 /**
  * @author Adam

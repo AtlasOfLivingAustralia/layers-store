@@ -14,28 +14,8 @@
  ***************************************************************************/
 package org.ala.layers.dao;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.RandomAccessFile;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Vector;
-import java.util.zip.ZipInputStream;
-
-import javax.annotation.Resource;
-import javax.sql.DataSource;
-
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.io.WKTReader;
 import org.ala.layers.dto.GridClass;
 import org.ala.layers.dto.IntersectionFile;
 import org.ala.layers.dto.Objects;
@@ -60,8 +40,14 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.io.WKTReader;
+import javax.annotation.Resource;
+import javax.sql.DataSource;
+import java.io.*;
+import java.net.URLEncoder;
+import java.text.MessageFormat;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.zip.ZipInputStream;
 
 /**
  * @author ajay
@@ -69,57 +55,9 @@ import com.vividsolutions.jts.io.WKTReader;
 @Service("objectDao")
 public class ObjectDAOImpl implements ObjectDAO {
 
-    // sld substitution strings
-    private static final String SUB_LAYERNAME = "*layername*";
-    private static final String SUB_COLOUR = "0xff0000"; // "*colour*";
-    private static final String SUB_MIN_MINUS_ONE = "*min_minus_one*";
-    private static final String SUB_MIN = "*min*";
-    private static final String SUB_MAX = "*max*";
-    private static final String SUB_MAX_PLUS_ONE = "*max_plus_one*";
-    private static final String KML_HEADER = 
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-        +"<kml xmlns=\"http://earth.google.com/kml/2.2\">"
-        +"<Document>"
-        +"  <name></name>"
-        +"  <description></description>"
-        +"  <Style id=\"style1\">"
-        +"    <LineStyle>"
-        +"      <color>40000000</color>"
-        +"      <width>3</width>"
-        +"    </LineStyle>"
-        +"    <PolyStyle>"
-        +"      <color>73FF0000</color>"
-        +"      <fill>1</fill>"
-        +"      <outline>1</outline>"
-        +"    </PolyStyle>"
-        +"  </Style>"
-        +"  <Placemark>"
-        +"    <name></name>"
-        +"    <description></description>"
-        +"    <styleUrl>#style1</styleUrl>";
-    private static final String KML_FOOTER =
-        "</Placemark>"
-        +"</Document>"
-        +"</kml>";
-
-    /**
-     * log4j logger
-     */
-    private static final Logger logger = Logger.getLogger(ObjectDAOImpl.class);
-    private SimpleJdbcTemplate jdbcTemplate;
-    @Resource(name = "layerIntersectDao")
-    private LayerIntersectDAO layerIntersectDao;
-
-    @Resource(name = "dataSource")
-    public void setDataSource(DataSource dataSource) {
-        this.jdbcTemplate = new SimpleJdbcTemplate(dataSource);
-    }
-
     static final String objectWmsUrl = "/wms?service=WMS&version=1.1.0&request=GetMap&layers=ALA:Objects&format=image/png&viewparams=s:<pid>";
-    static final String gridPolygonWmsUrl = "/wms?service=WMS&version=1.1.0&request=GetMap&layers=ALA:" + SUB_LAYERNAME + "&format=image/png&sld_body=";
     static final String gridPolygonSld;
     static final String gridClassSld;
-
     static {
         String polygonSld = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><StyledLayerDescriptor xmlns=\"http://www.opengis.net/sld\">" + "<NamedLayer><Name>ALA:" + SUB_LAYERNAME + "</Name>"
                 + "<UserStyle><FeatureTypeStyle><Rule><RasterSymbolizer><Geometry></Geometry>" + "<ColorMap>" + "<ColorMapEntry color=\"" + SUB_COLOUR + "\" opacity=\"0\" quantity=\""
@@ -146,6 +84,51 @@ public class ObjectDAOImpl implements ObjectDAO {
         gridClassSld = classSld;
 
     }
+    // sld substitution strings
+    private static final String SUB_LAYERNAME = "*layername*";
+    static final String gridPolygonWmsUrl = "/wms?service=WMS&version=1.1.0&request=GetMap&layers=ALA:" + SUB_LAYERNAME + "&format=image/png&sld_body=";
+    private static final String SUB_COLOUR = "0xff0000"; // "*colour*";
+    private static final String SUB_MIN_MINUS_ONE = "*min_minus_one*";
+    private static final String SUB_MIN = "*min*";
+    private static final String SUB_MAX = "*max*";
+    private static final String SUB_MAX_PLUS_ONE = "*max_plus_one*";
+    private static final String KML_HEADER =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                    + "<kml xmlns=\"http://earth.google.com/kml/2.2\">"
+                    + "<Document>"
+                    + "  <name></name>"
+                    + "  <description></description>"
+                    + "  <Style id=\"style1\">"
+                    + "    <LineStyle>"
+                    + "      <color>40000000</color>"
+                    + "      <width>3</width>"
+                    + "    </LineStyle>"
+                    + "    <PolyStyle>"
+                    + "      <color>73FF0000</color>"
+                    + "      <fill>1</fill>"
+                    + "      <outline>1</outline>"
+                    + "    </PolyStyle>"
+                    + "  </Style>"
+                    + "  <Placemark>"
+                    + "    <name></name>"
+                    + "    <description></description>"
+                    + "    <styleUrl>#style1</styleUrl>";
+    private static final String KML_FOOTER =
+            "</Placemark>"
+                    + "</Document>"
+                    + "</kml>";
+    /**
+     * log4j logger
+     */
+    private static final Logger logger = Logger.getLogger(ObjectDAOImpl.class);
+    private SimpleJdbcTemplate jdbcTemplate;
+    @Resource(name = "layerIntersectDao")
+    private LayerIntersectDAO layerIntersectDao;
+
+    @Resource(name = "dataSource")
+    public void setDataSource(DataSource dataSource) {
+        this.jdbcTemplate = new SimpleJdbcTemplate(dataSource);
+    }
 
     @Override
     public List<Objects> getObjects() {
@@ -164,10 +147,8 @@ public class ObjectDAOImpl implements ObjectDAO {
 
     @Override
     public List<Objects> getObjectsById(String id, int start, int pageSize) {
-        // return hibernateTemplate.find("from Objects where id = ?", id);
         logger.info("Getting object info for fid = " + id);
-        // String sql = "select * from objects where fid = ?";
-        String limit_offset = " limit " + (pageSize<0?"all":pageSize) + " offset " + start;
+        String limit_offset = " limit " + (pageSize < 0 ? "all" : pageSize) + " offset " + start;
         String sql = "select o.pid as pid, o.id as id, o.name as name, o.desc as description, o.fid as fid, f.name as fieldname, o.bbox, o.area_km from objects o, fields f where o.fid = ? and o.fid = f.id order by o.pid " + limit_offset;
         List<Objects> objects = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Objects.class), id);
 
@@ -192,30 +173,6 @@ public class ObjectDAOImpl implements ObjectDAO {
                         objects.add(o);
                     } else { // polygon pid
                         try {
-                            // BufferedReader br = new BufferedReader(new
-                            // FileReader(f.getFilePath() + File.separator +
-                            // c.getKey() + ".wkt.index"));
-                            // String line;
-                            // while((line = br.readLine()) != null) {
-                            // if(line.length() > 0) {
-                            // String [] cells = line.split(",");
-                            // Objects o = new Objects();
-                            // o.setPid(f.getLayerPid() + ":" + c.getKey() + ":"
-                            // + cells[0]);
-                            // o.setId(f.getLayerPid() + ":" + c.getKey() + ":"
-                            // + cells[0]);
-                            // o.setName(c.getValue().getName());
-                            // o.setFid(f.getFieldId());
-                            // o.setFieldname(f.getFieldName());
-                            //
-                            // //Too costly to calculate on the fly, and not
-                            // pre-calculated.
-                            // // o.setBbox(c.getValue().getBbox());
-                            // // o.setArea_km(c.getValue().getArea_km());
-                            // objects.add(o);
-                            // }
-                            // }
-                            // br.close();
                             RandomAccessFile raf = new RandomAccessFile(f.getFilePath() + File.separator + c.getKey() + ".wkt.index.dat", "r");
                             long len = raf.length() / (4 + 4 + 4 * 4 + 4); // group
                             // number,
@@ -238,19 +195,21 @@ public class ObjectDAOImpl implements ObjectDAO {
                                 float maxy = raf.readFloat();
                                 float area = raf.readFloat();
 
-                                Objects o = new Objects();
-                                o.setPid(f.getLayerPid() + ":" + c.getKey() + ":" + n);
-                                o.setId(f.getLayerPid() + ":" + c.getKey() + ":" + n);
-                                o.setName(c.getValue().getName());
-                                o.setFid(f.getFieldId());
-                                o.setFieldname(f.getFieldName());
+                                if (pageSize == -1 || (i >= start - 1 && i - start + 1 < pageSize)) {
+                                    Objects o = new Objects();
+                                    o.setPid(f.getLayerPid() + ":" + c.getKey() + ":" + n);
+                                    o.setId(f.getLayerPid() + ":" + c.getKey() + ":" + n);
+                                    o.setName(c.getValue().getName());
+                                    o.setFid(f.getFieldId());
+                                    o.setFieldname(f.getFieldName());
 
-                                o.setBbox("POLYGON((" + minx + " " + miny + "," + minx + " " + maxy + "," + +maxx + " " + maxy + "," + +maxx + " " + miny + "," + +minx + " " + miny + "))");
-                                o.setArea_km(1.0 * area);
+                                    o.setBbox("POLYGON((" + minx + " " + miny + "," + minx + " " + maxy + "," + +maxx + " " + maxy + "," + +maxx + " " + miny + "," + +minx + " " + miny + "))");
+                                    o.setArea_km(1.0 * area);
 
-                                o.setWmsurl(getGridPolygonWms(f.getLayerName(), n));
+                                    o.setWmsurl(getGridPolygonWms(f.getLayerName(), n));
 
-                                objects.add(o);
+                                    objects.add(o);
+                                }
                             }
                             raf.close();
 
@@ -304,10 +263,10 @@ public class ObjectDAOImpl implements ObjectDAO {
                 String wkt = l.get(0).getGeometry();
                 File zippedShapeFile = SpatialConversionUtils.buildZippedShapeFile(wkt, id, l.get(0).getName(), l.get(0).getDescription());
                 FileUtils.copyFile(zippedShapeFile, os);
-            } else if("kml".equals(geomtype)){
+            } else if ("kml".equals(geomtype)) {
                 os.write(KML_HEADER
-                        .replace("<name></name>","<name><![CDATA[" + l.get(0).getName() + "]]></name>")
-                        .replace("<description></description>","<description><![CDATA[" + l.get(0).getDescription() + "]]></description>").getBytes());
+                        .replace("<name></name>", "<name><![CDATA[" + l.get(0).getName() + "]]></name>")
+                        .replace("<description></description>", "<description><![CDATA[" + l.get(0).getDescription() + "]]></description>").getBytes());
 
                 os.write(l.get(0).getGeometry().getBytes());
                 os.write(KML_FOOTER.getBytes());
@@ -683,7 +642,7 @@ public class ObjectDAOImpl implements ObjectDAO {
 
     @Override
     public String createUserUploadedObject(String wkt, String name, String description, String userid) {
-        return createUserUploadedObject(wkt,name,description,userid,true);
+        return createUserUploadedObject(wkt, name, description, userid, true);
     }
 
     @Transactional

@@ -28,18 +28,6 @@ import java.util.ArrayList;
  */
 public class ComplexRegion extends SimpleRegion {
 
-    static public SimpleRegion parseComplexRegion(String[] polygons) {
-        ComplexRegion cr = new ComplexRegion();
-
-        for (String s : polygons) {
-            cr.addPolygon(SimpleRegion.parseSimpleRegion(s));
-        }
-
-        cr.useMask(-1, -1, -1);
-
-        return cr;
-    }
-
     /**
      * list of SimpleRegion members
      */
@@ -77,7 +65,6 @@ public class ComplexRegion extends SimpleRegion {
      * maintain mapping for simpleregions belonging to the same polygon
      */
     ArrayList<Integer> polygons;
-
     /**
      * Constructor for empty ComplexRegion
      */
@@ -91,13 +78,16 @@ public class ComplexRegion extends SimpleRegion {
         polygons = new ArrayList();
     }
 
-    /**
-     * sets integer value stored
-     *
-     * @param value_ as int
-     */
-    public void setValue(int value_) {
-        value = value_;
+    static public SimpleRegion parseComplexRegion(String[] polygons) {
+        ComplexRegion cr = new ComplexRegion();
+
+        for (String s : polygons) {
+            cr.addPolygon(SimpleRegion.parseSimpleRegion(s));
+        }
+
+        cr.useMask(-1, -1, -1);
+
+        return cr;
     }
 
     /**
@@ -107,6 +97,15 @@ public class ComplexRegion extends SimpleRegion {
      */
     public int getValue() {
         return value;
+    }
+
+    /**
+     * sets integer value stored
+     *
+     * @param value_ as int
+     */
+    public void setValue(int value_) {
+        value = value_;
     }
 
     /**

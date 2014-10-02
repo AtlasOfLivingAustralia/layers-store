@@ -4,10 +4,10 @@
  */
 package org.ala.layers.legend;
 
+import org.ala.layers.intersect.Grid;
+
 import java.io.File;
 import java.io.FileWriter;
-
-import org.ala.layers.intersect.Grid;
 
 /**
  * Produces legend cutoff values for environmental layers

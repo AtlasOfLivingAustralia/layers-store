@@ -27,70 +27,6 @@ public class QueryField implements Serializable {
     String displayName;
     boolean store;
     ArrayList<String> tmpData = new ArrayList<String>();
-
-    public enum FieldType {
-
-        LONG, INT, STRING, FLOAT, DOUBLE, AUTO;
-
-        public static FieldType fromString(String value) {
-            for (FieldType ft : values()) {
-                if (ft.name().equalsIgnoreCase(value)) {
-                    return ft;
-                }
-            }
-
-            return AUTO;
-        }
-    }
-
-    public enum GroupType {
-        TAXONOMIC("Taxonomic", 1),
-        GEOSPATIAL("Geospatial", 2),
-        TEMPORAL("Temporal", 3),
-        RECORD_DETAILS("Record details", 4),
-        ATTRIBUTION("Attribution", 5),
-        RECORD_ASSERTIONS("Record assertions", 6),
-        CUSTOM("Custom", 0);
-        private static final Map<String, GroupType> nameLookup = new HashMap<String, GroupType>();
-
-        static {
-            for (GroupType mt : EnumSet.allOf(GroupType.class)) {
-                nameLookup.put(mt.name, mt);
-            }
-        }
-
-        private String name;
-        private Integer order;
-
-        GroupType(String name, Integer order) {
-            this.name = name;
-            this.order = order;
-        }
-
-        public Integer getOrder() {
-            return order;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public static GroupType getGroupType(String group) {
-            return nameLookup.get(group);
-        }
-
-        public static GroupType fromString(String value) {
-            for (GroupType gt : values()) {
-                if (gt.name().equalsIgnoreCase(value)) {
-                    return gt;
-                }
-            }
-
-            return CUSTOM;
-        }
-
-    }
-
     @JsonDeserialize(using = FieldTypeDeserializer.class)
     FieldType fieldType = FieldType.AUTO;
     long[] longData = null;
@@ -100,18 +36,16 @@ public class QueryField implements Serializable {
     double[] doubleData = null;
     int[] stringCounts = null;
     LegendObject legend;
-
-
     public QueryField() {
         //for json deserializer
     }
-
     public QueryField(String name) {
         this.name = name;
         this.displayName = name;
         store = false;
         this.fieldType = FieldType.AUTO;
     }
+
 
     public QueryField(String name, FieldType fieldType) {
         this.name = name;
@@ -147,16 +81,24 @@ public class QueryField implements Serializable {
         return store;
     }
 
+    public void setStored(boolean store) {
+        this.store = store;
+    }
+
     public String getName() {
         return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getDisplayName() {
         return displayName;
     }
 
-    public void setStored(boolean store) {
-        this.store = store;
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
     }
 
     public void ensureCapacity(int size) {
@@ -352,8 +294,16 @@ public class QueryField implements Serializable {
         return group;
     }
 
+    public void setGroup(GroupType group) {
+        this.group = group;
+    }
+
     public FieldType getFieldType() {
         return fieldType;
+    }
+
+    public void setFieldType(FieldType fieldType) {
+        this.fieldType = fieldType;
     }
 
     public int getInt(int pos) {
@@ -416,6 +366,10 @@ public class QueryField implements Serializable {
         return legend;
     }
 
+    public void setLegend(LegendObject legend) {
+        this.legend = legend;
+    }
+
     public int getColour(int i) {
         getLegend(); //builds legend if not yet built
 
@@ -445,18 +399,6 @@ public class QueryField implements Serializable {
         }
     }
 
-    public void setGroup(GroupType group) {
-        this.group = group;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public void setDisplayName(String displayName) {
-        this.displayName = displayName;
-    }
-
     public boolean isStore() {
         return store;
     }
@@ -471,10 +413,6 @@ public class QueryField implements Serializable {
 
     public void setTmpData(ArrayList<String> tmpData) {
         this.tmpData = tmpData;
-    }
-
-    public void setFieldType(FieldType fieldType) {
-        this.fieldType = fieldType;
     }
 
     public long[] getLongData() {
@@ -525,8 +463,67 @@ public class QueryField implements Serializable {
         this.stringCounts = stringCounts;
     }
 
-    public void setLegend(LegendObject legend) {
-        this.legend = legend;
+    public enum FieldType {
+
+        LONG, INT, STRING, FLOAT, DOUBLE, AUTO;
+
+        public static FieldType fromString(String value) {
+            for (FieldType ft : values()) {
+                if (ft.name().equalsIgnoreCase(value)) {
+                    return ft;
+                }
+            }
+
+            return AUTO;
+        }
+    }
+
+    public enum GroupType {
+        TAXONOMIC("Taxonomic", 1),
+        GEOSPATIAL("Geospatial", 2),
+        TEMPORAL("Temporal", 3),
+        RECORD_DETAILS("Record details", 4),
+        ATTRIBUTION("Attribution", 5),
+        RECORD_ASSERTIONS("Record assertions", 6),
+        CUSTOM("Custom", 0);
+        private static final Map<String, GroupType> nameLookup = new HashMap<String, GroupType>();
+
+        static {
+            for (GroupType mt : EnumSet.allOf(GroupType.class)) {
+                nameLookup.put(mt.name, mt);
+            }
+        }
+
+        private String name;
+        private Integer order;
+
+        GroupType(String name, Integer order) {
+            this.name = name;
+            this.order = order;
+        }
+
+        public static GroupType getGroupType(String group) {
+            return nameLookup.get(group);
+        }
+
+        public static GroupType fromString(String value) {
+            for (GroupType gt : values()) {
+                if (gt.name().equalsIgnoreCase(value)) {
+                    return gt;
+                }
+            }
+
+            return CUSTOM;
+        }
+
+        public Integer getOrder() {
+            return order;
+        }
+
+        public String getName() {
+            return name;
+        }
+
     }
 
     /**

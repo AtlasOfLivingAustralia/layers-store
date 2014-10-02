@@ -16,11 +16,11 @@
 package org.ala.layers.dto;
 
 import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.postgresql.largeobject.LargeObject;
 
-import javax.persistence.*;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Table;
 import java.sql.Blob;
-import java.util.Date;
 
 @Entity
 @Table(name = "ud_data_x")

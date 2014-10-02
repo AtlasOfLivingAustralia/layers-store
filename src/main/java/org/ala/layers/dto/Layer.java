@@ -15,19 +15,13 @@
 
 package org.ala.layers.dto;
 
+import org.codehaus.jackson.map.annotate.JsonSerialize;
+
+import javax.persistence.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Vector;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
-
-import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 /**
  * This class serves as a model object for a list of layers

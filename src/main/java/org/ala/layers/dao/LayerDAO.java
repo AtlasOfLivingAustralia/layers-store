@@ -15,9 +15,10 @@
 
 package org.ala.layers.dao;
 
-import java.util.List;
-
 import org.ala.layers.dto.Layer;
+
+import java.sql.Connection;
+import java.util.List;
 
 /**
  * DAO for the Layer object
@@ -35,7 +36,11 @@ public interface LayerDAO {
 
     public Layer getLayerById(int id);
 
+    public Layer getLayerById(int id, boolean enabledLayersOnly);
+
     public Layer getLayerByName(String name);
+
+    public Layer getLayerByName(String name, boolean enabledLayersOnly);
 
     public Layer getLayerByDisplayName(String name);
 
@@ -48,4 +53,6 @@ public interface LayerDAO {
     public void addLayer(Layer layer);
 
     public void updateLayer(Layer layer);
+
+    public Connection getConnection();
 }

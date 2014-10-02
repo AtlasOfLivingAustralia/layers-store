@@ -14,24 +14,19 @@
  ***************************************************************************/
 package org.ala.layers.dao;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import javax.annotation.Resource;
-import javax.sql.DataSource;
-
-import org.ala.layers.dto.Field;
-import org.ala.layers.dto.GridClass;
 import org.ala.layers.dto.IntersectionFile;
 import org.ala.layers.dto.Tabulation;
+import org.ala.layers.tabulation.TabulationGenerator;
 import org.ala.layers.tabulation.TabulationUtil;
 import org.ala.layers.util.SpatialUtil;
 import org.apache.log4j.Logger;
 import org.springframework.jdbc.core.simple.ParameterizedBeanPropertyRowMapper;
 import org.springframework.jdbc.core.simple.SimpleJdbcTemplate;
 import org.springframework.stereotype.Service;
+
+import javax.annotation.Resource;
+import javax.sql.DataSource;
+import java.util.List;
 
 /**
  * @author ajay
@@ -50,6 +45,9 @@ public class TabulationDAOImpl implements TabulationDAO {
 
     @Resource(name = "fieldDao")
     private FieldDAO fieldDao;
+
+    @Resource(name = "objectDao")
+    private ObjectDAO objectDao;
 
     @Resource(name = "dataSource")
     public void setDataSource(DataSource dataSource) {
@@ -150,68 +148,75 @@ public class TabulationDAOImpl implements TabulationDAO {
     public List<Tabulation> getTabulationSingle(String fid, String wkt) {
         //is it wkt or pid?
         boolean isPid = wkt.indexOf('(') < 0;
-        if (wkt != null && wkt.length() > 0) {
-            String sql;
-            List<Tabulation> tabulations;
+        //is it grid as contextual layer?
+        IntersectionFile f = layerIntersectDao.getConfig().getIntersectionFile(fid);
 
-            if (isPid) {
-                sql = "SELECT fid1, pid1, name1,"
-                        + " fid2, pid2, name2, "
-                        + " ST_AsText(newgeom) as geometry FROM "
-                        + "("
-                        + "SELECT a.fid as fid1, a.pid as pid1, a.name as name1, b.fid as fid2, b.pid as pid2, b.name as name2 "
-                        + "(ST_INTERSECTION(b.the_geom, a.the_geom)) as newgeom FROM "
-                        + "(SELECT * FROM objects WHERE fid = ? ) a, (SELECT * FROM objects WHERE pid = ? ) b "
-                        + "WHERE ST_INTERSECTS(ST_GEOMFROMTEXT(a.bbox, 4326), ST_GEOMFROMTEXT(b.bbox ,4326))"
-                        + ") o "
-                        + "WHERE newgeom is not null AND ST_Area(newgeom) > 0;";
+        if (f.getType().equalsIgnoreCase("c")) {
+            if (wkt != null && wkt.length() > 0) {
+                String sql;
+                List<Tabulation> tabulations;
 
-                tabulations = jdbcTemplate.query(sql,
-                        ParameterizedBeanPropertyRowMapper.newInstance(Tabulation.class),
-                        fid, wkt);
-            } else {
-                sql = "SELECT fid as fid1, pid as pid1, name as name1,"
-                        + " 'user area' as fid2, 'user area' as pid2, 'user area' as name2, "
-                        + " ST_AsText(newgeom) as geometry FROM "
-                        + "(SELECT fid, pid, name, (ST_INTERSECTION(ST_GEOMFROMTEXT( ? ,4326), the_geom)) as newgeom FROM "
-                        + "objects WHERE fid= ? and ST_INTERSECTS(ST_GEOMFROMTEXT(bbox, 4326), ST_ENVELOPE(ST_GEOMFROMTEXT( ? ,4326)))"
-                        + ") o "
-                        + "WHERE newgeom is not null AND ST_Area(newgeom) > 0;";
+                if (isPid) {
+                    sql = "SELECT fid1, pid1, name1,"
+                            + " fid2, pid2, name2, "
+                            + " ST_AsText(newgeom) as geometry FROM "
+                            + "("
+                            + "SELECT a.fid as fid1, a.pid as pid1, a.name as name1, b.fid as fid2, b.pid as pid2, b.name as name2 "
+                            + ", (ST_INTERSECTION(b.the_geom, a.the_geom)) as newgeom FROM "
+                            + "(SELECT * FROM objects WHERE fid = ? ) a, (SELECT * FROM objects WHERE pid = ? ) b "
+                            + "WHERE ST_INTERSECTS(ST_GEOMFROMTEXT(a.bbox, 4326), ST_GEOMFROMTEXT(b.bbox ,4326))"
+                            + ") o "
+                            + "WHERE newgeom is not null AND ST_Area(newgeom) > 0;";
 
-                tabulations = jdbcTemplate.query(sql,
-                        ParameterizedBeanPropertyRowMapper.newInstance(Tabulation.class),
-                        wkt, fid, wkt);
-            }
+                    tabulations = jdbcTemplate.query(sql,
+                            ParameterizedBeanPropertyRowMapper.newInstance(Tabulation.class),
+                            fid, wkt);
+                } else {
+                    sql = "SELECT fid as fid1, pid as pid1, name as name1,"
+                            + " 'user area' as fid2, 'user area' as pid2, 'user area' as name2, "
+                            + " ST_AsText(newgeom) as geometry FROM "
+                            + "(SELECT fid, pid, name, (ST_INTERSECTION(ST_GEOMFROMTEXT( ? ,4326), the_geom)) as newgeom FROM "
+                            + "objects WHERE fid= ? and ST_INTERSECTS(ST_GEOMFROMTEXT(bbox, 4326), ST_ENVELOPE(ST_GEOMFROMTEXT( ? ,4326)))"
+                            + ") o "
+                            + "WHERE newgeom is not null AND ST_Area(newgeom) > 0;";
 
-            for (Tabulation t : tabulations) {
-                try {
-                    t.setArea(SpatialUtil.calculateArea(t.getGeometry()));
-                } catch (Exception e) {
-                    logger.error("fid:" + fid + " wkt:" + wkt, e);
+                    tabulations = jdbcTemplate.query(sql,
+                            ParameterizedBeanPropertyRowMapper.newInstance(Tabulation.class),
+                            wkt, fid, wkt);
                 }
+
+                for (Tabulation t : tabulations) {
+                    try {
+                        t.setArea(SpatialUtil.calculateArea(t.getGeometry()));
+                    } catch (Exception e) {
+                        logger.error("fid:" + fid + " wkt:" + wkt, e);
+                    }
+                    //don't return geometry
+                    t.setGeometry(null);
+                }
+
+                return tabulations;
+            } else {
+                String sql = "SELECT fid1, pid1, name as name1,"
+                        + " 'world' as fid2, 'world' as pid2, 'world' as name2, "
+                        + " area_km as area FROM "
+                        + "(SELECT name, fid as fid1, pid as pid1, the_geom as newgeom, area_km FROM "
+                        + "objects WHERE fid= ? ) t "
+                        + "WHERE newgeom is not null AND ST_Area(newgeom) > 0;";
+
+                List<Tabulation> tabulations = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Tabulation.class), fid);
+
+                return tabulations;
             }
-
-            return tabulations;
         } else {
-            String sql = "SELECT fid1, pid1, name as name1,"
-                    + " 'world' as fid2, 'world' as pid2, 'world' as name2, "
-                    + " ST_AsText(newgeom) as geometry, area_km as area FROM "
-                    + "(SELECT name, fid as fid1, pid as pid1, the_geom as newgeom, area_km FROM "
-                    + "objects WHERE fid= ? ) t "
-                    + "WHERE newgeom is not null AND ST_Area(newgeom) > 0;";
-
-            List<Tabulation> tabulations = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Tabulation.class), fid);
-
-            //objects table area ok to use
-//            for(Tabulation t : tabulations) {
-//                try {
-//                    t.setArea(TabulationUtil.calculateArea(t.getGeometry()));
-//                } catch (Exception e) {
-//                    logger.error("fid:" + fid, e);
-//                }
-//            }
-
-            return tabulations;
+            System.out.println("wkt: " + wkt);
+            String w = wkt;
+            if (isPid) {
+                //get wkt
+                w = objectDao.getObjectsGeometryById(wkt, "wkt");
+            }
+            System.out.println("w: " + w);
+            return TabulationGenerator.calc(fid, w);
         }
     }
 }

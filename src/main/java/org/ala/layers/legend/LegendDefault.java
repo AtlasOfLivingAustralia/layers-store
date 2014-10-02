@@ -1,7 +1,5 @@
 package org.ala.layers.legend;
 
-import org.codehaus.jackson.JsonNode;
-
 /**
  * Created by a on 24/03/2014.
  */

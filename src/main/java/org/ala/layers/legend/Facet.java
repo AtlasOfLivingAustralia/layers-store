@@ -7,7 +7,6 @@ package org.ala.layers.legend;
 import org.apache.log4j.Logger;
 
 import java.io.Serializable;
-import java.net.URLEncoder;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -17,6 +16,87 @@ import java.util.Set;
  * @author Adam
  */
 public class Facet implements Serializable {
+
+    String field;
+    String value;
+    String[] valueArray;
+    String parameter;
+    double min;
+    double max;
+    boolean includeRange;
+    Facet[] orInAndTerms;
+    Facet[] andTerms;
+    Facet[] orTerms;
+    public Facet(String field, String value, boolean includeRange) {
+        this.field = field;
+        this.value = value;
+        this.includeRange = includeRange;
+        this.parameter = null;
+        this.min = Double.NaN;
+        this.max = Double.NaN;
+        this.valueArray = null;
+        if (this.value != null) {
+            this.valueArray = new String[]{this.value};
+        }
+    }
+    public Facet(String field, double min, double max, boolean includeRange) {
+        this.field = field;
+        this.min = min;
+        this.max = max;
+        this.includeRange = includeRange;
+
+        String strMin = Double.isInfinite(min) ? "*" : (min == (int) min) ? String.format("%d", (int) min) : String.valueOf(min);
+        String strMax = Double.isInfinite(max) ? "*" : (max == (int) max) ? String.format("%d", (int) max) : String.valueOf(max);
+
+        this.value = "[" + strMin + " TO " + strMax + "]";
+
+        this.valueArray = null;
+
+        this.parameter = (includeRange ? "" : "-") + this.field + ":" + this.value;
+    }
+
+    public Facet(String field, String strMin, String strMax, boolean includeRange) {
+        this.field = field;
+
+        if (field.equals("occurrence_year")) {
+            strMin = strMin.replace("-12-31T00:00:00Z", "").replace("-01-01T00:00:00Z", "");
+            strMax = strMax.replace("-12-31T00:00:00Z", "").replace("-01-01T00:00:00Z", "");
+        }
+        double[] d = {strMin.equals("*") ? Double.NEGATIVE_INFINITY : Double.parseDouble(strMin),
+                strMax.equals("*") ? Double.POSITIVE_INFINITY : Double.parseDouble(strMax)};
+        this.min = d[0];
+        this.max = d[1];
+        this.includeRange = includeRange;
+
+        if (field.equals("occurrence_year")) {
+            if (!strMin.equals("*")) {
+                this.value = "[" + strMin + "-01-01T00:00:00Z TO ";
+            } else {
+                this.value = "[" + strMin + " TO ";
+            }
+            if (!strMax.equals("*")) {
+                this.value += strMax + "-12-31T00:00:00Z]";
+            } else {
+                this.value += strMax + "]";
+            }
+        } else {
+            this.value = "[" + strMin + " TO " + strMax + "]";
+        }
+
+        this.valueArray = null;
+
+        this.parameter = (includeRange ? "" : "-") + this.field + ":" + this.value;
+    }
+
+    public Facet(String fq, Facet[] orInAndTerms, Facet[] andTerms, Facet[] orTerms) {
+        //make toString work
+        parameter = fq;
+
+        //make isValid and getFields work
+        this.orInAndTerms = orInAndTerms;
+        this.andTerms = andTerms;
+        this.orTerms = orTerms;
+    }
 
     /**
      * Parse a facet created by webportal:
@@ -126,89 +206,6 @@ public class Facet implements Serializable {
         }
 
         return facets;
-    }
-
-    String field;
-    String value;
-    String[] valueArray;
-    String parameter;
-    double min;
-    double max;
-    boolean includeRange;
-    Facet[] orInAndTerms;
-    Facet[] andTerms;
-    Facet[] orTerms;
-
-    public Facet(String field, String value, boolean includeRange) {
-        this.field = field;
-        this.value = value;
-        this.includeRange = includeRange;
-        this.parameter = null;
-        this.min = Double.NaN;
-        this.max = Double.NaN;
-        this.valueArray = null;
-        if (this.value != null) {
-            this.valueArray = new String[]{this.value};
-        }
-    }
-
-    public Facet(String field, double min, double max, boolean includeRange) {
-        this.field = field;
-        this.min = min;
-        this.max = max;
-        this.includeRange = includeRange;
-
-        String strMin = Double.isInfinite(min) ? "*" : (min == (int) min) ? String.format("%d", (int) min) : String.valueOf(min);
-        String strMax = Double.isInfinite(max) ? "*" : (max == (int) max) ? String.format("%d", (int) max) : String.valueOf(max);
-
-        this.value = "[" + strMin + " TO " + strMax + "]";
-
-        this.valueArray = null;
-
-        this.parameter = (includeRange ? "" : "-") + this.field + ":" + this.value;
-    }
-
-    public Facet(String field, String strMin, String strMax, boolean includeRange) {
-        this.field = field;
-
-        if (field.equals("occurrence_year")) {
-            strMin = strMin.replace("-12-31T00:00:00Z", "").replace("-01-01T00:00:00Z", "");
-            strMax = strMax.replace("-12-31T00:00:00Z", "").replace("-01-01T00:00:00Z", "");
-        }
-        double[] d = {strMin.equals("*") ? Double.NEGATIVE_INFINITY : Double.parseDouble(strMin),
-                strMax.equals("*") ? Double.POSITIVE_INFINITY : Double.parseDouble(strMax)};
-        this.min = d[0];
-        this.max = d[1];
-        this.includeRange = includeRange;
-
-        if (field.equals("occurrence_year")) {
-            if (!strMin.equals("*")) {
-                this.value = "[" + strMin + "-01-01T00:00:00Z TO ";
-            } else {
-                this.value = "[" + strMin + " TO ";
-            }
-            if (!strMax.equals("*")) {
-                this.value += strMax + "-12-31T00:00:00Z]";
-            } else {
-                this.value += strMax + "]";
-            }
-        } else {
-            this.value = "[" + strMin + " TO " + strMax + "]";
-        }
-
-        this.valueArray = null;
-
-        this.parameter = (includeRange ? "" : "-") + this.field + ":" + this.value;
-    }
-
-    public Facet(String fq, Facet[] orInAndTerms, Facet[] andTerms, Facet[] orTerms) {
-        //make toString work
-        parameter = fq;
-
-        //make isValid and getFields work
-        this.orInAndTerms = orInAndTerms;
-        this.andTerms = andTerms;
-        this.orTerms = orTerms;
     }
 
     @Override

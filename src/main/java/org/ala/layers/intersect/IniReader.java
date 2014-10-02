@@ -14,16 +14,12 @@
  ***************************************************************************/
 package org.ala.layers.intersect;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.PrintWriter;
+import org.apache.log4j.Logger;
+
+import java.io.*;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
-
-import org.apache.log4j.Logger;
 
 /**
  * Provides read only access to an ini file.

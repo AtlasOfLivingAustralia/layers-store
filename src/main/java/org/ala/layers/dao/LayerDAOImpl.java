@@ -14,13 +14,6 @@
  ***************************************************************************/
 package org.ala.layers.dao;
 
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import javax.annotation.Resource;
-import javax.sql.DataSource;
-
 import org.ala.layers.dto.Layer;
 import org.ala.layers.intersect.IntersectConfig;
 import org.apache.log4j.Logger;
@@ -28,6 +21,15 @@ import org.springframework.jdbc.core.simple.ParameterizedBeanPropertyRowMapper;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.jdbc.core.simple.SimpleJdbcTemplate;
 import org.springframework.stereotype.Service;
+
+import javax.annotation.Resource;
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * @author ajay
@@ -41,6 +43,7 @@ public class LayerDAOImpl implements LayerDAO {
     private static final Logger logger = Logger.getLogger(LayerDAOImpl.class);
     private SimpleJdbcTemplate jdbcTemplate;
     private SimpleJdbcInsert insertLayer;
+    private Connection connection;
 
     @Resource(name = "dataSource")
     public void setDataSource(DataSource dataSource) {
@@ -53,6 +56,11 @@ public class LayerDAOImpl implements LayerDAO {
         }
         this.jdbcTemplate = new SimpleJdbcTemplate(dataSource);
         this.insertLayer = new SimpleJdbcInsert(dataSource).withTableName("layers").usingGeneratedKeyColumns("id");
+        try {
+            this.connection = dataSource.getConnection();
+        } catch (SQLException e) {
+            logger.error("failed to get datasource connection", e);
+        }
     }
 
     @Override
@@ -68,9 +76,17 @@ public class LayerDAOImpl implements LayerDAO {
 
     @Override
     public Layer getLayerById(int id) {
+        return getLayerById(id, true);
+    }
+
+    @Override
+    public Layer getLayerById(int id, boolean enabledLayersOnly) {
         //List<Layer> layers = hibernateTemplate.find("from Layer where enabled=true and id=?", id);
         logger.info("Getting enabled layer info for id = " + id);
-        String sql = "select * from layers where enabled=true and id = ?";
+        String sql = "select * from layers where id = ? ";
+        if (enabledLayersOnly) {
+            sql += " and enabled=true";
+        }
         List<Layer> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Layer.class), id);
         updateDisplayPaths(l);
         updateMetadataPaths(l);
@@ -83,10 +99,18 @@ public class LayerDAOImpl implements LayerDAO {
 
     @Override
     public Layer getLayerByName(String name) {
+        return getLayerByName(name, true);
+    }
+
+    @Override
+    public Layer getLayerByName(String name, boolean enabledLayersOnly) {
         //List<Layer> layers = hibernateTemplate.find("from Layer where enabled=true and name=?", name);
 
         logger.info("Getting enabled layer info for name = " + name);
-        String sql = "select * from layers where enabled=true and name = ?";
+        String sql = "select * from layers where name = ? ";
+        if (enabledLayersOnly) {
+            sql += " and enabled=true";
+        }
         List<Layer> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Layer.class), name);
         updateDisplayPaths(l);
         updateMetadataPaths(l);
@@ -220,9 +244,11 @@ public class LayerDAOImpl implements LayerDAO {
         Map<String, Object> parameters = layer.toMap();
         parameters.remove("uid");
         parameters.remove("id");
-        Number newId = insertLayer.execute(parameters);
-        layer.setId(newId.longValue());
-        layer.setUid(newId.longValue() + "");
+        insertLayer.execute(parameters);
+        //layer.name is unique, fetch newId
+        Layer newLayer = getLayerByName(layer.getName(), false);
+        layer.setId(newLayer.getId());
+        layer.setUid(newLayer.getId() + "");
         //updateLayer(layer);
     }
 
@@ -231,6 +257,11 @@ public class LayerDAOImpl implements LayerDAO {
         logger.info("Updating layer metadata for " + layer.getName());
         String sql = "update layers set citation_date=:citation_date, classification1=:classification1, classification2=:classification2, datalang=:datalang, description=:description, displayname=:displayname, displaypath=:displaypath, enabled=:enabled, domain=:domain, environmentalvaluemax=:environmentalvaluemax, environmentalvaluemin=:environmentalvaluemin, environmentalvalueunits=:environmentalvalueunits, extents=:extents, keywords=:keywords, licence_link=:licence_link, licence_notes=:licence_notes, licence_level=:licence_level, lookuptablepath=:lookuptablepath, maxlatitude=:maxlatitude, maxlongitude=:maxlongitude, mddatest=:mddatest, mdhrlv=:mdhrlv, metadatapath=:metadatapath, minlatitude=:minlatitude, minlongitude=:minlongitude, name=:name, notes=:notes, path=:path, path_1km=:path_1km, path_250m=:path_250m, path_orig=:path_orig, pid=:pid, respparty_role=:respparty_role, scale=:scale, source=:source, source_link=:source_link, type=:type, uid=:uid where id=:id";
         jdbcTemplate.update(sql, layer.toMap());
+    }
+
+    @Override
+    public Connection getConnection() {
+        return connection;
     }
 
     private void updateDisplayPaths(List<Layer> layers) {

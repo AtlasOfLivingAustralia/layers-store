@@ -15,24 +15,6 @@
 package org.ala.layers.dao;
 
 import au.com.bytecode.opencsv.CSVReader;
-
-import java.io.File;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.net.URL;
-import java.net.URLConnection;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Vector;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.zip.GZIPInputStream;
-import javax.annotation.Resource;
-
 import org.ala.layers.dto.GridClass;
 import org.ala.layers.dto.IntersectionFile;
 import org.ala.layers.dto.Layer;
@@ -47,6 +29,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
+import java.io.*;
+import java.net.URL;
+import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Vector;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.zip.GZIPInputStream;
+
 /**
  * Implementation of the sampling.
  *
@@ -59,18 +54,16 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
      * log4j logger
      */
     private static final Logger logger = Logger.getLogger(LayerIntersectDAOImpl.class);
-    @Resource(name = "fieldDao")
-    private FieldDAO fieldDao;
-    @Resource(name = "layerDao")
-    private LayerDAO layerDao;
-
-    @Autowired
-    private ApplicationContext appcontext;
-
     IntersectConfig intersectConfig;
     LinkedBlockingQueue<GridCacheReader> gridReaders = null;
     int gridGroupCount = 0;
     Object initLock = new Object();
+    @Resource(name = "fieldDao")
+    private FieldDAO fieldDao;
+    @Resource(name = "layerDao")
+    private LayerDAO layerDao;
+    @Autowired
+    private ApplicationContext appcontext;
 
     @Override
     public String reload() {

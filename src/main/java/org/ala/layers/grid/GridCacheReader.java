@@ -14,21 +14,9 @@
  ***************************************************************************/
 package org.ala.layers.grid;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Random;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * @author Adam
@@ -55,14 +43,6 @@ public class GridCacheReader {
                 }
             }
         }
-    }
-
-    public HashMap<String, Float> sample(double longitude, double latitude) throws IOException {
-        HashMap<String, Float> map = new HashMap<String, Float>();
-        for (GridGroup g : groups) {
-            map.putAll(g.sample(longitude, latitude));
-        }
-        return map;
     }
 
     public static void main(String[] args) {
@@ -181,6 +161,14 @@ public class GridCacheReader {
         } catch (Exception e) {
         }
         return points;
+    }
+
+    public HashMap<String, Float> sample(double longitude, double latitude) throws IOException {
+        HashMap<String, Float> map = new HashMap<String, Float>();
+        for (GridGroup g : groups) {
+            map.putAll(g.sample(longitude, latitude));
+        }
+        return map;
     }
 
     public ArrayList<String> getFileNames() {

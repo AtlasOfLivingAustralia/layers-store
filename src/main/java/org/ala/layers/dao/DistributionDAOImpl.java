@@ -14,14 +14,6 @@
  ***************************************************************************/
 package org.ala.layers.dao;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.annotation.Resource;
-import javax.sql.DataSource;
-
 import org.ala.layers.dto.Distribution;
 import org.ala.layers.dto.Facet;
 import org.ala.layers.intersect.IntersectConfig;
@@ -33,6 +25,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.annotation.Resource;
+import javax.sql.DataSource;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 /**
  * @author ajay
  */
@@ -43,12 +42,12 @@ public class DistributionDAOImpl implements DistributionDAO {
      * log4j logger
      */
     private static final Logger logger = Logger.getLogger(DistributionDAOImpl.class);
-    private SimpleJdbcTemplate jdbcTemplate;
-    private String viewName = "distributions";
     private final String SELECT_CLAUSE = "select gid,spcode,scientific,authority_,common_nam,\"family\",genus_name,specific_n,min_depth,"
             + "max_depth,pelagic_fl,coastal_fl,desmersal_fl,estuarine_fl,family_lsid,genus_lsid,caab_species_number,"
             + "caab_family_number,group_name,metadata_u,wmsurl,lsid,type,area_name,pid,checklist_name,area_km,notes,"
             + "geom_idx,image_quality,data_resource_uid";
+    private SimpleJdbcTemplate jdbcTemplate;
+    private String viewName = "distributions";
 
     public Distribution findDistributionByLSIDOrName(String lsidOrName) {
         String sql = SELECT_CLAUSE + " from " + viewName + " WHERE " +

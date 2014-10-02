@@ -14,10 +14,10 @@
  ***************************************************************************/
 package org.ala.layers.dao;
 
-import java.util.List;
-
 import org.ala.layers.dto.AnalysisLayer;
 import org.ala.layers.intersect.SimpleRegion;
+
+import java.util.List;
 
 /**
  * DAO for the Field object

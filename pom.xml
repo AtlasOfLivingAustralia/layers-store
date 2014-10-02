@@ -213,6 +213,11 @@
             <artifactId>gt-geojson</artifactId>
             <version>${geotools.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.geotools</groupId>
+            <artifactId>gt-imageio-ext-gdal</artifactId>
+            <version>${geotools.version}</version>
+        </dependency>
 
 		<!-- cglib - required for transaction support -->
 		<dependency>

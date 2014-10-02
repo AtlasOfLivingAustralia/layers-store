@@ -32,27 +32,74 @@ import java.util.logging.Logger;
  */
 public class PidGenerator {
 
+    private static String ANDS_APPID_TEST = "2c6ed180e966774eee8409f7152b0cc885d07f71";
+    private static String ANDS_AUTH_DOMAIN_TEST = "csiro.au";
+    private static String ANDS_IDENTIFIER_TEST = "ALA";
+    private static String ANDS_HOST_TEST = "test.ands.org.au";
+    private static String ANDS_APPID_PROD = "2c6ed180e966774eee8409f7152b0cc885d07f71";
+    private static String ANDS_AUTH_DOMAIN_PROD = "csiro.au";
+    private static String ANDS_IDENTIFIER_PROD = "ALA";
+    private static String ANDS_HOST_PROD = "services.ands.org.au";
+    private static boolean isProduction = false;
     private String DB_DRIVER_DEV = "org.postgresql.Driver";
     private String DB_URL_DEV = "jdbc:postgresql://ala-devmaps-db.vm.csiro.au:5432/layersdb";
     private String DB_USERNAME_DEV = "postgres";
     private String DB_PASSWORD_DEV = "postgres";
-
     private String DB_DRIVER_PROD = "org.postgresql.Driver";
     private String DB_URL_PROD = "jdbc:postgresql://ala-maps-db.vic.csiro.au:5432/layersdb";
     private String DB_USERNAME_PROD = "postgres";
     private String DB_PASSWORD_PROD = "postgres";
 
-    private static String ANDS_APPID_TEST = "2c6ed180e966774eee8409f7152b0cc885d07f71";
-    private static String ANDS_AUTH_DOMAIN_TEST = "csiro.au";
-    private static String ANDS_IDENTIFIER_TEST = "ALA";
-    private static String ANDS_HOST_TEST = "test.ands.org.au";
+    public static String mintLayerPid(HandleType handleType, String value) {
+        try {
+            String ands_appid = ANDS_APPID_TEST;
+            String ands_auth = ANDS_AUTH_DOMAIN_TEST;
+            String ands_ident = ANDS_IDENTIFIER_TEST;
+            String ands_host = ANDS_HOST_TEST;
+            if (isProduction) {
+                ands_appid = ANDS_APPID_PROD;
+                ands_auth = ANDS_AUTH_DOMAIN_PROD;
+                ands_ident = ANDS_IDENTIFIER_PROD;
+                ands_host = ANDS_HOST_PROD;
+            }
 
-    private static String ANDS_APPID_PROD = "2c6ed180e966774eee8409f7152b0cc885d07f71";
-    private static String ANDS_AUTH_DOMAIN_PROD = "csiro.au";
-    private static String ANDS_IDENTIFIER_PROD = "ALA";
-    private static String ANDS_HOST_PROD = "services.ands.org.au";
+            AndsPidIdentity andsid = new AndsPidIdentity();
+            andsid.setAppId(ands_appid);
+            andsid.setAuthDomain(ands_auth);
+            andsid.setIdentifier(ands_ident);
 
-    private static boolean isProduction = false;
+            AndsPidClient ands = new AndsPidClient();
+            ands.setPidServiceHost(ands_host);
+            ands.setPidServicePath("/pids");
+            ands.setPidServicePort(8443);
+            ands.setRequestorIdentity(andsid);
+            AndsPidResponse mintHandleFormattedResponse = ands.mintHandleFormattedResponse(handleType, value);
+
+            //System.out.println("handle creation status: " + mintHandleFormattedResponse.isSuccess());
+            //System.out.println(mintHandleFormattedResponse.getXmlResponse());
+
+            return mintHandleFormattedResponse.getHandle();
+
+        } catch (Exception e) {
+            System.out.println("Unable to generate PID");
+            e.printStackTrace(System.out);
+        }
+
+        return null;
+
+    }
+
+    public static void main(String[] args) {
+
+        if (args.length > 0) {
+            if (args[0].trim().toLowerCase().equals("production")) {
+                isProduction = true;
+            }
+        }
+
+        PidGenerator pg = new PidGenerator();
+        pg.startGeneration();
+    }
 
     private Connection getConnection() {
         Connection conn = null;
@@ -105,45 +152,6 @@ public class PidGenerator {
 
     }
 
-    public static String mintLayerPid(HandleType handleType, String value) {
-        try {
-            String ands_appid = ANDS_APPID_TEST;
-            String ands_auth = ANDS_AUTH_DOMAIN_TEST;
-            String ands_ident = ANDS_IDENTIFIER_TEST;
-            String ands_host = ANDS_HOST_TEST;
-            if (isProduction) {
-                ands_appid = ANDS_APPID_PROD;
-                ands_auth = ANDS_AUTH_DOMAIN_PROD;
-                ands_ident = ANDS_IDENTIFIER_PROD;
-                ands_host = ANDS_HOST_PROD;
-            }
-
-            AndsPidIdentity andsid = new AndsPidIdentity();
-            andsid.setAppId(ands_appid);
-            andsid.setAuthDomain(ands_auth);
-            andsid.setIdentifier(ands_ident);
-
-            AndsPidClient ands = new AndsPidClient();
-            ands.setPidServiceHost(ands_host);
-            ands.setPidServicePath("/pids");
-            ands.setPidServicePort(8443);
-            ands.setRequestorIdentity(andsid);
-            AndsPidResponse mintHandleFormattedResponse = ands.mintHandleFormattedResponse(handleType, value);
-
-            //System.out.println("handle creation status: " + mintHandleFormattedResponse.isSuccess());
-            //System.out.println(mintHandleFormattedResponse.getXmlResponse());
-
-            return mintHandleFormattedResponse.getHandle();
-
-        } catch (Exception e) {
-            System.out.println("Unable to generate PID");
-            e.printStackTrace(System.out);
-        }
-
-        return null;
-
-    }
-
     private void startGeneration() {
         System.out.println("starting PID generation...");
 
@@ -186,18 +194,6 @@ public class PidGenerator {
 
 
         System.out.println("Completed PID threading");
-    }
-
-    public static void main(String[] args) {
-
-        if (args.length > 0) {
-            if (args[0].trim().toLowerCase().equals("production")) {
-                isProduction = true;
-            }
-        }
-
-        PidGenerator pg = new PidGenerator();
-        pg.startGeneration();
     }
 }
 
