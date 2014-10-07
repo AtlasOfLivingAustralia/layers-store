@@ -77,14 +77,20 @@
             		</plugin>
 		</plugins>
 	</build>
-	<distributionManagement>
-		<downloadUrl>https://maven.ala.org.au/repository</downloadUrl>
-		<repository>
-			<uniqueVersion>false</uniqueVersion>
-			<id>ala-repository</id>
-			<url>${ala.repository.url}</url>
-		</repository>
-	</distributionManagement>
+
+        <distributionManagement>
+                <repository>
+                        <id>ala-repo</id>
+                        <name>Internal Releases</name>
+                        <url>http://ala-wonder.it.csiro.au/nexus/content/repositories/releases/</url>
+                </repository>
+                <snapshotRepository>
+                        <id>ala-repo</id>
+                        <name>Internal Releases</name>
+                        <url>http://ala-wonder.it.csiro.au/nexus/content/repositories/snapshots/</url>
+                </snapshotRepository>
+        </distributionManagement>
+
 	<dependencies>
 
 		<!-- Spring Framework -->
