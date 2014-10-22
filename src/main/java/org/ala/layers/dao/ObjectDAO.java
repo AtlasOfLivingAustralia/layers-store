@@ -82,6 +82,12 @@ public interface ObjectDAO {
 
     public List<Map<String, Object>> pointsOfInterestObjectIntersect(String objectPid);
 
+    public int getPointsOfInterestWithinRadiusCount(double latitude, double longitude, double radiusKm);
+
+    public int pointsOfInterestGeometryIntersectCount(String wkt);
+
+    public int pointsOfInterestObjectIntersectCount(String objectPid);
+
     @Async
     public void updateObjectNames();
 }

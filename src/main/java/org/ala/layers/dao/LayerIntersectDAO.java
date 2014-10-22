@@ -118,4 +118,18 @@ public interface LayerIntersectDAO {
      * @return full result of sampling returned as Map with key as field id and value String or Float
      */
     public HashMap<String, String> sampling(double longitude, double latitude);
+
+    /**
+     * Sample across all avaliable layers
+     *
+     * Use the appropriate grid cache
+     * 0 = none
+     * 1 = GridCache
+     * 2 = GridCache2
+     *
+     * @param points
+     * @param gridcacheToUse
+     * @return
+     */
+    HashMap<String,String> [] sampling(String points, int gridcacheToUse);
 }

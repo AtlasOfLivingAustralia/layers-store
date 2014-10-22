@@ -422,7 +422,7 @@ public class Records {
             if (start == 0) {
                 start = row - 1; //offset for header
             } else {
-                start = row;
+                start = row - 1;
             }
 
             csv.close();

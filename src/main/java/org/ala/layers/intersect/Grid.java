@@ -37,7 +37,7 @@ import java.util.Comparator;
  */
 public class Grid { //  implements Serializable
 
-    final static int maxGridsLoaded = 1;
+    public static int maxGridsLoaded = 1;  //default
     static ArrayList<Grid> all_grids = new ArrayList<Grid>();
     final double noDataValueDefault = -3.4E38;
     public Boolean byteorderLSB = true; // true if file is LSB (Intel)

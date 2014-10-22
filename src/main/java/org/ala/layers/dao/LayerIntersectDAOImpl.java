@@ -15,15 +15,14 @@
 package org.ala.layers.dao;
 
 import au.com.bytecode.opencsv.CSVReader;
-import org.ala.layers.dto.GridClass;
-import org.ala.layers.dto.IntersectionFile;
-import org.ala.layers.dto.Layer;
-import org.ala.layers.dto.Objects;
+import net.sf.json.JSONObject;
+import org.ala.layers.dto.*;
 import org.ala.layers.grid.GridCacheReader;
 import org.ala.layers.intersect.Grid;
 import org.ala.layers.intersect.IntersectConfig;
 import org.ala.layers.intersect.SamplingThread;
 import org.ala.layers.intersect.SimpleShapeFile;
+import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -31,6 +30,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.io.*;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
@@ -41,6 +41,8 @@ import java.util.Vector;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 /**
  * Implementation of the sampling.
@@ -418,6 +420,87 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
     }
 
     @Override
+    public HashMap[] sampling(String pointsString, int gridcacheToUse) {
+        init();
+
+        //parse points
+        String[] pointsArray = pointsString.split(",");
+        double[][] points = new double[pointsArray.length / 2][2];
+        for (int i = 0; i < pointsArray.length; i += 2) {
+            try {
+                points[i / 2][1] = Double.parseDouble(pointsArray[i]);
+                points[i / 2][0] = Double.parseDouble(pointsArray[i + 1]);
+            } catch (Exception e) {
+                points[i / 2][1] = Double.NaN;
+                points[i / 2][0] = Double.NaN;
+            }
+        }
+
+        //output structure
+        HashMap[] output = new HashMap[points.length];
+        for (int i = 0; i < points.length; i++) {
+            output[i] = new HashMap();
+        }
+
+        if (0 == gridcacheToUse) {
+            String fids = "";
+            for(Field f : fieldDao.getFields()) {
+                if (f.isEnabled() && f.isIndb()) {
+                    if (!fids.isEmpty()) {
+                        fids += ",";
+                    }
+                    fids += f.getId();
+                }
+            }
+            String [] fidsSplit = fids.split(",");
+            ArrayList<String> sample = sampling(fidsSplit, points);
+            for(int i=0;i<sample.size();i++) {
+                String [] column = sample.get(i).split("\n");
+                for(int j=0;j<column.length;j++) {
+                    output[j].put(fidsSplit[i],column[j]);
+                }
+            }
+
+        } else if (1 == gridcacheToUse) {
+
+            //contextual intersections
+            if (getConfig().getShapeFileCache() != null) {
+                HashMap<String, SimpleShapeFile> ssfs = getConfig().getShapeFileCache().getAll();
+                for (Entry<String, SimpleShapeFile> entry : ssfs.entrySet()) {
+
+                    for (int i = 0; i < points.length; i++) {
+                        output[i].put(entry.getKey(), entry.getValue().intersect(points[i][0], points[i][1]));
+                    }
+                }
+            }
+
+            //environmental intersections
+            if (gridReaders != null) {
+                GridCacheReader gcr = null;
+
+                try {
+                    gcr = gridReaders.take();
+                    for (int i = 0; i < points.length; i++) {
+                        output[i].putAll(gcr.sample(points[i][0], points[i][1]));
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    if (gcr != null) {
+                        try {
+                            gridReaders.put(gcr);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
+        }
+
+        return output;
+    }
+
+    @Override
     public ArrayList<String> sampling(String fieldIds, String pointsString) {
         init();
 
@@ -557,13 +640,42 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
                 if (i > 0) {
                     out.write(",");
                 }
-                out.write(String.valueOf(points[i][0]));
-                out.write(",");
                 out.write(String.valueOf(points[i][1]));
+                out.write(",");
+                 out.write(String.valueOf(points[i][0]));
             }
             out.close();
 
-            CSVReader csv = new CSVReader(new InputStreamReader(new GZIPInputStream(c.getInputStream())));
+            JSONObject jo = JSONObject.fromObject(IOUtils.toString(c.getInputStream()));
+
+            String checkUrl = jo.getString("statusUrl");
+
+            //check status
+            boolean notFinished = true;
+            String downloadUrl = null;
+            while (notFinished) {
+                //wait 5s before querying status
+                Thread.sleep(5000);
+
+                jo = JSONObject.fromObject(IOUtils.toString(new URI(checkUrl).toURL().openStream()));
+
+                if (jo.containsKey("error")) {
+                    notFinished = false;
+                } else if (jo.containsKey("status")) {
+                    String status = jo.getString("status");
+
+                    if ("finished".equals(status)) {
+                        downloadUrl = jo.getString("downloadUrl");
+                        notFinished = false;
+                    } else if ("cancelled".equals(status) || "error".equals(status)) {
+                        notFinished = false;
+                    }
+                }
+            }
+
+            ZipInputStream zis = new ZipInputStream((new URI(downloadUrl).toURL().openStream()));
+            ZipEntry ze = zis.getNextEntry();
+            CSVReader csv = new CSVReader(new InputStreamReader(zis));
 
             long mid = System.currentTimeMillis();
 
@@ -585,6 +697,7 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
                 row++;
             }
             csv.close();
+            zis.close();
 
             output = new ArrayList<String>();
             for (int i = 0; i < tmpOutput.size(); i++) {

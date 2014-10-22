@@ -816,4 +816,24 @@ public class ObjectDAOImpl implements ObjectDAO {
         return l;
     }
 
+    @Override
+    public int getPointsOfInterestWithinRadiusCount(double latitude, double longitude, double radiusKm) {
+        String sql = MessageFormat
+                .format("SELECT count(*) from points_of_interest WHERE ST_DWithin(ST_GeographyFromText(''POINT({0} {1})''), geography(the_geom), ?)",
+                        longitude, latitude);
+        return jdbcTemplate.queryForInt(sql, radiusKm * 1000);
+    }
+
+    @Override
+    public int pointsOfInterestGeometryIntersectCount(String wkt) {
+        String sql = "SELECT count(*) from points_of_interest WHERE ST_Intersects(ST_GeomFromText(?, 4326), the_geom)";
+        return jdbcTemplate.queryForInt(sql, wkt);
+    }
+
+    @Override
+    public int pointsOfInterestObjectIntersectCount(String objectPid) {
+        String sql = "SELECT count(*) from points_of_interest WHERE ST_Intersects((SELECT the_geom FROM objects where pid = ?), the_geom)";
+        return jdbcTemplate.queryForInt(sql, objectPid);
+    }
+
 }

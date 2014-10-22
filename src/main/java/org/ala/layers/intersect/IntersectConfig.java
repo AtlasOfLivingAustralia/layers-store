@@ -24,6 +24,7 @@ import org.ala.layers.dto.IntersectionFile;
 import org.ala.layers.dto.Layer;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.methods.GetMethod;
+import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
@@ -40,6 +41,8 @@ import java.util.Map.Entry;
  * @author Adam
  */
 public class IntersectConfig {
+
+    private static final Logger LOGGER = Logger.getLogger(IntersectConfig.class);
 
     public static final String GEOSERVER_URL_PLACEHOLDER = "<COMMON_GEOSERVER_URL>";
     public static final String GEONETWORK_URL_PLACEHOLDER = "<COMMON_GEONETWORK_URL>";
@@ -66,6 +69,7 @@ public class IntersectConfig {
     static final String GEOSERVER_USERNAME = "GEOSERVER_USERNAME";
     static final String GEOSERVER_PASSWORD = "GEOSERVER_PASSWORD";
     static final String SHP2PGSQL_PATH = "SHP2PGSQL_PATH";
+    static final String GRIDS_TO_CACHE = "GRIDS_TO_CACHE";
     static final String LAYER_PROPERTIES = "layer.properties";
     /**
      * log4j logger
@@ -151,6 +155,17 @@ public class IntersectConfig {
         spatialPortalAppName = getProperty(SPATIAL_PORTAL_APP_NAME, properties, null);
 
         biocacheServiceUrl = getProperty(BIOCACHE_SERVICE_URL, properties, null);
+
+        String gridsToCache = getProperty(GRIDS_TO_CACHE, properties, "1");
+        if ("all".equals(gridsToCache)) {
+            Grid.maxGridsLoaded = -1;
+        } else {
+            try {
+                Grid.maxGridsLoaded = Integer.parseInt(gridsToCache);
+            } catch (Exception e) {
+                LOGGER.error("failed to parse 'GRIDS_TO_CACHE' property as Integer: " + gridsToCache);
+            }
+        }
 
         shp2pgsqlPath = getProperty(SHP2PGSQL_PATH, properties, null);
     }
@@ -369,16 +384,44 @@ public class IntersectConfig {
         return biocacheServiceUrl;
     }
 
+    public static void setMaxGridsLoaded(int maxGridsLoaded) {
+        Grid.maxGridsLoaded = maxGridsLoaded;
+    }
+
+    public static int getMaxGridsLoaded() {
+        return Grid.maxGridsLoaded;
+    }
+
     public void load() {
         lastReload = System.currentTimeMillis();
 
         try {
             updateIntersectionFiles();
             updateShapeFileCache();
+
+            System.out.println("**** grids to cache ***** = " + Grid.maxGridsLoaded);
+            if (Grid.maxGridsLoaded <= 0) {
+                seedGridFileCache();
+            }
         } catch (Exception e) {
             //if it fails, set reload wait low
             logger.error("load failed, retry in 30s", e);
             configReloadWait = 30000;
+        }
+    }
+
+
+
+    private void seedGridFileCache() {
+        for (String s : intersectionFiles.keySet()) {
+            if (s.startsWith("el")) {
+                System.out.println("try load grid: " + s);
+                try {
+                    Grid.getGrid(intersectionFiles.get(s).getFilePath());
+                } catch (Exception e) {
+                    System.out.println("error with grid: " + s);
+                }
+            }
         }
     }
 
@@ -402,6 +445,22 @@ public class IntersectConfig {
             }
         }
         return file;
+    }
+
+    public static void main(String [] args) {
+        StringBuilder sb = new StringBuilder();
+
+        for(int i=0;i<100000;i++) {
+            if ( i > 0) {
+                sb.append(',');
+            }
+            sb.append(Math.random() * (-12+44) -44).append(',').append(Math.random() * (154-112) + 112);
+        }
+        try {
+            FileUtils.writeStringToFile(new File("/data/p.txt"),sb.toString());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void updateIntersectionFiles() throws MalformedURLException, IOException {
@@ -558,8 +617,9 @@ public class IntersectConfig {
             columns = new String[countCL];
             fid = new String[countCL];
             int i = 0;
-            for (IntersectionFile f : intersectionFiles.values()) {
-                if (f.getFieldId().startsWith("cl")) {
+            for (String s : intersectionFiles.keySet()) {
+                if (s.startsWith("cl")) {
+                    IntersectionFile f = intersectionFiles.get(s);
                     layers[i] = f.getFilePath();
                     columns[i] = f.getShapeFields();
                     fid[i] = f.getFieldId();
