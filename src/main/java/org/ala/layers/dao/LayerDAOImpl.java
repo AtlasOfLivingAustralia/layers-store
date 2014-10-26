@@ -24,12 +24,10 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.sql.DataSource;
+import java.io.FileReader;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * @author ajay
@@ -44,6 +42,7 @@ public class LayerDAOImpl implements LayerDAO {
     private SimpleJdbcTemplate jdbcTemplate;
     private SimpleJdbcInsert insertLayer;
     private Connection connection;
+    private DataSource dataSource;
 
     @Resource(name = "dataSource")
     public void setDataSource(DataSource dataSource) {
@@ -54,13 +53,9 @@ public class LayerDAOImpl implements LayerDAO {
         } else {
             logger.info("dataSource is null");
         }
+        this.dataSource = dataSource;
         this.jdbcTemplate = new SimpleJdbcTemplate(dataSource);
         this.insertLayer = new SimpleJdbcInsert(dataSource).withTableName("layers").usingGeneratedKeyColumns("id");
-        try {
-            this.connection = dataSource.getConnection();
-        } catch (SQLException e) {
-            logger.error("failed to get datasource connection", e);
-        }
     }
 
     @Override
@@ -261,6 +256,13 @@ public class LayerDAOImpl implements LayerDAO {
 
     @Override
     public Connection getConnection() {
+        if (connection == null) {
+            try {
+                connection = dataSource.getConnection();
+            } catch (Exception e) {
+                logger.error("failed to get datasource connection", e);
+            }
+        }
         return connection;
     }
 
