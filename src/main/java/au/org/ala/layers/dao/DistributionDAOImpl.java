@@ -45,7 +45,7 @@ public class DistributionDAOImpl implements DistributionDAO {
     private final String SELECT_CLAUSE = "select gid,spcode,scientific,authority_,common_nam,\"family\",genus_name,specific_n,min_depth,"
             + "max_depth,pelagic_fl,coastal_fl,desmersal_fl,estuarine_fl,family_lsid,genus_lsid,caab_species_number,"
             + "caab_family_number,group_name,metadata_u,wmsurl,lsid,type,area_name,pid,checklist_name,area_km,notes,"
-            + "geom_idx,image_quality,data_resource_uid";
+            + "geom_idx,image_quality,data_resource_uid,endemic";
     private SimpleJdbcTemplate jdbcTemplate;
     private String viewName = "distributions";
 
