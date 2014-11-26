@@ -8,7 +8,7 @@
                            http://www.springframework.org/schema/context/spring-context.xsd">
 
     <context:annotation-config />
-    <context:component-scan base-package="org.ala.layers" />
+    <context:component-scan base-package="au.org.ala.layers"/>
 
     <!-- Imports the configurations of the different infrastructure systems of the application -->
     <import resource="file:/data/layers-store/config/layers-store-data-config.xml" />

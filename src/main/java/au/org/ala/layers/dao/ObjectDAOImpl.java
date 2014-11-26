@@ -161,62 +161,95 @@ public class ObjectDAOImpl implements ObjectDAO {
             objects = new ArrayList<Objects>();
             IntersectionFile f = layerIntersectDao.getConfig().getIntersectionFile(id);
             if (f != null && f.getClasses() != null) {
+                //shape position
+                int pos = 0;
+
                 for (Entry<Integer, GridClass> c : f.getClasses().entrySet()) {
                     if (f.getType().equals("a")) { // class pid
-                        Objects o = new Objects();
-                        o.setPid(f.getLayerPid() + ":" + c.getKey());
-                        o.setId(f.getLayerPid() + ":" + c.getKey());
-                        o.setName(c.getValue().getName());
-                        o.setFid(f.getFieldId());
-                        o.setFieldname(f.getFieldName());
-                        o.setBbox(c.getValue().getBbox());
-                        o.setArea_km(c.getValue().getArea_km());
-                        o.setWmsurl(getGridClassWms(f.getLayerName(), c.getValue()));
-                        objects.add(o);
+                        if (pageSize == -1 || (pos >= start && pos - start < pageSize)) {
+                            Objects o = new Objects();
+                            o.setPid(f.getLayerPid() + ":" + c.getKey());
+                            o.setId(f.getLayerPid() + ":" + c.getKey());
+                            o.setName(c.getValue().getName());
+                            o.setFid(f.getFieldId());
+                            o.setFieldname(f.getFieldName());
+                            o.setBbox(c.getValue().getBbox());
+                            o.setArea_km(c.getValue().getArea_km());
+                            o.setWmsurl(getGridClassWms(f.getLayerName(), c.getValue()));
+                            objects.add(o);
+                        }
+                        pos++;
+
+                        if (pageSize != -1 && pos >= start + pageSize) {
+                            break;
+                        }
                     } else { // polygon pid
                         try {
                             RandomAccessFile raf = new RandomAccessFile(f.getFilePath() + File.separator + c.getKey() + ".wkt.index.dat", "r");
-                            long len = raf.length() / (4 + 4 + 4 * 4 + 4); // group
-                            // number,
-                            // character
-                            // offset,
-                            // minx,
-                            // miny,
-                            // maxx,
-                            // maxy,
-                            // area
-                            // sq
-                            // km
-                            for (int i = 0; i < len; i++) {
-                                int n = raf.readInt();
-                                /* int charoffset = */
-                                raf.readInt();
-                                float minx = raf.readFloat();
-                                float miny = raf.readFloat();
-                                float maxx = raf.readFloat();
-                                float maxy = raf.readFloat();
-                                float area = raf.readFloat();
+                            long itemSize = (4 + 4 + 4 * 4 + 4);
+                            long len = raf.length() / itemSize; // group
 
-                                if (pageSize == -1 || (i >= start - 1 && i - start + 1 < pageSize)) {
-                                    Objects o = new Objects();
-                                    o.setPid(f.getLayerPid() + ":" + c.getKey() + ":" + n);
-                                    o.setId(f.getLayerPid() + ":" + c.getKey() + ":" + n);
-                                    o.setName(c.getValue().getName());
-                                    o.setFid(f.getFieldId());
-                                    o.setFieldname(f.getFieldName());
+                            if (pageSize != -1 && pos + len < start) {
+                                pos += len;
+                            } else {
+                                // number,
+                                // character
+                                // offset,
+                                // minx,
+                                // miny,
+                                // maxx,
+                                // maxy,
+                                // area
+                                // sq
+                                // km
+                                int i = 0;
+                                if (pageSize != -1 && pos < start) {
+                                    //the first object requested is in this file, seek to the start
+                                    i = start - pos;
+                                    pos += i;
+                                    raf.seek(i * itemSize);
+                                }
+                                for (; i < len; i++) {
+                                    int n = raf.readInt();
+                                    /* int charoffset = */
+                                    raf.readInt();
+                                    float minx = raf.readFloat();
+                                    float miny = raf.readFloat();
+                                    float maxx = raf.readFloat();
+                                    float maxy = raf.readFloat();
+                                    float area = raf.readFloat();
 
-                                    o.setBbox("POLYGON((" + minx + " " + miny + "," + minx + " " + maxy + "," + +maxx + " " + maxy + "," + +maxx + " " + miny + "," + +minx + " " + miny + "))");
-                                    o.setArea_km(1.0 * area);
+                                    if (pageSize == -1 || (pos >= start && pos - start < pageSize)) {
+                                        Objects o = new Objects();
+                                        o.setPid(f.getLayerPid() + ":" + c.getKey() + ":" + n);
+                                        o.setId(f.getLayerPid() + ":" + c.getKey() + ":" + n);
+                                        o.setName(c.getValue().getName());
+                                        o.setFid(f.getFieldId());
+                                        o.setFieldname(f.getFieldName());
 
-                                    o.setWmsurl(getGridPolygonWms(f.getLayerName(), n));
+                                        o.setBbox("POLYGON((" + minx + " " + miny + "," + minx + " " + maxy + "," + +maxx + " " + maxy + "," + +maxx + " " + miny + "," + +minx + " " + miny + "))");
+                                        o.setArea_km(1.0 * area);
 
-                                    objects.add(o);
+                                        o.setWmsurl(getGridPolygonWms(f.getLayerName(), n));
+
+                                        objects.add(o);
+                                    }
+
+                                    pos++;
+
+                                    if (pageSize != -1 && pos >= start + pageSize) {
+                                        break;
+                                    }
                                 }
                             }
                             raf.close();
 
                         } catch (Exception e) {
                             e.printStackTrace();
+                        }
+
+                        if (pageSize != -1 && pos >= start + pageSize) {
+                            break;
                         }
                     }
                 }

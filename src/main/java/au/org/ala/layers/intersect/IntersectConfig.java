@@ -493,7 +493,7 @@ public class IntersectConfig {
                         layers.getJSONObject(i).getString("id"));
             }
 
-            JSONArray fields = JSONArray.fromObject(getUrl(layerIndexUrl + "/fieldsdb"));
+            JSONArray fields = JSONArray.fromObject(getUrl(layerIndexUrl + "/fields"));
             for (int i = 0; i < fields.size(); i++) {
                 JSONObject jo = fields.getJSONObject(i);
                 String spid = jo.getString("spid");
@@ -504,38 +504,21 @@ public class IntersectConfig {
                 HashMap<Integer, GridClass> gridClasses =
                         getGridClasses(layerFilesPath + layerPathOrig.get(spid), layerType.get(spid));
 
-                intersectionFiles.put(jo.getString("id"),
-                        new IntersectionFile(jo.getString("name"),
-                                layerFilesPath + layerPathOrig.get(spid),
-                                (jo.containsKey("sname") ? jo.getString("sname") : null),
-                                layerName.get(spid),
-                                jo.getString("id"),
-                                jo.getString("name"),
-                                layerPid.get(spid),
-                                jo.getString("type"),
-                                gridClasses));
+                IntersectionFile intersectionFile = new IntersectionFile(jo.getString("name"),
+                        layerFilesPath + layerPathOrig.get(spid),
+                        (jo.containsKey("sname") ? jo.getString("sname") : null),
+                        layerName.get(jo.getString("spid")),
+                        jo.getString("id"),
+                        jo.getString("name"),
+                        layerPid.get(spid),
+                        jo.getString("type"),
+                        gridClasses);
+
+                intersectionFiles.put(jo.getString("id"), intersectionFile);
                 //also register it under the layer name
-                intersectionFiles.put(layerName.get(spid),
-                        new IntersectionFile(jo.getString("name"),
-                                layerFilesPath + layerPathOrig.get(spid),
-                                (jo.containsKey("sname") ? jo.getString("sname") : null),
-                                layerName.get(jo.getString("spid")),
-                                jo.getString("id"),
-                                jo.getString("name"),
-                                layerPid.get(spid),
-                                jo.getString("type"),
-                                gridClasses));
+                intersectionFiles.put(layerName.get(spid), intersectionFile);
                 //also register it under the layer pid
-                intersectionFiles.put(layerPid.get(spid),
-                        new IntersectionFile(jo.getString("name"),
-                                layerFilesPath + layerPathOrig.get(spid),
-                                (jo.containsKey("sname") ? jo.getString("sname") : null),
-                                layerName.get(jo.getString("spid")),
-                                jo.getString("id"),
-                                jo.getString("name"),
-                                layerPid.get(spid),
-                                jo.getString("type"),
-                                gridClasses));
+                intersectionFiles.put(layerPid.get(spid), intersectionFile);
                 classGrids.put(jo.getString("id"), gridClasses);
             }
         } else {
@@ -547,38 +530,26 @@ public class IntersectConfig {
                         continue;
                     }
                     HashMap<Integer, GridClass> gridClasses = getGridClasses(getLayerFilesPath() + layer.getPath_orig(), layer.getType());
-                    intersectionFiles.put(f.getId(),
-                            new IntersectionFile(f.getName(),
-                                    getLayerFilesPath() + layer.getPath_orig(),
-                                    f.getSname(),
-                                    layer.getName(),
-                                    f.getId(),
-                                    f.getName(),
-                                    String.valueOf(layer.getId()),
-                                    f.getType(),
-                                    gridClasses));
+                    IntersectionFile intersectionFile = new IntersectionFile(f.getName(),
+                            getLayerFilesPath() + layer.getPath_orig(),
+                            f.getSname(),
+                            layer.getName(),
+                            f.getId(),
+                            f.getName(),
+                            String.valueOf(layer.getId()),
+                            f.getType(),
+                            gridClasses);
+
+                    intersectionFiles.put(f.getId(), intersectionFile);
                     //also register it under the layer name
-                    intersectionFiles.put(layer.getName(),
-                            new IntersectionFile(f.getName(),
-                                    getLayerFilesPath() + layer.getPath_orig(),
-                                    f.getSname(),
-                                    layer.getName(),
-                                    f.getId(),
-                                    f.getName(),
-                                    String.valueOf(layer.getId()),
-                                    f.getType(),
-                                    gridClasses));
+                    //- only if default layer not already added
+                    if (f.isDefaultlayer() || intersectionFiles.get(layer.getName()) == null) {
+                        intersectionFiles.put(layer.getName(), intersectionFile);
+                    }
                     //also register it under the layer pid
-                    intersectionFiles.put(String.valueOf(layer.getId()),
-                            new IntersectionFile(f.getName(),
-                                    getLayerFilesPath() + layer.getPath_orig(),
-                                    f.getSname(),
-                                    layer.getName(),
-                                    f.getId(),
-                                    f.getName(),
-                                    String.valueOf(layer.getId()),
-                                    f.getType(),
-                                    gridClasses));
+                    if (f.isDefaultlayer() || intersectionFiles.get(String.valueOf(layer.getId())) == null) {
+                        intersectionFiles.put(String.valueOf(layer.getId()), intersectionFile);
+                    }
                     classGrids.put(f.getId(), gridClasses);
                 }
             }
@@ -602,7 +573,7 @@ public class IntersectConfig {
     }
 
     public void updateShapeFileCache() {
-        if (preloadedShapeFiles == null) {
+        if (preloadedShapeFiles == null || preloadedShapeFiles.length() == 0) {
             return;
         }
 
@@ -634,9 +605,13 @@ public class IntersectConfig {
             }
         } else {
             for (int i = 0; i < fields.length; i++) {
-                layers[i] = getIntersectionFile(fields[i].trim()).getFilePath();
-                columns[i] = getIntersectionFile(fields[i].trim()).getShapeFields();
-                fid[i] = fields[i];
+                try {
+                    layers[i] = getIntersectionFile(fields[i].trim()).getFilePath();
+                    columns[i] = getIntersectionFile(fields[i].trim()).getShapeFields();
+                    fid[i] = fields[i];
+                } catch (Exception e) {
+                    logger.error("failed to load shapefile for field: " + fields[i], e);
+                }
             }
         }
 
