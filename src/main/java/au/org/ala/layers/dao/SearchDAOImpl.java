@@ -79,11 +79,12 @@ public class SearchDAOImpl implements SearchDAO {
                 maxPos = pos;
             }
         }
-        for (IntersectionFile f : layerIntersectDao.getConfig().getIntersectionFiles().values()) {
-            if ("a".equalsIgnoreCase(f.getType()) && f.getClasses() != null) {
+        for (Entry<String, IntersectionFile> e: layerIntersectDao.getConfig().getIntersectionFiles().entrySet()) {
+            IntersectionFile f = e.getValue();
+            if ("a".equalsIgnoreCase(f.getType()) && f.getClasses() != null && e.getKey().equals(f.getFieldId())) {
                 //search
                 for (Entry<Integer, GridClass> c : f.getClasses().entrySet()) {
-                    if ((pos = c.getValue().getName().toLowerCase().indexOf(criteria)) >= 0) {
+                    if((pos = c.getValue().getName().toLowerCase().indexOf(criteria)) >= 0) {
                         if (pos <= maxPos) {
                             search.add(SearchObject.create(
                                     f.getLayerPid() + ":" + c.getKey(),
