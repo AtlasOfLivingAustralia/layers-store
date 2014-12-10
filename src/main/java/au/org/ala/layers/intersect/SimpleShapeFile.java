@@ -587,24 +587,29 @@ class ShapeRecords extends Object implements Serializable {
 
             region = new ArrayList<ComplexRegion>();
             while (buffer.hasRemaining()) {
-                ShapeRecord shr = new ShapeRecord(buffer, shapetype);
+                ShapeRecord shr = new ShapeRecord(buffer, shapetype, region.size());
 
-                ComplexRegion sr = new ComplexRegion();
-                ArrayList<SimpleRegion> regions = new ArrayList();
+                if (shr != null && shr.shape != null) {
+                    ComplexRegion sr = new ComplexRegion();
+                    ArrayList<SimpleRegion> regions = new ArrayList();
 
-                /* add each polygon (list of points) belonging to
-                 * this shape record to the new ComplexRegion
-                 */
-                for (int j = 0; j < shr.getNumberOfParts(); j++) {
-                    SimpleRegion s = new SimpleRegion();
-                    s.setPolygon(shr.getPoints(j));
-                    //sr.addPolygon(s);
-                    regions.add(s);
+                    /* add each polygon (list of points) belonging to
+                     * this shape record to the new ComplexRegion
+                     */
+                    for (int j = 0; j < shr.getNumberOfParts(); j++) {
+                        SimpleRegion s = new SimpleRegion();
+                        s.setPolygon(shr.getPoints(j));
+                        //sr.addPolygon(s);
+                        regions.add(s);
+                    }
+
+                    sr.addSet(regions);
+
+                    region.add(sr);
+                } else {
+                    //no more records
+                    break;
                 }
-
-                sr.addSet(regions);
-
-                region.add(sr);
             }
 
             fis.close();
@@ -655,9 +660,14 @@ class ShapeRecord extends Object implements Serializable {
     int contentlength;
     Shape shape;
 
-    public ShapeRecord(ByteBuffer bb, int shapetype) {
+    public ShapeRecord(ByteBuffer bb, int shapetype, int expectedRecordNumber) {
         bb.order(ByteOrder.BIG_ENDIAN);
         recordnumber = bb.getInt();
+
+        if (recordnumber != expectedRecordNumber + 1) {
+            return;
+        }
+
         contentlength = bb.getInt();
 
         switch (shapetype) {
@@ -897,6 +907,9 @@ class PolygonZ extends Shape {
         int i;
 
         bb.order(ByteOrder.LITTLE_ENDIAN);
+
+        int pos = bb.position();
+
         shapetype = bb.getInt();
 
         boundingbox = new double[4];
@@ -924,13 +937,13 @@ class PolygonZ extends Shape {
             bb.getDouble();
         }
 
-        //how is this optional?
-        //if (44 + numparts * 4 + numpoints * 24 < contentlength) {
-        //M range + m array(numpoints)
-        for (i = 0; i < len; i++) {
-            bb.getDouble();
+        //read M if contentlength not yet reached
+        if (bb.position() - pos < contentlength * 2) {
+            //M range + m array(numpoints)
+            for (i = 0; i < len; i++) {
+                bb.getDouble();
+            }
         }
-        // }
     }
 
     /**
