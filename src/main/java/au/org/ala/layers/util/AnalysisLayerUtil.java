@@ -151,7 +151,7 @@ public class AnalysisLayerUtil {
             //gdalwarp -te 109.51 -44.37 157.28 -8.19 -tr 0.01 -0.01
             //-s_srs '" + edlconfig.s_srs + "' -t_srs '" + edlconfig.t_srs + "'
             //-of EHdr -srcnodata -9999 -dstnodata -9999
-            String base_command = gdalPath + "gdalwarp -te " + minx + " " + miny + " " + maxx + " " + maxy
+            String base_command = gdalPath + "gdalwarp -r cubicspline -te " + minx + " " + miny + " " + maxx + " " + maxy
                     + " -dstnodata " + String.valueOf(nodatavalue)
                     + " -tr " + resolution + " " + resolution + " -of EHdr ";
 
