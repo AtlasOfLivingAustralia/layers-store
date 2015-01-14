@@ -529,7 +529,14 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
         for (int i = 0; i < fieldIds.length; i++) {
             intersectionFiles[i] = intersectConfig.getIntersectionFile(fieldIds[i]);
             if (intersectionFiles[i] == null) {
-                logger.warn("failed to find layer for id '" + fieldIds[i] + "'");
+                //test for local analysis layer
+                String [] info = getConfig().getAnalysisLayerInfo(fieldIds[i]);
+                if (info != null) {
+                    intersectionFiles[i] = new IntersectionFile(fieldIds[i],
+                            info[1],null,fieldIds[i],fieldIds[i],null,null,null,null);
+                } else {
+                    logger.warn("failed to find layer for id '" + fieldIds[i] + "'");
+                }
             }
         }
         if (callback == null)
