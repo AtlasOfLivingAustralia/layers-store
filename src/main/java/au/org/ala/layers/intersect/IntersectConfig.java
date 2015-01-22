@@ -143,9 +143,9 @@ public class IntersectConfig {
         geoserverUrl = getProperty(GEOSERVER_URL, properties, null);
         geoserverUsername = getProperty(GEOSERVER_USERNAME, properties, null);
         geoserverPassword = getProperty(GEOSERVER_PASSWORD, properties, null);
-        isValidUrl(geoserverUrl, GEOSERVER_URL);
+
         geonetworkUrl = getProperty(GEONETWORK_URL, properties, null);
-        isValidUrl(geonetworkUrl, GEONETWORK_URL);
+
         gdalPath = getProperty(GDAL_PATH, properties, null);
         isValidPathGDAL(gdalPath, GDAL_PATH);
         analysisResolutions = getDoublesFrom(getProperty(ANALYSIS_RESOLUTIONS, properties, "0.5"));
