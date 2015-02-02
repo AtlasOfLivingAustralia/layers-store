@@ -84,6 +84,13 @@ public interface DistributionDAO {
     public Distribution findDistributionByLSIDOrName(String lsidOrName);
 
     /**
+     * Put the distribution into distributions, distributionshapes and distributiondata tables
+     *
+     * @param d
+     */
+    void store(Distribution d, String source_url);
+
+    /**
      * Identify points which fall outside an expert distribution
      *
      * @param lsid   the lsid associated with the species whose expert distribution

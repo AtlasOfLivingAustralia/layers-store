@@ -17,6 +17,8 @@ package au.org.ala.layers.dao;
 import au.org.ala.layers.dto.Distribution;
 import au.org.ala.layers.dto.Facet;
 import au.org.ala.layers.intersect.IntersectConfig;
+import au.org.ala.layers.util.Util;
+import net.sf.json.JSONObject;
 import org.apache.log4j.Logger;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.simple.ParameterizedBeanPropertyRowMapper;
@@ -48,6 +50,7 @@ public class DistributionDAOImpl implements DistributionDAO {
             + "geom_idx,image_quality,data_resource_uid,endemic";
     private SimpleJdbcTemplate jdbcTemplate;
     private String viewName = "distributions";
+    private DataSource dataSource;
 
     public Distribution findDistributionByLSIDOrName(String lsidOrName) {
         String sql = SELECT_CLAUSE + " from " + viewName + " WHERE " +
@@ -307,7 +310,7 @@ public class DistributionDAOImpl implements DistributionDAO {
                 where.append(" AND ");
             }
             where.append("coastal_fl = :coastal ");
-            params.put("coastal", coastal ? 1 : 0);
+            params.put("coastal", coastal);// ? 1 : 0);
         }
 
         if (estuarine != null) {
@@ -315,7 +318,7 @@ public class DistributionDAOImpl implements DistributionDAO {
                 where.append(" AND ");
             }
             where.append("estuarine_fl = :estuarine ");
-            params.put("estuarine", estuarine ? 1 : 0);
+            params.put("estuarine", estuarine);// ? 1 : 0);
         }
 
         if (desmersal != null) {
@@ -323,7 +326,7 @@ public class DistributionDAOImpl implements DistributionDAO {
                 where.append(" AND ");
             }
             where.append("desmersal_fl = :desmersal ");
-            params.put("desmersal", desmersal ? 1 : 0);
+            params.put("desmersal", desmersal);// ? 1 : 0);
         }
 
         if (type != null) {
@@ -405,6 +408,56 @@ public class DistributionDAOImpl implements DistributionDAO {
     }
 
     @Override
+    public void store(Distribution d, String source_url) {
+
+        //distributionshapes
+        //create if does not exist
+        String sql = "select id from distributionshapes where id = " + d.getGeom_idx();
+        List list = jdbcTemplate.queryForList(sql);
+        if (list == null || list.size() == 0) {
+            //fetch wkt if missing
+            if (d.getGeometry() == null || d.getGeometry().length() == 0) {
+                JSONObject jo = JSONObject.fromObject(Util.readUrl(source_url));
+                d.setGeometry(jo.getString("geometry"));
+            }
+
+            String insertSql = "insert into distributionshapes (id, pid, the_geom, name, area_km) values ( ? , ? , st_geomfromtext(?, 4326) , ? , ?);";
+            jdbcTemplate.update(insertSql, d.getGeom_idx(), d.getPid(), d.getGeometry(), d.getArea_name(), d.getArea_km());
+        }
+
+        //distributiondata
+        //create if does not exist
+        sql = "select spcode from distributiondata where spcode = " + d.getSpcode();
+        list = jdbcTemplate.queryForList(sql);
+        if (list == null || list.size() == 0) {
+
+            String insertSql = "INSERT INTO public.distributiondata(" +
+                    "            gid, spcode, scientific, authority_, common_nam, family, genus_name, " +
+                    "            specific_n, min_depth, max_depth, pelagic_fl, metadata_u, the_geom, " +
+                    "            wmsurl, lsid, geom_idx, type, checklist_name, notes, estuarine_fl, " +
+                    "            coastal_fl, desmersal_fl, group_name, genus_exemplar, family_exemplar, " +
+                    "            caab_species_number, caab_species_url, caab_family_number, caab_family_url, " +
+                    "            metadata_uuid, family_lsid, genus_lsid, bounding_box, data_resource_uid, " +
+                    "            original_scientific_name, image_quality, the_geom_orig, endemic)" +
+                    "    VALUES (?, ?, ?, ?, ?, ?, ?, " +
+                    "            ?, ?, ?, ?, ?, ?, " +
+                    "            ?, ?, ?, ?, ?, ?, ?, " +
+                    "            ?, ?, ?, ?, ?, " +
+                    "            ?, ?, ?, ?, " +
+                    "            ?, ?, ?, ?, ?, " +
+                    "            ?, ?, ?, ?);";
+            jdbcTemplate.update(insertSql,
+                    d.getGid(), d.getSpcode(), d.getScientific(), d.getAuthority_(), d.getCommon_nam(), d.getFamily(), d.getGenus_name(),
+                    d.getSpecific_n(), d.getMin_depth(), d.getMax_depth(), d.getPelagic_fl(), d.getMetadata_u(), null,
+                    d.getWmsurl().substring(d.getWmsurl().indexOf("/wms?service")), d.getLsid(), d.getGeom_idx(), d.getType(), d.getChecklist_name(), d.getNotes(), d.getEstuarine_fl(),
+                    d.getCoastal_fl(), d.getDesmersal_fl(), d.getGroup_name(), null, null,
+                    d.getCaab_species_number(), null, d.getCaab_family_number(), null,
+                    null, d.getFamily_lsid(), d.getGenus_lsid(), d.getBounding_box(), d.getData_resource_uid(),
+                    null, d.getImage_quality(), null, d.getEndemic());
+        }
+    }
+
+    @Override
     @Transactional(readOnly = false, propagation = Propagation.REQUIRES_NEW)
     public Map<String, Double> identifyOutlierPointsForDistribution(String lsid, Map<String, Map<String, Double>> points) {
         Map<String, Double> outlierDistances = new HashMap<String, Double>();
@@ -476,6 +529,7 @@ public class DistributionDAOImpl implements DistributionDAO {
     @Resource(name = "dataSource")
     public void setDataSource(DataSource dataSource) {
         this.jdbcTemplate = new SimpleJdbcTemplate(dataSource);
+        this.dataSource = dataSource;
     }
 
     public void setViewName(String viewName) {

@@ -234,20 +234,21 @@ public class AnalysisLayerUtil {
                     //create tmp shape file and lookup file name
                     File tmpShp = File.createTempFile("tmpshp", "");
 
-                    for (Double d : resolutions) {
-                        if (shp2Analysis(liDao.getConfig().getLayerFilesPath() + l.getPath_orig(),
-                                tmpShp.getPath(),
-                                f.getId(),
-                                liDao.getConfig().getAnalysisLayerFilesPath() + d + File.separator + f.getId(),
-                                d,
-                                liDao.getConfig().getGdalPath(),
-                                false)) {
+                    //for (Double d : resolutions) {
+                    Double d = 0.01;    //one resolution for gridding of shape files
+                    if (shp2Analysis(liDao.getConfig().getLayerFilesPath() + l.getPath_orig(),
+                            tmpShp.getPath(),
+                            f.getId(),
+                            liDao.getConfig().getAnalysisLayerFilesPath() + d + File.separator + f.getId(),
+                            d,
+                            liDao.getConfig().getGdalPath(),
+                            false)) {
 
-                            System.out.println("successful for: " + f.getId() + " @ " + d);
-                        } else {
-                            System.out.println("unsuccessful for: " + f.getId() + " @ " + d);
-                        }
+                        System.out.println("successful for: " + f.getId() + " @ " + d);
+                    } else {
+                        System.out.println("unsuccessful for: " + f.getId() + " @ " + d);
                     }
+                    //}
 
                     //delete shape and lookup tmp files
                     deleteFiles(new String[]{tmpShp.getPath(), tmpShp.getPath() + ".shp", tmpShp.getPath() + ".shx"

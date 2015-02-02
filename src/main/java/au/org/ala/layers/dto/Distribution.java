@@ -17,6 +17,9 @@ package au.org.ala.layers.dto;
 
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * This class serves as a model object for the "distributions" table
  *
@@ -105,10 +108,6 @@ public class Distribution {
         this.estuarine_fl = estuarine_fl;
     }
 
-    public void setEstuarine_fl(Integer estuarine_fl) {
-        this.estuarine_fl = estuarine_fl != null && estuarine_fl > 0 ? true : false;
-    }
-
     public Boolean getCoastal_fl() {
         return coastal_fl;
     }
@@ -117,16 +116,8 @@ public class Distribution {
         this.coastal_fl = coastal_fl;
     }
 
-    public void setCoastal_fl(Integer coastal_fl) {
-        this.coastal_fl = coastal_fl != null && coastal_fl > 0 ? true : false;
-    }
-
     public Boolean getDesmersal_fl() {
         return desmersal_fl;
-    }
-
-    public void setDesmersal_fl(Integer desmersal_fl) {
-        this.desmersal_fl = desmersal_fl != null && desmersal_fl > 0 ? true : false;
     }
 
     public void setDesmersal_fl(Boolean desmersal_fl) {
@@ -163,12 +154,6 @@ public class Distribution {
 
     public Long getSpcode() {
         return spcode;
-    }
-
-    public void setSpcode(Double spcode) {
-        if (spcode != null) {
-            this.spcode = (long) (double) spcode;
-        }
     }
 
     public String getScientific() {
@@ -350,10 +335,6 @@ public class Distribution {
 
     public Boolean getEndemic() {
         return endemic;
-    }
-
-    public void setEndemic(Integer endemic) {
-        this.endemic = endemic != null && endemic > 0 ? true : false;
     }
 
     public void setEndemic(Boolean endemic) {
@@ -575,5 +556,48 @@ public class Distribution {
         } else if (!endemic.equals(other.endemic))
             return false;
         return true;
+    }
+
+    public Map<String, Object> toMap() {
+        Map<String, Object> m = new HashMap<String, Object>();
+
+        m.put("gid", gid);
+        m.put("spcode", spcode);
+        m.put("scientific", scientific);
+        m.put("authority_", authority_);
+        m.put("common_nam", common_nam);
+        m.put("family", family);
+        m.put("genus_name", genus_name);
+        m.put("specific_n", specific_n);
+        m.put("min_depth", min_depth);
+        m.put("max_depth", max_depth);
+        m.put("pelagic_fl", pelagic_fl);
+        m.put("metadata_u", metadata_u);
+        m.put("geometry", geometry);
+        m.put("wmsurl", wmsurl);
+        m.put("lsid", lsid);
+        m.put("type", type);
+        m.put("area_name", area_name);
+        m.put("pid", pid);
+        m.put("checklist_name", checklist_name);
+        m.put("area_km", area_km);
+        m.put("notes", notes);
+        m.put("geom_idx", geom_idx);
+
+        // additional fields
+        m.put("group_name", group_name);
+        m.put("family_lsid", family_lsid);
+        m.put("genus_lsid", genus_lsid);
+        m.put("estuarine_fl", estuarine_fl);
+        m.put("coastal_fl", coastal_fl);
+        m.put("desmersal_fl", desmersal_fl);
+        m.put("caab_species_number", caab_species_number);
+        m.put("caab_family_number", caab_family_number);
+        m.put("data_resource_uid", data_resource_uid);
+        m.put("image_quality", image_quality);
+        m.put("bounding_box", bounding_box);
+        m.put("endemic", endemic);
+
+        return m;
     }
 }

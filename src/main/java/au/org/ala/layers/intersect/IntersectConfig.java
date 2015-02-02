@@ -416,7 +416,7 @@ public class IntersectConfig {
     private void seedGridFileCache() {
         int count = 0;
         for (String s : intersectionFiles.keySet()) {
-            if (s.startsWith("el")) {
+            if (s.startsWith("el") && intersectionFiles.get(s).getType().equalsIgnoreCase("environmental")) {
                 try {
                     Grid g = Grid.getGrid(intersectionFiles.get(s).getFilePath());
                     g.getGrid();
@@ -584,18 +584,20 @@ public class IntersectConfig {
         String[] columns = new String[fields.length];
         String[] fid = new String[fields.length];
         if (fields.length == 1 && fields[0].equalsIgnoreCase("all")) {
-            int countCL = 0;
+            Set shapefiles = new HashSet();
             for (String s : intersectionFiles.keySet()) {
-                if (s.startsWith("cl")) {
-                    countCL++;
+                if (s.startsWith("cl") && intersectionFiles.get(s).getType().equalsIgnoreCase("contextual")) {
+                    shapefiles.add(intersectionFiles.get(s).getFilePath());
                 }
             }
-            layers = new String[countCL];
-            columns = new String[countCL];
-            fid = new String[countCL];
+            layers = new String[shapefiles.size()];
+            columns = new String[shapefiles.size()];
+            fid = new String[shapefiles.size()];
             int i = 0;
             for (String s : intersectionFiles.keySet()) {
-                if (s.startsWith("cl")) {
+                if (shapefiles.contains(intersectionFiles.get(s).getFilePath())) {
+                    shapefiles.remove(intersectionFiles.get(s).getFilePath());
+
                     IntersectionFile f = intersectionFiles.get(s);
                     layers[i] = f.getFilePath();
                     columns[i] = f.getShapeFields();
