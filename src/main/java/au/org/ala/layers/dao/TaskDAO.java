@@ -15,7 +15,7 @@
 
 package au.org.ala.layers.dao;
 
-import au.org.ala.layers.dto.Field;
+import au.org.ala.layers.dto.Task;
 
 import java.util.List;
 
@@ -24,20 +24,16 @@ import java.util.List;
  *
  * @author ajay
  */
-public interface FieldDAO {
-    List<Field> getFields();
+public interface TaskDAO {
+    List<Task> getTasks(int page, int pageSize, int minSize, int maxSize, boolean includeFinished, boolean includeStarted);
 
-    List<Field> getFields(boolean enabledFieldsOnly);
+    void addTask(String name, String json, Integer size);
 
-    Field getFieldById(String id);
+    boolean startTask(int id);
 
-    Field getFieldById(String id, boolean enabledFieldsOnly);
+    void endTask(int id, String error);
 
-    List<Field> getFieldsByDB();
+    Task getNextTask(int maxSize);
 
-    void addField(Field field);
-
-    void updateField(Field field);
-
-    void delete(String fieldId);
+    void resetStartedTasks();
 }

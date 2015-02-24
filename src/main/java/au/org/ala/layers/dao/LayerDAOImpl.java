@@ -267,6 +267,11 @@ public class LayerDAOImpl implements LayerDAO {
         return connection;
     }
 
+    @Override
+    public void delete(String layerId) {
+        jdbcTemplate.update("delete from layers where id=" + Integer.parseInt(layerId));
+    }
+
     private void updateDisplayPaths(List<Layer> layers) {
         if (layers == null) {
             return;

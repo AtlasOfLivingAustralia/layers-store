@@ -15,13 +15,39 @@ public class GridLegend {
      */
     public GridLegend(String filename, String output_name, boolean useAreaEvaluation, String[] legendNames, FileWriter cutpointFile, int scaleDown, boolean minAsTransparent) {
         Grid g = new Grid(filename);
-        float[] d = g.getGrid();
+
+        if (legendNames != null) {
+            java.util.Arrays.sort(legendNames);
+        }
+
+        //don't bother reading the whole file
+        float[] d = g.getGrid(g.ncols * g.nrows < 128000 ? 1 : 128);
 
         if (legendNames != null) {
             java.util.Arrays.sort(legendNames);
         }
 
         java.util.Arrays.sort(d);
+
+        //drop NaNs
+        int firstNaN = d.length;
+        for (int i = d.length - 1; i >= 0; i--) {
+            if (Float.isNaN(d[i])) {
+                firstNaN = i;
+            } else {
+                break;
+            }
+        }
+        if (firstNaN < d.length) {
+            float[] copy = new float[firstNaN];
+            System.arraycopy(d, 0, copy, 0, firstNaN);
+            d = copy;
+        }
+
+        //min/max correction
+        d[0] = (float) g.minval;
+        d[d.length - 1] = (float) g.maxval;
+
 
         Legend[] legends = new Legend[1];
         legends[0] = new LegendEqualArea();
@@ -56,7 +82,7 @@ public class GridLegend {
             System.gc();
             g = new Grid(filename);
             d = g.getGrid();
-            legends[i].exportImage(d, g.ncols, output_name + /*"_" + legends[i].getTypeName().replace(" ","_") +*/ ".png", scaleDown, minAsTransparent);
+            legends[i].exportImage(d, g.ncols, output_name + /*"_" + legends[i].getTypeName().replace(" ","_") +*/ ".png", Math.max(scaleDown, g.ncols / 50), minAsTransparent);
             legends[i].exportLegend(output_name + /*"_" + legends[i].getTypeName().replace(" ","_") +*/ "_legend.txt");
 
             legends[i].exportSLD(g, output_name + /*"_" + legends[i].getTypeName().replace(" ","_") +*/ ".sld", g.units, true, minAsTransparent);

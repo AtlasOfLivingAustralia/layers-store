@@ -62,7 +62,7 @@ public class AnalysisLayerUtil {
                         + "args[1] = 'shapes' or 'grids' to operate on only grids or shapes\n\n");
 
         if (args == null || args.length == 0) {
-            args = new String[]{"all", "grids"};
+            args = new String[]{"auto", "grids"};
         }
 
         if (args.length == 1 && (args[0].equals("auto") || args[0].equals("all"))) {

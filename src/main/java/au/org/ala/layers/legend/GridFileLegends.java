@@ -23,7 +23,8 @@ public class GridFileLegends {
      */
     public GridFileLegends(String filename, String output_name, boolean useAreaEvaluation, String[] legendNames, FileWriter cutpointFile) {
         Grid g = Grid.getGrid(filename);
-        float[] d = g.getGrid();
+        //don't bother reading the whole file
+        float[] d = g.getGrid(g.ncols * g.nrows < 128000 ? 1 : 128);
 
         if (legendNames != null) {
             java.util.Arrays.sort(legendNames);
@@ -31,6 +32,10 @@ public class GridFileLegends {
 
         float[] dsorted = d.clone();
         java.util.Arrays.sort(dsorted);
+
+        //min/max correction
+        dsorted[0] = (float) g.minval;
+        dsorted[dsorted.length - 1] = (float) g.maxval;
 
         Legend[] legends = new Legend[5];
         legends[4] = new LegendEqualArea();
@@ -58,7 +63,7 @@ public class GridFileLegends {
                 (new File(output_name + "_" + legends[i].getTypeName() + ".jpg")).delete();
             } catch (Exception e) {
             }
-            legends[i].exportImage(d, g.ncols, output_name + "_" + legends[i].getTypeName() + ".jpg", 8, false);
+            legends[i].exportImage(d, g.ncols, output_name + "_" + legends[i].getTypeName() + ".jpg", Math.max(8, g.ncols / 800), false);
             legends[i].exportLegend(output_name + "_" + legends[i].getTypeName() + "_legend.txt");
 
             System.out.println(output_name + "," + legends[i].getTypeName() + ": " + String.valueOf(e2));

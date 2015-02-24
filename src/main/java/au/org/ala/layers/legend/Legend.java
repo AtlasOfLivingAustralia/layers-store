@@ -540,11 +540,14 @@ public abstract class Legend implements Serializable {
                     + g.nodatavalue + "\"/>\n");
         }
 
+        //geotiffs used in geoserver that operate on this layer are not modified by the scale, so unscale the
+        // values but retain the scaled labels
+
         String c = String.format("%6s", Integer.toHexString(colours[0])).replace(" ", "0");
         if (minAsTransparent) {
-            sb.append("<sld:ColorMapEntry color=\"#" + c + "\" opacity=\"0\" quantity=\"" + min + "\" label=\"" + min + " " + units + "\"/>\n");
+            sb.append("<sld:ColorMapEntry color=\"#" + c + "\" opacity=\"0\" quantity=\"" + (min / g.rescale) + "\" label=\"" + min + " " + units + "\"/>\n");
         } else {
-            sb.append("<sld:ColorMapEntry color=\"#" + c + "\" quantity=\"" + min + "\" label=\"" + min + " " + units + "\"/>\n");
+            sb.append("<sld:ColorMapEntry color=\"#" + c + "\" quantity=\"" + (min / g.rescale) + "\" label=\"" + min + " " + units + "\"/>\n");
         }
 
         for (int i = 0; i < cutoffs.length - 1; i++) {
@@ -552,12 +555,12 @@ public abstract class Legend implements Serializable {
                     || (i > 0 && cutoffs[i] != cutoffs[i - 1])) {
 
                 c = String.format("%6s", Integer.toHexString(colours[i + 1])).replace(" ", "0");
-                sb.append("<sld:ColorMapEntry color=\"#" + c + "\" quantity=\"" + cutoffs[i] + "\" />\n");
+                sb.append("<sld:ColorMapEntry color=\"#" + c + "\" quantity=\"" + (cutoffs[i] / g.rescale) + "\" />\n");
             }
         }
 
         c = String.format("%6s", Integer.toHexString(colours[cutoffs.length])).replace(" ", "0");
-        sb.append("<sld:ColorMapEntry color=\"#" + c + "\" quantity=\"" + cutoffs[cutoffs.length - 1] + "\" label=\"" + cutoffs[cutoffs.length - 1] + " " + units + "\"/>\n");
+        sb.append("<sld:ColorMapEntry color=\"#" + c + "\" quantity=\"" + (cutoffs[cutoffs.length - 1] / g.rescale) + "\" label=\"" + cutoffs[cutoffs.length - 1] + " " + units + "\"/>\n");
 
         sb.append(footer);
 

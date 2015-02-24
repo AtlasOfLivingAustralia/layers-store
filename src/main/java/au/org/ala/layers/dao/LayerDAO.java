@@ -55,4 +55,6 @@ public interface LayerDAO {
     public void updateLayer(Layer layer);
 
     public Connection getConnection();
+
+    void delete(String layerId);
 }

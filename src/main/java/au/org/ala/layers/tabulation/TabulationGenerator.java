@@ -19,10 +19,8 @@ import au.org.ala.layers.dao.FieldDAO;
 import au.org.ala.layers.dao.LayerDAO;
 import au.org.ala.layers.dao.LayerIntersectDAO;
 import au.org.ala.layers.dao.ObjectDAO;
-import au.org.ala.layers.dto.Field;
-import au.org.ala.layers.dto.Layer;
+import au.org.ala.layers.dto.*;
 import au.org.ala.layers.dto.Objects;
-import au.org.ala.layers.dto.Tabulation;
 import au.org.ala.layers.intersect.Grid;
 import au.org.ala.layers.intersect.SimpleRegion;
 import au.org.ala.layers.intersect.SimpleShapeFile;
@@ -47,7 +45,7 @@ public class TabulationGenerator {
 
     private static final Logger LOGGER = Logger.getLogger(TabulationGenerator.class);
     static int CONCURRENT_THREADS = 6;
-    static String db_url = "jdbc:postgresql://ala-maps-db.vm.csiro.au:5432/layersdb";
+    static String db_url = "jdbc:postgresql://localhost:5432/layersdb";
     static String db_usr = "postgres";
     static String db_pwd = "postgres";
     static String allFidPairsSQL = "SELECT "
@@ -62,11 +60,12 @@ public class TabulationGenerator {
             + "group by fid1, fid2, domain1, domain2 "
             + "order by fid1, fid2";
     static String existingTabulationssql = "SELECT fid1, fid2 from tabulation group by fid1, fid2";
-    static String fidPairsToProcessSQL = "SELECT a.fid1, a.domain1, a.fid2, a.domain2 FROM ("
+    public static String fidPairsToProcessSQL = "SELECT a.fid1, a.domain1, a.fid2, a.domain2 FROM ("
             + allFidPairsSQL
             + ") a WHERE (a.fid1, a.fid2) NOT IN ("
             + existingTabulationssql
             + ") group by a.fid1, a.fid2, a.domain1, a.domain2;";
+    static String runningTabulations = "SELECT * FROM pg_catalog.pg_stat_activity WHERE query like '%group by fid1, fid2, domain1, domain2%'";
     private static Records recordsOne = null;
     private static Connection connection;
 
@@ -181,6 +180,9 @@ public class TabulationGenerator {
     }
 
     public static void all(String recordsFilePath, Connection connection) {
+        TabulationGenerator.connection = connection;
+
+        waitForRunningTabulationsToFinish();
 
         updatePairObjects();
 
@@ -202,6 +204,25 @@ public class TabulationGenerator {
             updatePairObjectsGridToGrid(recordsOne);
         } else {
             System.out.println("Please provide a valid path to the species occurrence file");
+        }
+    }
+
+    private static void waitForRunningTabulationsToFinish() {
+        Connection conn = null;
+        try {
+            ResultSet rs1 = null;
+            conn = getConnection();
+            String sql = runningTabulations;
+            Statement s1 = conn.createStatement();
+
+            while (rs1 == null || rs1.getFetchSize() > 0) {
+                if (rs1 != null) {
+                    Thread.sleep(5 * 60000);
+                }
+                rs1 = s1.executeQuery(sql);
+            }
+        } catch (Exception e) {
+            LOGGER.error("error waiting for running tabulations to finish");
         }
     }
 
@@ -252,7 +273,7 @@ public class TabulationGenerator {
         }
     }
 
-    static String[] parseDomain(String domain) {
+    public static String[] parseDomain(String domain) {
         if (domain == null || domain.length() == 0) {
             return null;
         }
@@ -263,7 +284,7 @@ public class TabulationGenerator {
         return domains;
     }
 
-    static boolean isSameDomain(String[] domain1, String[] domain2) {
+    public static boolean isSameDomain(String[] domain1, String[] domain2) {
         if (domain1 == null || domain2 == null) {
             return true;
         }
@@ -896,14 +917,17 @@ public class TabulationGenerator {
     public static List<Tabulation> calc(String fid, String wkt) {
         List<Tabulation> tabulations = new ArrayList<Tabulation>();
 
-        List<Double> resolutions = Client.getLayerIntersectDao().getConfig().getAnalysisResolutions();
-        Double resolution = resolutions.get(0);
-
-        // check if resolution needs changing
-        resolution = Double.parseDouble(confirmResolution(new String[]{fid}, String.valueOf(resolution)));
+        // prep grid file
+        IntersectionFile f = Client.getLayerIntersectDao().getConfig().getIntersectionFile(fid);
+        Grid grid1 = new Grid(f.getFilePath());
+        double resolution = grid1.xres;
 
         // get extents for all layers
-        double[][] field1Extents = getLayerExtents(String.valueOf(resolution), fid);
+        double[][] field1Extents = new double[2][2];
+        field1Extents[0][0] = grid1.xmin;
+        field1Extents[1][0] = grid1.xmax;
+        field1Extents[0][1] = grid1.ymin;
+        field1Extents[1][1] = grid1.ymax;
         System.out.println("Extents for " + fid + ": " + field1Extents);
 
         SimpleRegion sr = SimpleShapeFile.parseWKT(wkt);
@@ -922,20 +946,14 @@ public class TabulationGenerator {
         height = (int) Math.ceil((extents[1][1] - extents[0][1]) / resolution);
         width = (int) Math.ceil((extents[1][0] - extents[0][0]) / resolution);
 
-        // prep grid file
-        String pth1 = getLayerPath("" + resolution, fid);
-        System.out.println("PATH 1: " + pth1);
-        Grid grid1 = new Grid(pth1);
+
         //grid1.getGrid();
         Properties p1 = new Properties();
         try {
-            p1.load(new FileReader(pth1 + ".txt"));
+            p1.load(new FileReader(f.getFilePath() + ".txt"));
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        // pids
-        List<Objects> objects1 = Client.getObjectDao().getObjectsById(fid);
 
         HashMap<String, Pair> map = new HashMap<String, Pair>();
 
@@ -960,7 +978,6 @@ public class TabulationGenerator {
         }
 
         // sql statements to put pairs into tabulation
-        StringBuilder sb = new StringBuilder();
         for (Entry<String, Pair> p : map.entrySet()) {
             if (p1.get(p.getValue().v1) != null) {
                 Tabulation t = new Tabulation();
@@ -1005,12 +1022,13 @@ class DistributionThread extends Thread {
                         + "FROM (select * from objects where fid='" + fid1 + "') o1 INNER JOIN "
                         + "(select * from objects where fid='" + fid2 + "') o2 ON "
                         + "ST_Intersects(ST_ENVELOPE(o1.the_geom), ST_ENVELOPE(o2.the_geom));";
+                //fetch
 
                 System.out.println("start: " + fid1 + "," + fid2);
                 long start = System.currentTimeMillis();
-                int update = s.executeUpdate(sql);
+                //int update = s.executeUpdate(sql);
                 long end = System.currentTimeMillis();
-                System.out.println("processed: " + fid1 + "," + fid2 + " in " + (end - start) / 1000 + "s (" + update + ") rows");
+                //System.out.println("processed: " + fid1 + "," + fid2 + " in " + (end - start) / 1000 + "s (" + update + ") rows");
             }
             s.close();
         } catch (Exception ex) {

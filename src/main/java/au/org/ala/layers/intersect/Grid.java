@@ -58,6 +58,7 @@ public class Grid { //  implements Serializable
     protected Logger logger = Logger.getLogger(this.getClass());
     byte nbytes;
     float[] grid_data = null;
+    public float rescale = 1;
 
     /**
      * loads grd for gri file reference
@@ -326,6 +327,25 @@ public class Grid { //  implements Serializable
         }
 
         units = ir.getStringValue("Data", "Units");
+
+        //make a rescale value
+        if (units != null && units.startsWith("1/")) {
+            try {
+                rescale = 1 / Float.parseFloat(units.substring(2, units.indexOf(' ')));
+            } catch (Exception e) {
+            }
+        }
+        if (units != null && units.startsWith("x")) {
+            try {
+                rescale = Float.parseFloat(units.substring(1, units.indexOf(' ')));
+            } catch (Exception e) {
+            }
+        }
+        if (rescale != 1) {
+            units = units.substring(units.indexOf(' ') + 1);
+            maxval *= rescale;
+            minval *= rescale;
+        }
     }
 
     public float[] getGrid() {
@@ -424,6 +444,119 @@ public class Grid { //  implements Serializable
             for (i = 0; i < length; i++) {
                 if ((float) ret[i] == (float) nodatavalue) {
                     ret[i] = Float.NaN;
+                } else {
+                    ret[i] *= rescale;
+                }
+            }
+
+            afile.close();
+        } catch (Exception e) {
+            logger.error("An error has occurred - probably a file error", e);
+        }
+        grid_data = ret;
+        return ret;
+    }
+
+    /**
+     * Increase sampleEveryNthPoint to return a smaller grid.
+     *
+     * Grid max and min values may be skipped.
+     *
+     * This does not used previously cached data.
+     *
+     * @param sampleEveryNthPoint
+     * @return
+     */
+    public float[] getGrid(int sampleEveryNthPoint) {
+        int maxArrayLength = Integer.MAX_VALUE - 10;
+
+        int length = (nrows / sampleEveryNthPoint) * (ncols);
+
+        float[] ret = new float[length];
+
+        RandomAccessFile afile;
+        File f2 = new File(filename + ".GRI");
+
+        try { //read of random access file can throw an exception
+            if (!f2.exists()) {
+                afile = new RandomAccessFile(filename + ".gri", "r");
+            } else {
+                afile = new RandomAccessFile(filename + ".GRI", "r");
+            }
+
+            byte[] b = new byte[(int) Math.min(afile.length() / sampleEveryNthPoint / sampleEveryNthPoint, maxArrayLength)];
+
+            int i = 0;
+            int max = 0;
+            int len;
+            while ((len = afile.read(b)) > 0) {
+                ByteBuffer bb = ByteBuffer.wrap(b);
+
+                if (byteorderLSB) {
+                    bb.order(ByteOrder.LITTLE_ENDIAN);
+                }
+
+                if (datatype.equalsIgnoreCase("UBYTE")) {
+                    max += len;
+                    max = Math.min(max, ret.length * sampleEveryNthPoint);
+                    for (; i < max; i++) {
+                        ret[i / sampleEveryNthPoint] = bb.get();
+                        if (ret[i / sampleEveryNthPoint] < 0) {
+                            ret[i / sampleEveryNthPoint] += 256;
+                        }
+                    }
+                } else if (datatype.equalsIgnoreCase("BYTE")) {
+                    max += len;
+                    max = Math.min(max, ret.length * sampleEveryNthPoint);
+                    for (; i < max; i++) {
+                        ret[i / sampleEveryNthPoint] = bb.get();
+                    }
+                } else if (datatype.equalsIgnoreCase("SHORT")) {
+                    max += len / 2;
+                    max = Math.min(max, ret.length * sampleEveryNthPoint);
+                    for (; i < max; i++) {
+                        ret[i / sampleEveryNthPoint] = bb.getShort();
+                    }
+                } else if (datatype.equalsIgnoreCase("INT")) {
+                    max += len / 4;
+                    max = Math.min(max, ret.length * sampleEveryNthPoint);
+                    for (; i < max; i++) {
+                        ret[i / sampleEveryNthPoint] = bb.getInt();
+                    }
+                } else if (datatype.equalsIgnoreCase("LONG")) {
+                    max += len / 8;
+                    max = Math.min(max, ret.length * sampleEveryNthPoint);
+                    for (; i < max; i++) {
+                        ret[i / sampleEveryNthPoint] = bb.getLong();
+                    }
+                } else if (datatype.equalsIgnoreCase("FLOAT")) {
+                    max += len / 4;
+                    max = Math.min(max, ret.length * sampleEveryNthPoint);
+                    for (; i < max; i++) {
+                        ret[i / sampleEveryNthPoint] = bb.getFloat();
+                        System.out.print("," + ret[i / sampleEveryNthPoint] + ":" + (i / sampleEveryNthPoint));
+                    }
+                } else if (datatype.equalsIgnoreCase("DOUBLE")) {
+                    max += len / 8;
+                    max = Math.min(max, ret.length * sampleEveryNthPoint);
+                    for (; i < max; i++) {
+                        ret[i / sampleEveryNthPoint] = (float) bb.getDouble();
+                    }
+                } else {
+                    // / should not happen; catch anyway...
+                    max += len / 4;
+                    for (; i < max; i++) {
+                        ret[i / sampleEveryNthPoint] = Float.NaN;
+                    }
+                }
+            }
+
+            //replace not a number
+            for (i = 0; i < length; i++) {
+                if ((float) ret[i] == (float) nodatavalue) {
+                    ret[i] = Float.NaN;
+                } else {
+                    ret[i] *= rescale;
                 }
             }
 
@@ -693,7 +826,7 @@ public class Grid { //  implements Serializable
             }
 
             //seek to first raster
-            afile.seek(this.ncols * starty * size);
+            afile.seek(((long) this.ncols) * starty * size);
 
             //read relevant rasters
             int readSize = this.ncols * height * size;
@@ -784,6 +917,8 @@ public class Grid { //  implements Serializable
             for (i = 0; i < length; i++) {
                 if ((float) ret[i] == (float) nodatavalue) {
                     ret[i] = Float.NaN;
+                } else {
+                    ret[i] *= rescale;
                 }
             }
         } catch (Exception e) {
@@ -838,7 +973,8 @@ public class Grid { //  implements Serializable
         float[] ret = new float[points.length];
 
         int length = points.length;
-        int size, i, pos;
+        long size;
+        int i, pos;
         byte[] b;
         RandomAccessFile afile;
         File f2 = new File(filename + ".GRI");
@@ -852,7 +988,7 @@ public class Grid { //  implements Serializable
 
             if (datatype.equalsIgnoreCase("BYTE")) {
                 size = 1;
-                b = new byte[size];
+                b = new byte[(int) size];
                 for (i = 0; i < length; i++) {
                     pos = getcellnumber(points[i][0], points[i][1]);
                     if (pos >= 0) {
@@ -864,7 +1000,7 @@ public class Grid { //  implements Serializable
                 }
             } else if (datatype.equalsIgnoreCase("UBYTE")) {
                 size = 1;
-                b = new byte[size];
+                b = new byte[(int) size];
                 for (i = 0; i < length; i++) {
                     pos = getcellnumber(points[i][0], points[i][1]);
                     if (pos >= 0) {
@@ -879,7 +1015,7 @@ public class Grid { //  implements Serializable
                 }
             } else if (datatype.equalsIgnoreCase("SHORT")) {
                 size = 2;
-                b = new byte[size];
+                b = new byte[(int) size];
                 for (i = 0; i < length; i++) {
                     pos = getcellnumber(points[i][0], points[i][1]);
                     if (pos >= 0) {
@@ -897,7 +1033,7 @@ public class Grid { //  implements Serializable
                 }
             } else if (datatype.equalsIgnoreCase("INT")) {
                 size = 4;
-                b = new byte[size];
+                b = new byte[(int) size];
                 for (i = 0; i < length; i++) {
                     pos = getcellnumber(points[i][0], points[i][1]);
                     if (pos >= 0) {
@@ -915,7 +1051,7 @@ public class Grid { //  implements Serializable
                 }
             } else if (datatype.equalsIgnoreCase("LONG")) {
                 size = 8;
-                b = new byte[size];
+                b = new byte[(int) size];
                 for (i = 0; i < length; i++) {
                     pos = getcellnumber(points[i][0], points[i][1]);
                     if (pos >= 0) {
@@ -939,7 +1075,7 @@ public class Grid { //  implements Serializable
                 }
             } else if (datatype.equalsIgnoreCase("FLOAT")) {
                 size = 4;
-                b = new byte[size];
+                b = new byte[(int) size];
                 for (i = 0; i < length; i++) {
                     pos = getcellnumber(points[i][0], points[i][1]);
                     if (pos >= 0) {
@@ -985,6 +1121,8 @@ public class Grid { //  implements Serializable
             for (i = 0; i < length; i++) {
                 if ((float) ret[i] == (float) nodatavalue) {
                     ret[i] = Float.NaN;
+                } else {
+                    ret[i] *= rescale;
                 }
             }
 
@@ -1210,6 +1348,8 @@ public class Grid { //  implements Serializable
             for (i = 0; i < length; i++) {
                 if ((float) ret[i] == (float) nodatavalue) {
                     ret[i] = Float.NaN;
+                } else {
+                    ret[i] *= rescale;
                 }
             }
 
@@ -1413,8 +1553,8 @@ public class Grid { //  implements Serializable
                 for (i = 0; i < length; i++) {
                     f = afile.readByte();
                     if (f != (float) nodatavalue) {
-                        ret[0] = Math.min(f, ret[0]);
-                        ret[1] = Math.max(f, ret[1]);
+                        ret[0] = Math.min(f * rescale, ret[0]);
+                        ret[1] = Math.max(f * rescale, ret[1]);
                     }
                 }
             } else if (datatype.equalsIgnoreCase("UBYTE")) {
@@ -1426,8 +1566,8 @@ public class Grid { //  implements Serializable
                         f += 256;
                     }
                     if (f != (float) nodatavalue) {
-                        ret[0] = Math.min(f, ret[0]);
-                        ret[1] = Math.max(f, ret[1]);
+                        ret[0] = Math.min(f * rescale, ret[0]);
+                        ret[1] = Math.max(f * rescale, ret[1]);
                     }
                 }
             } else if (datatype.equalsIgnoreCase("SHORT")) {
@@ -1441,8 +1581,8 @@ public class Grid { //  implements Serializable
                         f = (short) (((0xFF & b[0]) << 8) | (b[1] & 0xFF));
                     }
                     if (f != (float) nodatavalue) {
-                        ret[0] = Math.min(f, ret[0]);
-                        ret[1] = Math.max(f, ret[1]);
+                        ret[0] = Math.min(f * rescale, ret[0]);
+                        ret[1] = Math.max(f * rescale, ret[1]);
                     }
                 }
             } else if (datatype.equalsIgnoreCase("INT")) {
@@ -1456,8 +1596,8 @@ public class Grid { //  implements Serializable
                         f = ((0xFF & b[0]) << 24) | ((0xFF & b[1]) << 16) + ((0xFF & b[2]) << 8) + ((0xFF & b[3]) & 0xFF);
                     }
                     if (f != (float) nodatavalue) {
-                        ret[0] = Math.min(f, ret[0]);
-                        ret[1] = Math.max(f, ret[1]);
+                        ret[0] = Math.min(f * rescale, ret[0]);
+                        ret[1] = Math.max(f * rescale, ret[1]);
                     }
                 }
             } else if (datatype.equalsIgnoreCase("LONG")) {
@@ -1477,8 +1617,8 @@ public class Grid { //  implements Serializable
                                 + ((long) (0xFF & b[6]) << 8) + (0xFF & b[7]);
                     }
                     if (f != (float) nodatavalue) {
-                        ret[0] = Math.min(f, ret[0]);
-                        ret[1] = Math.max(f, ret[1]);
+                        ret[0] = Math.min(f * rescale, ret[0]);
+                        ret[1] = Math.max(f * rescale, ret[1]);
                     }
                 }
             } else if (datatype.equalsIgnoreCase("FLOAT")) {
@@ -1492,8 +1632,8 @@ public class Grid { //  implements Serializable
                     }
                     f = bb.getFloat();
                     if (f != (float) nodatavalue) {
-                        ret[0] = Math.min(f, ret[0]);
-                        ret[1] = Math.max(f, ret[1]);
+                        ret[0] = Math.min(f * rescale, ret[0]);
+                        ret[1] = Math.max(f * rescale, ret[1]);
                     }
                 }
             } else if (datatype.equalsIgnoreCase("DOUBLE")) {
@@ -1507,8 +1647,8 @@ public class Grid { //  implements Serializable
                     }
                     f = (float) bb.getDouble();
                     if (f != (float) nodatavalue) {
-                        ret[0] = Math.min(f, ret[0]);
-                        ret[1] = Math.max(f, ret[1]);
+                        ret[0] = Math.min(f * rescale, ret[0]);
+                        ret[1] = Math.max(f * rescale, ret[1]);
                     }
                 }
             } else {

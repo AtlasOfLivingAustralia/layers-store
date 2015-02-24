@@ -165,4 +165,14 @@ public class FieldDAOImpl implements FieldDAO {
 
         jdbcTemplate.update(sql, field.toMap());
     }
+
+    @Override
+    public void delete(String fieldId) {
+        Field f = getFieldById(fieldId);
+
+        if (f != null) {
+            jdbcTemplate.update("delete from objects where fid='" + f.getId() + "'");
+            jdbcTemplate.update("delete from fields where id='" + f.getId() + "'");
+        }
+    }
 }

@@ -33,7 +33,7 @@ public class Util {
             }
 
         } catch (Exception e) {
-            LOGGER.error("failed to read URL: " + feature, e);
+            LOGGER.error("failed to read URL: " + feature);
         } finally {
             if (conn != null) {
                 try {

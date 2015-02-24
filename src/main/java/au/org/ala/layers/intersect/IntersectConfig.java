@@ -70,6 +70,11 @@ public class IntersectConfig {
     static final String GEOSERVER_PASSWORD = "GEOSERVER_PASSWORD";
     static final String SHP2PGSQL_PATH = "SHP2PGSQL_PATH";
     static final String GRIDS_TO_CACHE = "GRIDS_TO_CACHE";
+    static final String CAN_UPDATE_LAYER_DISTANCES = "CAN_UPDATE_LAYER_DISTANCES";
+    static final String CAN_UPDATE_GRID_CACHE = "CAN_UPDATE_GRID_CACHE";
+    static final String CAN_GENERATE_ANALYSIS_FILES = "CAN_GENERATE_ANALYSIS_FILES";
+    static final String CAN_INTERSECT_LAYERS = "CAN_INTERSECT_LAYERS";
+    static final String CAN_GENRATE_THUMBNAILS = "CAN_GENRATE_THUMBNAILS";
     static final String LAYER_PROPERTIES = "layer.properties";
     /**
      * log4j logger
@@ -157,6 +162,12 @@ public class IntersectConfig {
 
         biocacheServiceUrl = getProperty(BIOCACHE_SERVICE_URL, properties, null);
 
+        canGenerateAnalysisLayers = getProperty(CAN_GENERATE_ANALYSIS_FILES, properties, "false").equalsIgnoreCase("true");
+        canGenerateThumbnails = getProperty(CAN_GENRATE_THUMBNAILS, properties, "false").equalsIgnoreCase("true");
+        canIntersectLayers = getProperty(CAN_INTERSECT_LAYERS, properties, "false").equalsIgnoreCase("true");
+        canUpdateGridCache = getProperty(CAN_UPDATE_GRID_CACHE, properties, "false").equalsIgnoreCase("true");
+        canUpdateLayerDistances = getProperty(CAN_UPDATE_LAYER_DISTANCES, properties, "false").equalsIgnoreCase("true");
+
         String gridsToCache = getProperty(GRIDS_TO_CACHE, properties, "1");
         if ("all".equals(gridsToCache)) {
             Grid.maxGridsLoaded = -1;
@@ -177,6 +188,11 @@ public class IntersectConfig {
     HashMap<String, HashMap<Integer, GridClass>> classGrids;
     private FieldDAO fieldDao;
     private LayerDAO layerDao;
+    static private boolean canUpdateLayerDistances;
+    static private boolean canUpdateGridCache;
+    static private boolean canGenerateAnalysisLayers;
+    static private boolean canIntersectLayers;
+    static private boolean canGenerateThumbnails;
 
     public IntersectConfig(FieldDAO fieldDao, LayerDAO layerDao) {
         this.fieldDao = fieldDao;
@@ -779,5 +795,26 @@ public class IntersectConfig {
 
     public String getShp2pgsqlPath() {
         return shp2pgsqlPath;
+    }
+
+    static public boolean getCanUpdateLayerDistances() {
+        return canUpdateLayerDistances;
+    }
+
+    static public boolean getCanUpdateGridCache() {
+        return canUpdateGridCache;
+    }
+
+    static public boolean getCanGenerateAnalysisLayers() {
+        return canGenerateAnalysisLayers;
+    }
+
+    static public boolean getCanIntersectLayers() {
+        return canIntersectLayers;
+    }
+
+
+    static public boolean getCanGenerateThumbnails() {
+        return canGenerateThumbnails;
     }
 }
