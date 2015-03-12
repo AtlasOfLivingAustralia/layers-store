@@ -49,6 +49,7 @@ public class IntersectConfig {
     static final String ALASPATIAL_OUTPUT_PATH = "ALASPATIAL_OUTPUT_PATH";
     static final String LAYER_FILES_PATH = "LAYER_FILES_PATH";
     static final String ANALYSIS_LAYER_FILES_PATH = "ANALYSIS_LAYER_FILES_PATH";
+    static final String ANALYSIS_TMP_LAYER_FILES_PATH = "ANALYSIS_TMP_LAYER_FILES_PATH";
     static final String LAYER_INDEX_URL = "LAYER_INDEX_URL";
     static final String BATCH_THREAD_COUNT = "BATCH_THREAD_COUNT";
     static final String CONFIG_RELOAD_WAIT = "CONFIG_RELOAD_WAIT";
@@ -83,6 +84,7 @@ public class IntersectConfig {
     static ObjectMapper mapper = new ObjectMapper();
     static String layerFilesPath;
     static String analysisLayerFilesPath;
+    static String analysisTmpLayerFilesPath;
     static String alaspatialOutputPath;
     static String layerIndexUrl;
     static int batchThreadCount;
@@ -134,6 +136,8 @@ public class IntersectConfig {
         isValidPath(layerFilesPath, LAYER_FILES_PATH);
         analysisLayerFilesPath = getProperty(ANALYSIS_LAYER_FILES_PATH, properties, null);
         isValidPath(analysisLayerFilesPath, ANALYSIS_LAYER_FILES_PATH);
+        analysisTmpLayerFilesPath = getProperty(ANALYSIS_TMP_LAYER_FILES_PATH, properties, null);
+        isValidPath(analysisTmpLayerFilesPath, ANALYSIS_TMP_LAYER_FILES_PATH);
         alaspatialOutputPath = getProperty(ALASPATIAL_OUTPUT_PATH, properties, null);
         isValidPath(alaspatialOutputPath, ALASPATIAL_OUTPUT_PATH);
         layerIndexUrl = getProperty(LAYER_INDEX_URL, properties, null);
@@ -396,6 +400,10 @@ public class IntersectConfig {
 
     static public String getSpatialPortalAppName() {
         return spatialPortalAppName;
+    }
+
+    public static String getAnalysisTmpLayerFilesPath() {
+        return analysisTmpLayerFilesPath;
     }
 
     public String getBiocacheServiceUrl() {

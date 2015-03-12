@@ -97,7 +97,7 @@ public class GridCutter {
         //mkdir in index location
         String newPath = null;
         try {
-            newPath = IntersectConfig.getAnalysisLayerFilesPath() + System.currentTimeMillis() + File.separator;
+            newPath = IntersectConfig.getAnalysisTmpLayerFilesPath() + System.currentTimeMillis() + File.separator;
             File directory = new File(newPath);
             directory.mkdir();
         } catch (Exception e) {
