@@ -312,7 +312,7 @@ public class Records {
     void init(String biocache_service_url, String q, double[] bbox, String filename, SimpleRegion region, String facetField) throws IOException {
         int speciesEstimate = 250000;
         int recordsEstimate = 26000000;
-        int pageSize = 500000;
+        int pageSize = 50000;
 
         String bboxTerm = null;
         if (bbox != null) {
