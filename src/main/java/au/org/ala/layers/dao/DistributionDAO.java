@@ -73,7 +73,7 @@ public interface DistributionDAO {
      * @param lsids
      * @return
      */
-    public List<Distribution> getDistributionByLSID(String[] lsids);
+    public List<Distribution> getDistributionByLSID(String[] lsids, String type);
 
     /**
      * Find a distribution by name or LSID
@@ -81,7 +81,7 @@ public interface DistributionDAO {
      * @param lsidOrName
      * @return
      */
-    public Distribution findDistributionByLSIDOrName(String lsidOrName);
+    public Distribution findDistributionByLSIDOrName(String lsidOrName, String type);
 
     /**
      * Put the distribution into distributions, distributionshapes and distributiondata tables
@@ -104,7 +104,7 @@ public interface DistributionDAO {
      * each point which falls outside the area defined by the
      * distribution. Keys are point ids, values are the distances
      */
-    public Map<String, Double> identifyOutlierPointsForDistribution(String lsid, Map<String, Map<String, Double>> points);
+    public Map<String, Double> identifyOutlierPointsForDistribution(String lsid, Map<String, Map<String, Double>> points, String type);
 
 
     /**
@@ -113,5 +113,5 @@ public interface DistributionDAO {
      * @param lsid
      * @return
      */
-    public int getNumberOfVertices(String lsid);
+    public int getNumberOfVertices(String lsid, String type);
 }
