@@ -458,6 +458,7 @@ public class DistributionDAOImpl implements DistributionDAO {
     @Override
     public Map<String, Double> identifyOutlierPointsForDistribution(String lsid, Map<String, Map<String, Double>> points, String type) {
         Map<String, Double> outlierDistances = new HashMap<String, Double>();
+        Map<String, String> uuidLookup = new HashMap<String, String>();
 
         try {
             StringBuilder pointsString = new StringBuilder();
@@ -475,12 +476,14 @@ public class DistributionDAOImpl implements DistributionDAO {
                         }
                         pointsString.append(longitude).append(" ").append(latitude);
                         uuids.add(uuid);
+                        uuidLookup.put(longitude + " " + latitude, uuid);
                     }
                 }
             }
             pointsString.append(")");
             List<Map<String, Object>> outlierDistancesQueryResult = jdbcTemplate.queryForList(
-                    "select points.path as id, ST_DISTANCE(points.geom, d.the_geom) as distance from " +
+                    "select points.path as id, st_x(points.geom) as x, st_y(points.geom) as y," +
+                            " ST_DISTANCE(points.geom, d.the_geom) as distance from " +
                             "(select geography(st_collect(the_geom)) as the_geom, st_setsrid(st_extent(bounding_box), 4326) as bounding_box " +
                             "from distributions where " +
                             "lsid = ? and type = ? ) d, " +
@@ -493,9 +496,24 @@ public class DistributionDAOImpl implements DistributionDAO {
                 // Zero distance implies that the point is inside the
                 // distribution
                 if (distance > 0) {
-                    outlierDistances.put(
-                            uuids.get(Integer.parseInt(queryResultRow.get("id").toString().replace("{", "").replace("}", "")) - 1),
-                            distance);
+                    String id = queryResultRow.get("id").toString();
+
+                    //not sure why st_dump .path is sometimes null
+                    if (id != null) {
+                        id = uuids.get(Integer.parseInt(queryResultRow.get("id").toString().replace("{", "").replace("}", "")) - 1);
+                    } else {
+                        //x and y as double for comparisons
+                        String key = queryResultRow.get("x") + " " + queryResultRow.get("y");
+                        id = uuidLookup.get(key);
+
+                        //handle duplicate points
+                        uuidLookup.remove(key);
+                    }
+
+                    if (id == null) {
+                        logger.error("Error fetching uuid for distribution distance with xy: " + queryResultRow.get("x") + " " + queryResultRow.get("y"));
+                    }
+                    outlierDistances.put(id, distance);
                 }
             }
         } catch (EmptyResultDataAccessException ex) {
