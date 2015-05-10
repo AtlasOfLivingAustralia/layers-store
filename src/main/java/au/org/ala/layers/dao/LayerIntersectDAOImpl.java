@@ -145,13 +145,13 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
 
             IntersectionFile f = intersectConfig.getIntersectionFile(id);
             if (f != null) {
-                layer = layerDao.getLayerByName(f.getLayerName());
+                layer = layerDao.getLayerByName(f.getLayerName(), false);
             } else {
                 if (newid != -1) {
-                    layer = layerDao.getLayerById(newid);
+                    layer = layerDao.getLayerById(newid, false);
                 }
                 if (layer == null) {
-                    layer = layerDao.getLayerByName(id);
+                    layer = layerDao.getLayerByName(id, false);
                 }
             }
 
