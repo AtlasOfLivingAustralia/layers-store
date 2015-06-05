@@ -534,7 +534,6 @@ public class Grid { //  implements Serializable
                     max = Math.min(max, ret.length * sampleEveryNthPoint);
                     for (; i < max; i++) {
                         ret[i / sampleEveryNthPoint] = bb.getFloat();
-                        System.out.print("," + ret[i / sampleEveryNthPoint] + ":" + (i / sampleEveryNthPoint));
                     }
                 } else if (datatype.equalsIgnoreCase("DOUBLE")) {
                     max += len / 8;

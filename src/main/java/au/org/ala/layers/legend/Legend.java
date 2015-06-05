@@ -233,8 +233,8 @@ public abstract class Legend implements Serializable {
             if (Float.isNaN(d[i])) {
                 countOfNaN++;
                 continue;
-            } else if (d[i] > cutoffs[cutoffPos]) {
-                while (d[i] > cutoffs[cutoffPos]) {
+            } else if (cutoffPos < cutoffs.length - 1 && d[i] > cutoffs[cutoffPos]) {
+                while (cutoffPos < cutoffs.length - 1 && d[i] > cutoffs[cutoffPos]) {
                     cutoffPos++;
                 }
             }
@@ -289,10 +289,13 @@ public abstract class Legend implements Serializable {
             if (Float.isNaN(d[i])) {
                 continue;
             }
-            while (d[i] > cutoffs[cutoffPos]) {
-                while (d[i] > cutoffs[cutoffPos]) {
+            while (d[i] > cutoffs[cutoffPos] && cutoffPos < cutoffs.length - 1) {
+                while (d[i] > cutoffs[cutoffPos] && cutoffPos < cutoffs.length - 1) {
                     cutoffPos++;
                     cutoffMins[cutoffPos] = d[i];
+                }
+                if (d[i] > cutoffs[cutoffPos]) {
+                    System.out.println("WARNING: cutoff position " + cutoffs[cutoffPos] + " is < max value " + d[i]);
                 }
             }
             grpSizes[cutoffPos]++;
@@ -342,6 +345,14 @@ public abstract class Legend implements Serializable {
      */
     public void exportImage(float[] d, int width, String filename, int scaleDownBy, boolean minValueTransparent) {
         try {
+            //adjust size
+            while (scaleDownBy > 1 && (d.length / width / scaleDownBy < 50 || width / scaleDownBy < 50)) {
+                System.out.println("adjusting image size; points:" + d.length
+                        + ", width: " + width / scaleDownBy + ", height: " + d.length / width / scaleDownBy);
+
+                scaleDownBy--;
+            }
+
             /* make image */
             BufferedImage image = null;
             if (minValueTransparent) {

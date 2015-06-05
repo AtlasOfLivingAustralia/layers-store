@@ -21,7 +21,8 @@ public class GridLegend {
         }
 
         //don't bother reading the whole file
-        float[] d = g.getGrid(g.ncols * g.nrows < 128000 ? 1 : 128);
+        int sampleInterval = g.ncols * g.nrows < 128000 ? 1 : g.ncols * g.nrows / 128000;
+        float[] d = g.getGrid(sampleInterval);
 
         if (legendNames != null) {
             java.util.Arrays.sort(legendNames);
@@ -81,7 +82,10 @@ public class GridLegend {
             g = null;
             System.gc();
             g = new Grid(filename);
-            d = g.getGrid();
+            d = g.getGrid(sampleInterval);
+            if (sampleInterval > 1) {
+                System.out.println("test output image is messed up because of >1 sample interval (large file)");
+            }
             legends[i].exportImage(d, g.ncols, output_name + /*"_" + legends[i].getTypeName().replace(" ","_") +*/ ".png", Math.max(scaleDown, g.ncols / 50), minAsTransparent);
             legends[i].exportLegend(output_name + /*"_" + legends[i].getTypeName().replace(" ","_") +*/ "_legend.txt");
 
