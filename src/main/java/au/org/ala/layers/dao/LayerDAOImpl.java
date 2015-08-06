@@ -25,10 +25,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import javax.sql.DataSource;
 import java.sql.Connection;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * @author ajay
@@ -235,7 +232,7 @@ public class LayerDAOImpl implements LayerDAO {
     @Override
     public void addLayer(Layer layer) {
         logger.info("Add new layer metadta for " + layer.getName());
-        String sql = "insert into layers (citation_date,classification1,classification2,datalang,description,displayname,displaypath,enabled,domain,environmentalvaluemax,environmentalvaluemin,environmentalvalueunits,extents,keywords,licence_link,licence_notes,licence_level,lookuptablepath,maxlatitude,maxlongitude,mddatest,mdhrlv,metadatapath,minlatitude,minlongitude,name,notes,path,path_1km,path_250m,path_orig,pid,respparty_role,scale,source,source_link,type) values (:citation_date,:classification1,:classification2,:datalang,:description,:displayname,:displaypath,:enabled,:domain,:environmentalvaluemax,:environmentalvaluemin,:environmentalvalueunits,:extents,:keywords,:licence_link,:licence_notes,:licence_level,:lookuptablepath,:maxlatitude,:maxlongitude,:mddatest,:mdhrlv,:metadatapath,:minlatitude,:minlongitude,:name,:notes,:path,:path_1km,:path_250m,:path_orig,:pid,:respparty_role,:scale,:source,:source_link,:type)";
+
         //jdbcTemplate.update(sql, layer.toMap());
         Map<String, Object> parameters = layer.toMap();
         parameters.remove("uid");
@@ -243,9 +240,18 @@ public class LayerDAOImpl implements LayerDAO {
         insertLayer.execute(parameters);
         //layer.name is unique, fetch newId
         Layer newLayer = getLayerByName(layer.getName(), false);
+
+        //attempt to apply requested layer id
+        if (layer.getId() > 0 && getLayerById(layer.getId().intValue()) == null) {
+            //requested id is not in use
+
+            jdbcTemplate.update("UPDATE layers SET id=" + layer.getId() + " WHERE id=" + newLayer.getId());
+
+            newLayer = getLayerByName(layer.getName(), false);
+        }
+
         layer.setId(newLayer.getId());
-        layer.setUid(newLayer.getId() + "");
-        //updateLayer(layer);
+
     }
 
     @Override

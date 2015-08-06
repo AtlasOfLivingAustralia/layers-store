@@ -2,64 +2,139 @@ package au.org.ala.layers.tabulation;
 
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.prep.PreparedGeometry;
-import com.vividsolutions.jts.geom.prep.PreparedGeometryFactory;
+import com.vividsolutions.jts.geom.MultiPolygon;
+import com.vividsolutions.jts.geom.Polygon;
+import com.vividsolutions.jts.io.WKTReader;
 import org.apache.commons.io.FileUtils;
-import org.geotools.data.DataStore;
-import org.geotools.data.DataStoreFinder;
-import org.geotools.data.FeatureSource;
-import org.geotools.data.Query;
+import org.geotools.data.*;
+import org.geotools.data.shapefile.ShapefileDataStore;
+import org.geotools.data.shapefile.ShapefileDataStoreFactory;
+import org.geotools.data.simple.SimpleFeatureSource;
+import org.geotools.data.simple.SimpleFeatureStore;
+import org.geotools.feature.DefaultFeatureCollection;
 import org.geotools.feature.FeatureIterator;
+import org.geotools.feature.simple.SimpleFeatureBuilder;
+import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.geotools.geometry.jts.GeometryBuilder;
 import org.geotools.graph.util.ZipUtil;
+import org.geotools.referencing.crs.DefaultGeographicCRS;
 import org.opengis.feature.simple.SimpleFeature;
+import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.geometry.BoundingBox;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.Writer;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 /**
  * Created by a on 3/02/15.
  */
 public class Intersection {
 
+    private static LinkedBlockingQueue<String> lbqWriter = new LinkedBlockingQueue<String>();
+
     public static void main(String[] args) {
-        System.out.println("produces a shapefile with the intersection of all.\r\n" +
+        System.out.println("produces a shapefile with the intersection.\r\n" +
                 "usage: shapefile1 shapefile2 outputShapefile");
 
-        File f = new File("/data/ala/data/layers/ready/shape/");
-        File[] list = f.listFiles();
-        java.util.Arrays.sort(list, new Comparator<File>() {
 
-            @Override
-            public int compare(File o1, File o2) {
-                return (int) (o1.length() - o2.length());
-            }
-        });
-        for (int i = 0; i < list.length; i++) {
-            if (list[i].getPath().endsWith(".shp")) {
-                List files = new ArrayList();
-                for (int j = i + 1; j < list.length; j++) {
-                    if (list[j].getPath().endsWith(".shp")) {
-                       /* File out = new File(outputDir + "/intersection_" + list[i].getName() + "_" + list[j].getName() + ".txt");
-                        File outZip = new File(outputDir + "/intersection_" + list[i].getName() + "_" + list[j].getName() + ".zip");
-                        File out2 = new File(outputDir + "/intersection_" + list[j].getName() + "_" + list[i].getName() + ".txt");
-                        File outZip2 = new File(outputDir + "/intersection_" + list[j].getName() + "_" + list[i].getName() + ".zip");
-                        if (!out.exists() && !outZip.exists() &&
-                                !out2.exists() && !outZip2.exists()) {
-                            files.add(list[j].getPath());
-                        }*/
-                    }
+        List list2 = new ArrayList();
+        list2.add(args[1]);
+        intersectShapefiles(args[0], list2, args[2]);
+    }
+
+    static void intersectionZipToShapefile(File intersectionZip, File shapeFile) {
+        try {
+            ZipInputStream zis = new ZipInputStream(new FileInputStream(intersectionZip));
+            ZipEntry ze = zis.getNextEntry();
+
+            InputStreamReader isr = new InputStreamReader(zis);
+            BufferedReader br = new BufferedReader(isr);
+
+            final SimpleFeatureType type = createFeatureType();
+
+            List<SimpleFeature> features = new ArrayList<SimpleFeature>();
+            SimpleFeatureBuilder featureBuilder = new SimpleFeatureBuilder(type);
+
+            String id1;
+            String id2;
+            String wkt;
+            while ((id1 = br.readLine()) != null) {
+                id2 = br.readLine();
+                wkt = br.readLine();
+
+                WKTReader wktReader = new WKTReader();
+                Geometry geom = wktReader.read(wkt);
+
+                if (geom instanceof Polygon) {
+                    geom = new GeometryBuilder().multiPolygon((Polygon) geom);
                 }
-                //intersectShapefiles(list[i].getPath(), files);
+
+                featureBuilder.add(geom);
+
+                SimpleFeature feature = featureBuilder.buildFeature(null);
+                feature.setAttribute("id1", id1);
+                feature.setAttribute("id2", id2);
+                feature.setDefaultGeometry(geom);
+                features.add(feature);
             }
+
+            ShapefileDataStoreFactory dataStoreFactory = new ShapefileDataStoreFactory();
+
+            Map<String, Serializable> params = new HashMap<String, Serializable>();
+            params.put("url", shapeFile.toURI().toURL());
+            params.put("create spatial index", Boolean.TRUE);
+
+            ShapefileDataStore newDataStore = (ShapefileDataStore) dataStoreFactory.createNewDataStore(params);
+            newDataStore.createSchema(type);
+
+            newDataStore.forceSchemaCRS(DefaultGeographicCRS.WGS84);
+
+            Transaction transaction = new DefaultTransaction("create");
+
+            String typeName = newDataStore.getTypeNames()[0];
+            SimpleFeatureSource featureSource = newDataStore.getFeatureSource(typeName);
+
+            if (featureSource instanceof SimpleFeatureStore) {
+                SimpleFeatureStore featureStore = (SimpleFeatureStore) featureSource;
+
+                DefaultFeatureCollection collection = new DefaultFeatureCollection();
+                collection.addAll(features);
+                featureStore.setTransaction(transaction);
+                try {
+                    featureStore.addFeatures(collection);
+                    transaction.commit();
+
+                } catch (Exception problem) {
+                    transaction.rollback();
+
+                } finally {
+                    transaction.close();
+                }
+            }
+
+            zis.close();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+    }
+
+    private static SimpleFeatureType createFeatureType() {
+
+        SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
+        builder.setName("ActiveArea");
+        builder.setCRS(DefaultGeographicCRS.WGS84);
+
+        builder.add("id1", String.class);
+        builder.add("id2", String.class);
+        builder.add("the_geom", MultiPolygon.class);
+
+        // build the type
+        return builder.buildFeatureType();
     }
 
     /**
@@ -103,7 +178,12 @@ public class Intersection {
      * @param filename1
      * @param filenames2
      */
-    static void intersectShapefiles(String filename1, List filenames2, String outputDir) {
+    public static void intersectShapefiles(String filename1, List filenames2, String outputDir) {
+        System.out.println("intersectShapefiles START");
+        DataStore dataStore1 = null;
+        DataStore dataStore2 = null;
+        FeatureIterator iterator1 = null;
+        FeatureIterator iterator2 = null;
         try {
 
             final LinkedBlockingQueue lbq = new LinkedBlockingQueue();
@@ -114,18 +194,18 @@ public class Intersection {
 
             Map map1 = new HashMap();
             map1.put("url", new File(filename1).toURI().toURL());
-            DataStore dataStore1 = DataStoreFinder.getDataStore(map1);
+            dataStore1 = DataStoreFinder.getDataStore(map1);
             String typeName1 = dataStore1.getTypeNames()[0];
             source1 = dataStore1.getFeatureSource(typeName1);
 
-            FeatureIterator iterator1 = source1.getFeatures().features();
+            iterator1 = source1.getFeatures().features();
 
             System.out.println(filename1 + ": shape count=" + source1.getCount(Query.ALL));
 
             int count1 = 0;
 
             List geoms1 = new ArrayList();
-            List pgeoms1 = new ArrayList();
+            // List pgeoms1 = new ArrayList();
             List ids1 = new ArrayList();
             while (iterator1.hasNext()) {
                 count1++;
@@ -145,7 +225,7 @@ public class Intersection {
                     try {
                         if (glist[n].getArea() > 0) {
                             geoms1.add(glist[n]);
-                            pgeoms1.add(PreparedGeometryFactory.prepare(glist[n]));
+                            //pgeoms1.add(PreparedGeometryFactory.prepare(glist[n]));
                             ids1.add(feature1.getID());
                         }
                     } catch (Exception e) {
@@ -160,106 +240,113 @@ public class Intersection {
                 File outf = new File(outputDir + "/intersection_" + new File(filename1).getName() + "_" + new File((String) filenames2.get(h)).getName() + ".txt");
                 File outZip = new File(outputDir + "/intersection_" + new File(filename1).getName() + "_" + new File((String) filenames2.get(h)).getName() + ".zip");
 
-                BufferedWriter out = new BufferedWriter(new FileWriter(outf));
-                Map map2 = new HashMap();
-                map2.put("url", new File((String) filenames2.get(h)).toURI().toURL());
-                DataStore dataStore2 = DataStoreFinder.getDataStore(map2);
-                String typeName2 = dataStore2.getTypeNames()[0];
-                source2 = dataStore2.getFeatureSource(typeName2);
-                System.out.println((String) filenames2.get(h) + ": shape count=" + source2.getCount(Query.ALL));
+                try {
+                    Map map2 = new HashMap();
+                    map2.put("url", new File((String) filenames2.get(h)).toURI().toURL());
+                    dataStore2 = DataStoreFinder.getDataStore(map2);
+                    String typeName2 = dataStore2.getTypeNames()[0];
+                    source2 = dataStore2.getFeatureSource(typeName2);
+                    System.out.println((String) filenames2.get(h) + ": shape count=" + source2.getCount(Query.ALL));
 
-                //fetch all feature 2 bounding boxes
-                FeatureIterator iterator2 = source2.getFeatures().features();
+                    //fetch all feature 2 bounding boxes
+                    iterator2 = source2.getFeatures().features();
 
-                double[] bb2 = new double[4 * source2.getCount(Query.ALL)];
-                String[] id2 = new String[source2.getCount(Query.ALL)];
-                Geometry[] g2 = new Geometry[source2.getCount(Query.ALL)];
-                PreparedGeometry[] pg2 = new PreparedGeometry[source2.getCount(Query.ALL)];
-                int i = 0;
-                while (iterator2.hasNext()) {
-                    SimpleFeature feature2 = (SimpleFeature) iterator2.next();
+                    double[] bb2 = new double[4 * source2.getCount(Query.ALL)];
+                    String[] id2 = new String[source2.getCount(Query.ALL)];
+                    Geometry[] g2 = new Geometry[source2.getCount(Query.ALL)];
 
-                    BoundingBox b = feature2.getBounds();
-                    bb2[i] = b.getMinX();
-                    bb2[i + 1] = b.getMinY();
-                    bb2[i + 2] = b.getMaxX();
-                    bb2[i + 3] = b.getMaxY();
+                    int i = 0;
+                    while (iterator2.hasNext()) {
+                        try {
+                            SimpleFeature feature2 = (SimpleFeature) iterator2.next();
+                            BoundingBox b = feature2.getBounds();
+                            bb2[i] = b.getMinX();
+                            bb2[i + 1] = b.getMinY();
+                            bb2[i + 2] = b.getMaxX();
+                            bb2[i + 3] = b.getMaxY();
 
-                    id2[i / 4] = feature2.getID();
-                    g2[i / 4] = (Geometry) feature2.getDefaultGeometry();
-                    pg2[i / 4] = PreparedGeometryFactory.prepare(g2[i / 4]);
+                            id2[i / 4] = feature2.getID();
+                            g2[i / 4] = (Geometry) feature2.getDefaultGeometry();
 
-                    i += 4;
-                }
-
-                //compare to all in (2)
-                for (int n = 0; n < geoms1.size(); n++) {
-                    Geometry geom1 = (Geometry) geoms1.get(n);
-                    //PreparedGeometry pg1 = PreparedGeometryFactory.prepare(geom1);
-                    Envelope e = geom1.getEnvelopeInternal();
-
-                    for (int j = 0; j < g2.length; j++) {
-                        int jj = j * 4;
-                        if (bb2[jj] <= e.getMaxX() && bb2[jj + 2] >= e.getMinX() &&
-                                bb2[jj + 1] <= e.getMaxY() && bb2[jj + 3] >= e.getMinY()) {
-
-                            Object[] newtask = new Object[7];
-                            newtask[0] = geom1;
-                            newtask[1] = g2[j];
-                            newtask[2] = out;
-                            newtask[3] = ids1.get(n);
-                            newtask[4] = id2[j];
-                            newtask[5] = pgeoms1.get(n);
-                            newtask[6] = pg2[j];
-
-                            lbq.put(newtask);
+                            i += 4;
+                        } catch (Exception e) {
+                            e.printStackTrace(System.out);
                         }
                     }
-                }
 
+
+                    System.out.println("bounding box compare");
+                    //compare to all in (2)
+                    for (int n = 0; n < geoms1.size(); n++) {
+                        Geometry geom1 = (Geometry) geoms1.get(n);
+                        //PreparedGeometry pg1 = PreparedGeometryFactory.prepare(geom1);
+                        Envelope e = geom1.getEnvelopeInternal();
+
+                        for (int j = 0; j < g2.length; j++) {
+                            int jj = j * 4;
+
+                            if (bb2[jj] <= e.getMaxX() && bb2[jj + 2] >= e.getMinX() &&
+                                    bb2[jj + 1] <= e.getMaxY() && bb2[jj + 3] >= e.getMinY()) {
+
+                                Object[] newtask = new Object[7];
+                                newtask[0] = geom1;
+                                newtask[1] = g2[j];
+                                newtask[2] = null;
+                                newtask[3] = ids1.get(n);
+                                newtask[4] = id2[j];
+                                //newtask[5] = pgeoms1.get(n);
+                                //newtask[6] = pg2[j];
+
+                                lbq.put(newtask);
+                            }
+                        }
+                    }
+
+                } catch (Exception err) {
+                    err.printStackTrace();
+                } finally {
+                    if (iterator2 != null) iterator2.close();
+                    if (dataStore2 != null) dataStore2.dispose();
+                }
                 System.out.println("comparisons required: " + lbq.size());
 
                 //wait until finished
                 final CountDownLatch cdl = new CountDownLatch(lbq.size());
-                final Thread[] threads = new Thread[4];
+                final LinkedBlockingQueue<BufferedWriter> outputWriterPool = new LinkedBlockingQueue<BufferedWriter>();
+                List<BufferedWriter> outputWriters = new ArrayList<BufferedWriter>();
+                final Thread[] threads = new Thread[8];
                 for (int j = 0; j < threads.length; j++) {
+                    outputWriters.add(new BufferedWriter(new FileWriter(new File(outf.getPath() + "." + j))));
+                    outputWriterPool.put(outputWriters.get(j));
+
                     threads[j] = new Thread() {
                         @Override
                         public void run() {
                             try {
                                 long timePos = System.currentTimeMillis();
-
+                                BufferedWriter bw = outputWriterPool.take();
                                 while (true) {
                                     Object[] os = (Object[]) lbq.take();
                                     if (lbq.size() % 5000 == 0) {
                                         System.out.print("(" + lbq.size() + ")");
                                     }
 
-                                    Geometry geom1 = (Geometry) os[0];
-                                    Geometry g2 = (Geometry) os[1];
-                                    Writer out = (Writer) os[2];
+                                    Geometry geom1 = (Geometry) ((Geometry) os[0]).clone();
+                                    Geometry g2 = (Geometry) ((Geometry) os[1]).clone();
+                                    
                                     String id1 = (String) os[3];
                                     String id2 = (String) os[4];
-                                    PreparedGeometry pg1 = (PreparedGeometry) os[5];
-                                    PreparedGeometry pg2 = (PreparedGeometry) os[6];
 
                                     try {
-                                        if (pg1.within(g2)) {
-                                            writeIntersection(out, id1, id2, geom1);
-                                            ai.incrementAndGet();
-                                        } else if (pg2.within(geom1)) {
-                                            writeIntersection(out, id1, id2, g2);
-                                            //bb2[jj] = 1000; //avoids future comparisons
-                                            ai.incrementAndGet();
-                                        } else if (pg1.intersects(g2)) {
+                                        if (geom1.intersects(g2)) {
                                             Geometry intersection = geom1.intersection(g2);
                                             if (intersection.getArea() > 0) {
-                                                writeIntersection(out, id1, id2, intersection);
+                                                writeIntersection(bw, id1, id2, intersection);
                                                 ai.incrementAndGet();
                                             }
                                         }
                                     } catch (Exception e) {
-                                        writeIntersection(out, id1, id2 + ", error: " + e.getMessage(), null);
+                                        writeIntersection(bw, id1, id2 + ", error: " + e.getMessage(), null);
                                     }
                                     cdl.countDown();
                                 }
@@ -277,14 +364,27 @@ public class Intersection {
 
                 cdl.await();
 
+                BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(outf));
+
                 for (int j = 0; j < threads.length; j++) {
                     threads[j].interrupt();
-                }
-                iterator2.close();
-                dataStore2.dispose();
+                    outputWriters.get(j).flush();
+                    outputWriters.get(j).close();
 
-                out.flush();
-                out.close();
+                    File f = new File(outf.getPath() + "." + j);
+                    BufferedInputStream bis = new BufferedInputStream(new FileInputStream(f));
+                    byte[] bytes = new byte[1024];
+                    int len = 0;
+                    while ((len = bis.read(bytes)) > 0) {
+                        bos.write(bytes, 0, len);
+                    }
+                    bis.close();
+                    f.delete();
+                }
+
+
+                bos.flush();
+                bos.close();
 
                 System.out.println("total time: " + outf.getName() + " = " + (System.currentTimeMillis() - startTime) + "ms");
                 //zip
@@ -296,23 +396,21 @@ public class Intersection {
                 }
             }
 
-            iterator1.close();
-            dataStore1.dispose();
-
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            if (iterator1 != null) iterator1.close();
+            if (dataStore1 != null) dataStore1.dispose();
+
         }
     }
 
-    static synchronized void writeIntersection(Writer out, String id1, String id2, Geometry g) throws Exception {
-        out.write(id1);
-        out.write("\n");
-        out.write(id2);
-        out.write("\n");
+    static void writeIntersection(BufferedWriter bw, String id1, String id2, Geometry g) throws Exception {
         if (g != null) {
-            out.write(g.toText());
+            bw.write(id1 + "\n" + id2 + "\n" + g.toText() + "\n");
+        } else {
+            bw.write(id1 + "\n" + id2 + "\n\n");
         }
-        out.write("\n");
     }
 
     static Geometry[] split(Geometry geom, int xsize, int ysize) {
@@ -338,7 +436,7 @@ public class Intersection {
         for (int x = 0; x < xsize; x++) {
             for (int y = 0; y < ysize; y++) {
                 GeometryBuilder gb = new GeometryBuilder();
-                Geometry g = gb.box(xs[x], xs[x + 1], ys[y], ys[y + 1]);
+                Geometry g = gb.box(xs[x], ys[y], xs[x + 1], ys[y + 1]);
 
                 glist[gi] = g.intersection(geom);
                 gi++;

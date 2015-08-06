@@ -84,6 +84,14 @@ public interface DistributionDAO {
     public Distribution findDistributionByLSIDOrName(String lsidOrName, String type);
 
     /**
+     * Find all distribution matching a name or LSID
+     *
+     * @param lsidOrName
+     * @return
+     */
+    public List<Distribution> findDistributionsByLSIDOrName(String lsidOrName, String type);
+
+    /**
      * Put the distribution into distributions, distributionshapes and distributiondata tables
      *
      * @param d

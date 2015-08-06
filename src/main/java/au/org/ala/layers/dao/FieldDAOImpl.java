@@ -113,28 +113,33 @@ public class FieldDAOImpl implements FieldDAO {
         String idPrefix = "Contextual".equalsIgnoreCase(layerDao.getLayerById(Integer.parseInt(field.getSpid())).getType())
                 ? "cl" : "el";
 
-        //test for default id
-        String newId = getFieldById(idPrefix + field.getSpid()) == null ? idPrefix + field.getSpid() : null;
-        if (newId == null) {
-            //calculate next field Id using general form: prefix (n x 1000 + layerId)
-            String idEnd = field.getSpid();
-            while (idEnd.length() < 3) {
-                idEnd = "0" + idEnd;
-            }
-            int maxNFound = 0;
-            for (Field f : getFields(false)) {
-                if (f.getId().startsWith(idPrefix) && f.getId().endsWith(idEnd)) {
-                    if (f.getId().length() - idEnd.length() > 2) {
-                        int n = Integer.parseInt(f.getId().substring(2, f.getId().length() - idEnd.length()));
-                        if (n > maxNFound) {
-                            maxNFound = n;
+        //test for requested id
+        String newId = field.getId();
+
+        if (newId == null || getFieldById(newId) != null) {
+            newId = getFieldById(idPrefix + field.getSpid()) == null ? idPrefix + field.getSpid() : null;
+            if (newId == null) {
+                //calculate next field Id using general form: prefix (n x 1000 + layerId)
+                String idEnd = field.getSpid();
+                while (idEnd.length() < 3) {
+                    idEnd = "0" + idEnd;
+                }
+                int maxNFound = 0;
+                for (Field f : getFields(false)) {
+                    if (f.getId().startsWith(idPrefix) && f.getId().endsWith(idEnd)) {
+                        if (f.getId().length() - idEnd.length() > 2) {
+                            int n = Integer.parseInt(f.getId().substring(2, f.getId().length() - idEnd.length()));
+                            if (n > maxNFound) {
+                                maxNFound = n;
+                            }
                         }
                     }
                 }
-            }
 
-            newId = idPrefix + (maxNFound + 1) + idEnd;
+                newId = idPrefix + (maxNFound + 1) + idEnd;
+            }
         }
+
         parameters.put("id", newId);
         //fix for field 'desc' and 'intersect'
         if (parameters.containsKey("desc")) {

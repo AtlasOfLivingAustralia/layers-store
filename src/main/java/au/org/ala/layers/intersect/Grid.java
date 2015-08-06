@@ -484,7 +484,9 @@ public class Grid { //  implements Serializable
                 afile = new RandomAccessFile(filename + ".GRI", "r");
             }
 
-            byte[] b = new byte[(int) Math.min(afile.length() / sampleEveryNthPoint / sampleEveryNthPoint, maxArrayLength)];
+            int sz = (int) Math.min(afile.length() / sampleEveryNthPoint / sampleEveryNthPoint, maxArrayLength);
+            sz += 8 - sz % 8;
+            byte[] b = new byte[sz];
 
             int i = 0;
             int max = 0;

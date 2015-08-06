@@ -48,6 +48,15 @@ public class DistributionDAOImpl implements DistributionDAO {
     private DataSource dataSource;
 
     public Distribution findDistributionByLSIDOrName(String lsidOrName, String type) {
+        List<Distribution> ds = findDistributionsByLSIDOrName(lsidOrName, type);
+        if (ds != null && ds.size() > 0) {
+            return ds.get(0);
+        } else {
+            return null;
+        }
+    }
+
+    public List<Distribution> findDistributionsByLSIDOrName(String lsidOrName, String type) {
         String sql = SELECT_CLAUSE + " from " + viewName + " WHERE " +
                 "(lsid=:lsid OR caab_species_number=:caab_species_number " +
                 "OR scientific like :scientificName OR scientific like :scientificNameWithSubgenus) AND type = :distribution_type limit 1";
@@ -58,10 +67,7 @@ public class DistributionDAOImpl implements DistributionDAO {
         params.put("caab_species_number", lsidOrName);
         params.put("distribution_type", type);
         List<Distribution> ds = updateWMSUrl(jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Distribution.class), params));
-        if (!ds.isEmpty())
-            return ds.get(0);
-        else
-            return null;
+        return ds;
     }
 
     private String removeSubGenus(String str) {

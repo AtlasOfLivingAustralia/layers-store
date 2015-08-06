@@ -142,16 +142,22 @@ public class SpatialConversionUtils {
             ZipEntry entry = entries.nextElement();
             InputStream inStream = zf.getInputStream(entry);
             File f = new File(tempDir, entry.getName());
-            FileOutputStream outStream = new FileOutputStream(f);
-            IOUtils.copy(inStream, outStream);
+            if (!f.getName().startsWith(".")) {
+                if (entry.isDirectory()) {
+                    f.mkdirs();
+                } else {
+                    FileOutputStream outStream = new FileOutputStream(f);
+                    IOUtils.copy(inStream, outStream);
 
-            if (entry.getName().endsWith(".shp")) {
-                shpPresent = true;
-                shpFile = f;
-            } else if (entry.getName().endsWith(".shx")) {
-                shxPresent = true;
-            } else if (entry.getName().endsWith(".dbf")) {
-                dbfPresent = true;
+                    if (entry.getName().endsWith(".shp")) {
+                        shpPresent = true;
+                        shpFile = f;
+                    } else if (entry.getName().endsWith(".shx") && !f.getName().startsWith("/")) {
+                        shxPresent = true;
+                    } else if (entry.getName().endsWith(".dbf") && !f.getName().startsWith("/")) {
+                        dbfPresent = true;
+                    }
+                }
             }
         }
 
@@ -288,7 +294,9 @@ public class SpatialConversionUtils {
     public static File saveShapefile(File shpfile, String wktString, String name, String description) {
         try {
             String wkttype = "POLYGON";
-            if (wktString.contains("GEOMETRYCOLLECTION") || wktString.contains("MULTIPOLYGON")) {
+            if (wktString.contains("MULTIPOLYGON")) {
+                wkttype = "MULTIPOLYGON";
+            } else if (wktString.contains("GEOMETRYCOLLECTION")) {
                 wkttype = "GEOMETRYCOLLECTION";
             }
             final SimpleFeatureType TYPE = createFeatureType(wkttype);
@@ -299,34 +307,34 @@ public class SpatialConversionUtils {
             WKTReader wkt = new WKTReader();
             Geometry geom = wkt.read(wktString);
 
-            if (geom instanceof GeometryCollection) {
+            if (geom instanceof GeometryCollection && !(geom instanceof MultiPolygon)) {
                 GeometryCollection gc = (GeometryCollection) geom;
                 for (int i = 0; i < gc.getNumGeometries(); i++) {
                     featureBuilder.add(gc.getGeometryN(i));
+                    SimpleFeature feature = featureBuilder.buildFeature(null);
 
                     if (name != null) {
-                        featureBuilder.set("name", name + " " + (i + 1));
+                        feature.setAttribute("name", name + " " + (i + 1));
                     }
 
                     if (description != null) {
-                        featureBuilder.set("desc", description);
+                        feature.setAttribute("desc", description);
                     }
 
-                    SimpleFeature feature = featureBuilder.buildFeature(null);
                     features.add(feature);
                 }
             } else {
                 featureBuilder.add(geom);
+                SimpleFeature feature = featureBuilder.buildFeature(null);
 
                 if (name != null) {
-                    featureBuilder.set("name", name);
+                    feature.setAttribute("name", name);
                 }
 
                 if (description != null) {
-                    featureBuilder.set("desc", description);
+                    feature.setAttribute("desc", description);
                 }
 
-                SimpleFeature feature = featureBuilder.buildFeature(null);
                 features.add(feature);
             }
 
@@ -382,9 +390,11 @@ public class SpatialConversionUtils {
 
         // add attributes in order
         if ("GEOMETRYCOLLECTION".equalsIgnoreCase(type)) {
-            builder.add("area", MultiPolygon.class);
+            builder.add("the_geom", MultiPolygon.class);
+        } else if ("MULTIPOLYGON".equalsIgnoreCase(type)) {
+            builder.add("the_geom", MultiPolygon.class);
         } else {
-            builder.add("area", Polygon.class);
+            builder.add("the_geom", Polygon.class);
         }
         builder.length(50).add("name", String.class); // <- 50 chars width for
         // name field
@@ -393,9 +403,7 @@ public class SpatialConversionUtils {
         // field
 
         // build the type
-        final SimpleFeatureType ActiveArea = builder.buildFeatureType();
-
-        return ActiveArea;
+        return builder.buildFeatureType();
     }
 
     static public String createCircleJs(double longitude, double latitude, double radius) {
