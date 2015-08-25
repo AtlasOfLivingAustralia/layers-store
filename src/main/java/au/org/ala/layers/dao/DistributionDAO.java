@@ -65,7 +65,7 @@ public interface DistributionDAO {
      * @param spcode
      * @return
      */
-    public Distribution getDistributionBySpcode(long spcode, String type);
+    public Distribution getDistributionBySpcode(long spcode, String type, boolean noWkt);
 
     /**
      * Find a distributions by LSIDs
@@ -73,7 +73,7 @@ public interface DistributionDAO {
      * @param lsids
      * @return
      */
-    public List<Distribution> getDistributionByLSID(String[] lsids, String type);
+    public List<Distribution> getDistributionByLSID(String[] lsids, String type, boolean noWkt);
 
     /**
      * Find a distribution by name or LSID

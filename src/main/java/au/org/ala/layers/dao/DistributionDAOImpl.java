@@ -136,8 +136,9 @@ public class DistributionDAOImpl implements DistributionDAO {
 
 
     @Override
-    public Distribution getDistributionBySpcode(long spcode, String type) {
-        String sql = SELECT_CLAUSE + ", ST_AsText(the_geom) AS geometry, ST_AsText(bounding_box) as bounding_box FROM " + viewName + " WHERE spcode= ? AND type= ?";
+    public Distribution getDistributionBySpcode(long spcode, String type, boolean noWkt) {
+        String wktTerm = noWkt ? "" : ", ST_AsText(the_geom) AS geometry";
+        String sql = SELECT_CLAUSE + wktTerm + ", ST_AsText(bounding_box) as bounding_box FROM " + viewName + " WHERE spcode= ? AND type= ?";
         List<Distribution> d = updateWMSUrl(jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Distribution.class), (double) spcode, type));
         if (d.size() > 0) {
             return d.get(0);
@@ -222,8 +223,9 @@ public class DistributionDAOImpl implements DistributionDAO {
 
 
     @Override
-    public List<Distribution> getDistributionByLSID(String[] lsids, String type) {
-        String sql = SELECT_CLAUSE + ", ST_AsText(the_geom) AS geometry, ST_AsText(bounding_box) as bounding_box FROM "
+    public List<Distribution> getDistributionByLSID(String[] lsids, String type, boolean noWkt) {
+        String wktTerm = noWkt ? "" : ", ST_AsText(the_geom) AS geometry";
+        String sql = SELECT_CLAUSE + wktTerm + ", ST_AsText(bounding_box) as bounding_box FROM "
                 + viewName + "  WHERE lsid IN (:lsids) AND type = :distribution_type ";
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("lsids", Arrays.asList(lsids));
