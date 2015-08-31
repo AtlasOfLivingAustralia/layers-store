@@ -67,6 +67,7 @@ public class Distribution {
     String image_quality;
     String bounding_box;
     Boolean endemic;
+    String imageUrl;
 
     public String getData_resource_uid() {
         return data_resource_uid;
@@ -341,6 +342,14 @@ public class Distribution {
         this.endemic = endemic;
     }
 
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -597,6 +606,9 @@ public class Distribution {
         m.put("image_quality", image_quality);
         m.put("bounding_box", bounding_box);
         m.put("endemic", endemic);
+
+        // dynamic fields
+        if (imageUrl != null) m.put("image_url", imageUrl);
 
         return m;
     }

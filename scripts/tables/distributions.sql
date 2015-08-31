@@ -2,8 +2,8 @@ CREATE TABLE distributions AS
  SELECT d.gid, d.spcode, d.scientific, d.authority_, d.common_nam, d.family, d.genus_name,
  d.specific_n, d.min_depth, d.max_depth, d.pelagic_fl, d.estuarine_fl, d.coastal_fl, d.desmersal_fl,
  d.metadata_u, d.wmsurl, d.lsid, d.family_lsid, d.genus_lsid, d.caab_species_number, d.caab_family_number,
- o.the_geom, o.name AS area_name, o.pid, d.type, d.checklist_name, o.area_km, d.notes, d.geom_idx, d.group_name,
- d.genus_exemplar, d.family_exemplar, d.data_resource_uid, d.image_quality, d.bounding_box, d.endemic
+ o.the_geom as the_geom_orig, ST_Simplify(o.the_geom,0.1) as the_geom, o.name AS area_name, o.pid, d.type, d.checklist_name, o.area_km, d.notes, d.geom_idx, d.group_name,
+ d.genus_exemplar, d.family_exemplar, d.data_resource_uid, d.image_quality, d.bounding_box, d.endemic,
    FROM distributionshapes o
    JOIN distributiondata d ON d.geom_idx = o.id;
 
