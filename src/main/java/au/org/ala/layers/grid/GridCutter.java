@@ -263,7 +263,7 @@ public class GridCutter {
         for (int i = 0; i < mask.length; i++) {
             for (int j = 0; j < mask[0].length; j++) {
                 if (mask[i][j] > 0) {
-                    dfiltered[j + (h - i - 1) * w] = grid.getValues2(new double[][]{{j * res + extents[0][0], i * res + extents[0][1]}})[0];
+                    dfiltered[j + (h - i - 1) * w] = grid.getValues3(new double[][]{{j * res + extents[0][0], i * res + extents[0][1]}}, 40960)[0];
                 }
             }
         }

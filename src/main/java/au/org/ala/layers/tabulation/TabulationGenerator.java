@@ -462,8 +462,8 @@ public class TabulationGenerator {
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
                 // area
-                int v1 = (int) grid1.getValues2(new double[][]{{extents[0][0] + resolution * i, extents[0][1] + resolution * j}})[0];
-                int v2 = (int) grid2.getValues2(new double[][]{{extents[0][0] + resolution * i, extents[0][1] + resolution * j}})[0];
+                int v1 = (int) grid1.getValues3(new double[][]{{extents[0][0] + resolution * i, extents[0][1] + resolution * j}}, 40960)[0];
+                int v2 = (int) grid2.getValues3(new double[][]{{extents[0][0] + resolution * i, extents[0][1] + resolution * j}}, 40960)[0];
                 String key = v1 + " " + v2;
                 Pair p = map.get(key);
                 if (p == null) {

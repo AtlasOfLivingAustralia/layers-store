@@ -182,7 +182,7 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
                 } else if (layer.isGrid() || (f != null && f.getClasses() != null)) {
                     Grid g = new Grid(getConfig().getLayerFilesPath() + layer.getPath_orig());
                     if (g != null) {
-                        float[] v = g.getValues(p);
+                        float[] v = g.getValues3(p, 40960);
                         //s = "{\"value\":" + v[0] + ",\"layername\":\"" + layer.getDisplayname() + "\"}";
                         Map m = new HashMap();
                         m.put("field", id);
