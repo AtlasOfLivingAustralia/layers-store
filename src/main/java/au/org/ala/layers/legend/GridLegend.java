@@ -21,7 +21,7 @@ public class GridLegend {
         }
 
         //don't bother reading the whole file
-        int sampleInterval = g.ncols * g.nrows < 128000 ? 1 : g.ncols * g.nrows / 128000;
+        int sampleInterval = (g.ncols / 1000.0) * (g.nrows / 1000.0) < 0.128 ? 1 : (int) ((g.ncols / 1000.0) * (g.nrows / 1000.0) / 0.128);
         float[] d = g.getGrid(sampleInterval);
 
         if (legendNames != null) {

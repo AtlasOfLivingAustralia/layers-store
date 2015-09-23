@@ -488,8 +488,8 @@ public class Grid { //  implements Serializable
             sz += 8 - sz % 8;
             byte[] b = new byte[sz];
 
-            int i = 0;
-            int max = 0;
+            long i = 0;
+            long max = 0;
             int len;
             while ((len = afile.read(b)) > 0) {
                 ByteBuffer bb = ByteBuffer.wrap(b);
@@ -500,64 +500,64 @@ public class Grid { //  implements Serializable
 
                 if (datatype.equalsIgnoreCase("UBYTE")) {
                     max += len;
-                    max = Math.min(max, ret.length * sampleEveryNthPoint);
+                    max = Math.min(max, ret.length * (long) sampleEveryNthPoint);
                     for (; i < max; i++) {
-                        ret[i / sampleEveryNthPoint] = bb.get();
-                        if (ret[i / sampleEveryNthPoint] < 0) {
-                            ret[i / sampleEveryNthPoint] += 256;
+                        ret[(int) (i / sampleEveryNthPoint)] = bb.get();
+                        if (ret[(int) (i / sampleEveryNthPoint)] < 0) {
+                            ret[(int) (i / sampleEveryNthPoint)] += 256;
                         }
                     }
                 } else if (datatype.equalsIgnoreCase("BYTE")) {
                     max += len;
-                    max = Math.min(max, ret.length * sampleEveryNthPoint);
+                    max = Math.min(max, ret.length * (long) sampleEveryNthPoint);
                     for (; i < max; i++) {
-                        ret[i / sampleEveryNthPoint] = bb.get();
+                        ret[(int) (i / sampleEveryNthPoint)] = bb.get();
                     }
                 } else if (datatype.equalsIgnoreCase("SHORT")) {
                     max += len / 2;
-                    max = Math.min(max, ret.length * sampleEveryNthPoint);
+                    max = Math.min(max, ret.length * (long) sampleEveryNthPoint);
                     for (; i < max; i++) {
-                        ret[i / sampleEveryNthPoint] = bb.getShort();
+                        ret[(int) (i / sampleEveryNthPoint)] = bb.getShort();
                     }
                 } else if (datatype.equalsIgnoreCase("INT")) {
                     max += len / 4;
-                    max = Math.min(max, ret.length * sampleEveryNthPoint);
+                    max = Math.min(max, ret.length * (long) sampleEveryNthPoint);
                     for (; i < max; i++) {
-                        ret[i / sampleEveryNthPoint] = bb.getInt();
+                        ret[(int) (i / sampleEveryNthPoint)] = bb.getInt();
                     }
                 } else if (datatype.equalsIgnoreCase("LONG")) {
                     max += len / 8;
-                    max = Math.min(max, ret.length * sampleEveryNthPoint);
+                    max = Math.min(max, ret.length * (long) sampleEveryNthPoint);
                     for (; i < max; i++) {
-                        ret[i / sampleEveryNthPoint] = bb.getLong();
+                        ret[(int) (i / sampleEveryNthPoint)] = bb.getLong();
                     }
                 } else if (datatype.equalsIgnoreCase("FLOAT")) {
                     max += len / 4;
-                    max = Math.min(max, ret.length * sampleEveryNthPoint);
+                    max = Math.min(max, ret.length * (long) sampleEveryNthPoint);
                     for (; i < max; i++) {
-                        ret[i / sampleEveryNthPoint] = bb.getFloat();
+                        ret[(int) (i / sampleEveryNthPoint)] = bb.getFloat();
                     }
                 } else if (datatype.equalsIgnoreCase("DOUBLE")) {
                     max += len / 8;
-                    max = Math.min(max, ret.length * sampleEveryNthPoint);
+                    max = Math.min(max, ret.length * (long) sampleEveryNthPoint);
                     for (; i < max; i++) {
-                        ret[i / sampleEveryNthPoint] = (float) bb.getDouble();
+                        ret[(int) (i / (long) sampleEveryNthPoint)] = (float) bb.getDouble();
                     }
                 } else {
                     // / should not happen; catch anyway...
                     max += len / 4;
                     for (; i < max; i++) {
-                        ret[i / sampleEveryNthPoint] = Float.NaN;
+                        ret[(int) (i / (long) sampleEveryNthPoint)] = Float.NaN;
                     }
                 }
             }
 
             //replace not a number
             for (i = 0; i < length; i++) {
-                if ((float) ret[i] == (float) nodatavalue) {
-                    ret[i] = Float.NaN;
+                if ((float) ret[(int) i] == (float) nodatavalue) {
+                    ret[(int) i] = Float.NaN;
                 } else {
-                    ret[i] *= rescale;
+                    ret[(int) i] *= rescale;
                 }
             }
 
