@@ -12,6 +12,8 @@ CREATE TABLE tabulation
   area double precision,
   occurrences integer DEFAULT 0,
   species integer DEFAULT 0,
+  speciest1 integer DEFAULT 0,
+  speciest2 integer DEFAULT 0,
   CONSTRAINT tabulation_unqiue_constraint UNIQUE (fid1 , pid1 , fid2 , pid2 )
 )
 WITH (

@@ -1021,15 +1021,24 @@ public class TabulationGenerator {
                 // load file for i
                 String[] s1 = loadFile(files.get(i), pts.size());
 
+                ArrayList<String> sqlUpdates = speciesTotals(records, pointIdx, s1);
+                // batch
+                StringBuilder sb = new StringBuilder();
+                for (String s : sqlUpdates) {
+                    sb.append(s).append(";\n");
+                }
+                statement.execute(sb.toString());
+                System.out.println(sb.toString());
+
                 for (int j = i + 1; j < fields.size(); j++) {
                     // load file for j
                     String[] s2 = loadFile(files.get(j), pts.size());
 
                     // compare
-                    ArrayList<String> sqlUpdates = compare(records, pointIdx, s1, s2);
+                    sqlUpdates = compare(records, pointIdx, s1, s2);
 
                     // batch
-                    StringBuilder sb = new StringBuilder();
+                    sb = new StringBuilder();
                     for (String s : sqlUpdates) {
                         sb.append(s).append(";\n");
                     }
@@ -1299,6 +1308,42 @@ public class TabulationGenerator {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private static ArrayList<String> speciesTotals(Records records, int[] pointIdx, String[] s1) {
+        ArrayList<String> sqlUpdates = new ArrayList<String>();
+        BitSet bitset;
+        Integer count;
+        String key;
+        HashMap<String, BitSet> species = new HashMap<String, BitSet>();
+        HashMap<String, Integer> occurrences = new HashMap<String, Integer>();
+
+        for (int i = 0; i < pointIdx.length; i++) {
+            key = s1[pointIdx[i]];
+
+            bitset = species.get(key);
+            if (bitset == null) {
+                bitset = new BitSet();
+            }
+            bitset.set(records.getSpeciesNumber(i));
+            species.put(key, bitset);
+
+            count = occurrences.get(key);
+            if (count == null) {
+                count = 0;
+            }
+            count = count + 1;
+            occurrences.put(key, count);
+        }
+
+        // produce sql update statements
+        for (String k : species.keySet()) {
+            String pid = k;
+            sqlUpdates.add("UPDATE tabulation SET " + "speciest1 = " + species.get(k).cardinality() + " WHERE pid1='" + pid + "'");
+            sqlUpdates.add("UPDATE tabulation SET " + "speciest2 = " + species.get(k).cardinality() + " WHERE pid2='" + pid + "'");
+        }
+
+        return sqlUpdates;
     }
 
     private static ArrayList<String> compare(Records records, int[] pointIdx, String[] s1, String[] s2) {

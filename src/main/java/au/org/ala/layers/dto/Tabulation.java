@@ -29,6 +29,8 @@ public class Tabulation {
     String geometry;
     int occurrences;
     int species;
+    int speciest1;
+    int speciest2;
 
     public String getFid1() {
         return fid1;
@@ -108,6 +110,22 @@ public class Tabulation {
 
     public void setSpecies(int species) {
         this.species = species;
+    }
+
+    public int getSpeciest1() {
+        return speciest1;
+    }
+
+    public void setSpeciest1(int speciest1) {
+        this.speciest1 = speciest1;
+    }
+
+    public int getSpeciest2() {
+        return speciest2;
+    }
+
+    public void setSpeciest2(int speciest2) {
+        this.speciest2 = speciest2;
     }
 
 }
