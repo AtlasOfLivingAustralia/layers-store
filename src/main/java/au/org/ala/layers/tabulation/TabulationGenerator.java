@@ -925,9 +925,9 @@ public class TabulationGenerator {
                         try {
                             File tmp = null;
                             if (path == null) {
-                                tmp = File.createTempFile(f.getId(), "tabulation_generator");
+                                tmp = File.createTempFile(f.getId() + "_", "tabulation_generator");
                             } else {
-                                tmp = new File(path + "/sample_" + f.getId());
+                                tmp = new File(path + "/" + f.getId() + "_sample");
                             }
                             System.out.println("**** tmp file **** > " + tmp.getPath());
                             fields.add(f);
@@ -969,9 +969,9 @@ public class TabulationGenerator {
                             try {
                                 File tmp = null;
                                 if (path == null) {
-                                    tmp = File.createTempFile(f.getId(), "tabulation_generator");
+                                    tmp = File.createTempFile(f.getId() + "_", "tabulation_generator");
                                 } else {
-                                    tmp = new File(path + "/sample_" + f.getId());
+                                    tmp = new File(path + "/" + f.getId() + "_sample");
                                 }
                                 System.out.println("**** tmp file **** > " + tmp.getPath());
                                 fields.add(f);
@@ -1021,237 +1021,17 @@ public class TabulationGenerator {
                 // load file for i
                 String[] s1 = loadFile(files.get(i), pts.size());
 
-                ArrayList<String> sqlUpdates = speciesTotals(records, pointIdx, s1);
-                // batch
-                StringBuilder sb = new StringBuilder();
-                for (String s : sqlUpdates) {
-                    sb.append(s).append(";\n");
-                }
-                statement.execute(sb.toString());
-                System.out.println(sb.toString());
-
+                String fid1 = files.get(i).getName().split("_")[0];
+                
                 for (int j = i + 1; j < fields.size(); j++) {
                     // load file for j
                     String[] s2 = loadFile(files.get(j), pts.size());
 
-                    // compare
-                    sqlUpdates = compare(records, pointIdx, s1, s2);
-
-                    // batch
-                    sb = new StringBuilder();
-                    for (String s : sqlUpdates) {
-                        sb.append(s).append(";\n");
-                    }
-
-                    // commit
-                    statement.execute(sb.toString());
-                    System.out.println(sb.toString());
-                }
-            }
-
-            // set nulls
-            statement.execute("UPDATE tabulation SET occurrences=0 WHERE occurrences is null;");
-            statement.execute("UPDATE tabulation SET species=0 WHERE species is null;");
-
-            if (path == null) {
-                for (int i = 0; i < files.size(); i++) {
-                    System.out.println("FILE: " + files.get(i).getPath());
-                    files.get(i).delete();
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return 0;
-    }
-
-    public static int updateOccurrencesSpecies(Records records, int threadCount, String path, String fid1, String fid2) {
-        FieldDAO fieldDao = Client.getFieldDao();
-        LayerDAO layerDao = Client.getLayerDao();
-        ObjectDAO objectDao = Client.getObjectDao();
-        LayerIntersectDAO layerIntersectDao = Client.getLayerIntersectDao();
-
-        // reduce points
-        HashSet<String> uniquePoints = new HashSet<String>();
-        for (int i = 0; i < records.getRecordsSize(); i++) {
-            uniquePoints.add(records.getLongitude(i) + " " + records.getLatitude(i));
-        }
-        ArrayList<String> pts = new ArrayList<String>(uniquePoints);
-        java.util.Collections.sort(pts);
-        uniquePoints = null;
-        double[][] points = new double[pts.size()][2];
-        for (int i = 0; i < points.length; i++) {
-            String[] p = pts.get(i).split(" ");
-            points[i][0] = Double.NaN;
-            points[i][1] = Double.NaN;
-            try {
-                points[i][0] = Double.parseDouble(p[0]);
-                points[i][1] = Double.parseDouble(p[1]);
-            } catch (Exception e) {
-            }
-        }
-
-        int[] pointIdx = new int[records.getRecordsSize()];
-        for (int i = 0; i < records.getRecordsSize(); i++) {
-            pointIdx[i] = java.util.Collections.binarySearch(pts, records.getLongitude(i) + " " + records.getLatitude(i));
-        }
-
-        ArrayList<Field> fields = new ArrayList<Field>();
-        ArrayList<File> files = new ArrayList<File>();
-
-        // perform sampling, only for layers with a shape file requiring an
-        // intersection
-        for (Field f : fieldDao.getFields()) {
-            if (f.getId().equals(fid1) || f.getId().equals(fid2)) {
-                //create new sampling file when one does not already exist
-                if (f.isIntersect() && (path == null || !(new File(path + "_sample_" + f.getId()).exists()))) {
-                    try {
-                        String fieldName = f.getSid();
-                        Layer l = layerDao.getLayerById(Integer.valueOf(f.getSpid()));
-                        String filename = layerIntersectDao.getConfig().getLayerFilesPath() + File.separator + l.getPath_orig();
-
-                        System.out.println(filename);
-
-                        //shapefile
-                        File shp = new File(filename + ".shp");
-
-                        if (shp.exists()) {
-                            SimpleShapeFile ssf = null;
-                            if (layerIntersectDao.getConfig().getShapeFileCache() != null) {
-                                ssf = layerIntersectDao.getConfig().getShapeFileCache().get(filename);
-                            }
-                            if (ssf == null) {
-                                ssf = new SimpleShapeFile(filename, fieldName);
-                            }
-
-                            String[] catagories;
-                            int column_idx = ssf.getColumnIdx(fieldName);
-                            catagories = ssf.getColumnLookup(column_idx);
-                            int[] values = ssf.intersect(points, catagories, column_idx, threadCount);
-
-                            // catagories to pid
-                            List<Objects> objects = objectDao.getObjectsById(f.getId());
-                            int[] catToPid = new int[catagories.length];
-                            for (int j = 0; j < objects.size(); j++) {
-                                for (int i = 0; i < catagories.length; i++) {
-                                    if ((catagories[i] == null || objects.get(j).getId() == null) && catagories[i] == objects.get(j).getId()) {
-                                        catToPid[i] = j;
-                                        break;
-                                    } else if (catagories[i] != null && objects.get(j).getId() != null && catagories[i].compareTo(objects.get(j).getId()) == 0) {
-                                        catToPid[i] = j;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            // export pids in points order
-                            FileWriter fw = null;
-                            try {
-                                File tmp = null;
-                                if (path == null) {
-                                    tmp = File.createTempFile(f.getId(), "tabulation_generator");
-                                } else {
-                                    tmp = new File(path + "/sample_" + f.getId());
-                                }
-                                System.out.println("**** tmp file **** > " + tmp.getPath());
-                                fields.add(f);
-                                files.add(tmp);
-                                fw = new FileWriter(tmp);
-                                if (values != null) {
-                                    for (int i = 0; i < values.length; i++) {
-                                        if (i > 0) {
-                                            fw.append("\n");
-                                        }
-                                        if (values[i] >= 0) {
-                                            fw.append(objects.get(catToPid[values[i]]).getPid());
-                                        } else {
-                                            fw.append("n/a");
-                                        }
-                                    }
-                                }
-                                System.out.println("**** OK ***** > " + l.getPath_orig());
-                            } catch (Exception e) {
-                                System.out.println("problem with sampling: " + l.getPath_orig());
-                                e.printStackTrace();
-                            } finally {
-                                if (fw != null) {
-                                    try {
-                                        fw.close();
-                                    } catch (Exception e) {
-                                    }
-                                }
-                            }
-                        } else {
-                            //grid as shp
-                            Grid g = new Grid(layerIntersectDao.getConfig().getLayerFilesPath() + File.separator
-                                    + l.getPath_orig());
-                            if (g != null) {
-                                float[] values = g.getValues(points);
-
-                                // export pids in points order
-                                FileWriter fw = null;
-                                try {
-                                    File tmp = null;
-                                    if (path == null) {
-                                        tmp = File.createTempFile(f.getId(), "tabulation_generator");
-                                    } else {
-                                        tmp = new File(path + "/sample_" + f.getId());
-                                    }
-                                    System.out.println("**** tmp file **** > " + tmp.getPath());
-                                    fields.add(f);
-                                    files.add(tmp);
-                                    fw = new FileWriter(tmp);
-                                    if (values != null) {
-                                        for (int i = 0; i < values.length; i++) {
-                                            if (i > 0) {
-                                                fw.append("\n");
-                                            }
-                                            if (values[i] >= 0) {
-                                                fw.append(String.valueOf(values[i]));
-                                            } else {
-                                                fw.append("n/a");
-                                            }
-                                        }
-                                    }
-                                    System.out.println("**** OK ***** > " + l.getPath_orig());
-                                } catch (Exception e) {
-                                    System.out.println("problem with sampling: " + l.getPath_orig());
-                                    e.printStackTrace();
-                                } finally {
-                                    if (fw != null) {
-                                        try {
-                                            fw.close();
-                                        } catch (Exception e) {
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } catch (Exception e) {
-                        System.out.println("problem with sampling: " + f.getId());
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }
-
-        // evaluate and write
-        Connection conn = null;
-        try {
-            conn = getConnection();
-            Statement statement = conn.createStatement();
-
-            // operate on each pid pair
-            for (int i = 0; i < fields.size(); i++) {
-                // load file for i
-                String[] s1 = loadFile(files.get(i), pts.size());
-
-                for (int j = i + 1; j < fields.size(); j++) {
-                    // load file for j
-                    String[] s2 = loadFile(files.get(j), pts.size());
+                    String fid2 = files.get(j).getName().split("_")[0];
 
                     // compare
-                    ArrayList<String> sqlUpdates = compare(records, pointIdx, s1, s2);
+                    System.out.println("|" + fid1 + "," + fid2);
+                    ArrayList<String> sqlUpdates = compare(records, pointIdx, s1, s2, fid1, fid2);
 
                     // batch
                     StringBuilder sb = new StringBuilder();
@@ -1310,57 +1090,39 @@ public class TabulationGenerator {
         }
     }
 
-    private static ArrayList<String> speciesTotals(Records records, int[] pointIdx, String[] s1) {
+    private static ArrayList<String> compare(Records records, int[] pointIdx, String[] s1, String[] s2, String fid1, String fid2) {
         ArrayList<String> sqlUpdates = new ArrayList<String>();
         BitSet bitset;
         Integer count;
         String key;
         HashMap<String, BitSet> species = new HashMap<String, BitSet>();
         HashMap<String, Integer> occurrences = new HashMap<String, Integer>();
+        Map<String, BitSet> speciesTotals = new HashMap<String, BitSet>();
 
+        int countNa = 0;
         for (int i = 0; i < pointIdx.length; i++) {
-            key = s1[pointIdx[i]];
-
-            bitset = species.get(key);
-            if (bitset == null) {
-                bitset = new BitSet();
-            }
-            bitset.set(records.getSpeciesNumber(i));
-            species.put(key, bitset);
-
-            count = occurrences.get(key);
-            if (count == null) {
-                count = 0;
-            }
-            count = count + 1;
-            occurrences.put(key, count);
-        }
-
-        // produce sql update statements
-        for (String k : species.keySet()) {
-            String pid = k;
-            sqlUpdates.add("UPDATE tabulation SET " + "speciest1 = " + species.get(k).cardinality() + " WHERE pid1='" + pid + "'");
-            sqlUpdates.add("UPDATE tabulation SET " + "speciest2 = " + species.get(k).cardinality() + " WHERE pid2='" + pid + "'");
-        }
-
-        return sqlUpdates;
-    }
-
-    private static ArrayList<String> compare(Records records, int[] pointIdx, String[] s1, String[] s2) {
-        ArrayList<String> sqlUpdates = new ArrayList<String>();
-        BitSet bitset;
-        Integer count;
-        String key;
-        HashMap<String, BitSet> species = new HashMap<String, BitSet>();
-        HashMap<String, Integer> occurrences = new HashMap<String, Integer>();
-
-        for (int i = 0; i < pointIdx.length; i++) {
+            String row = s1[pointIdx[i]];
+            String col = s2[pointIdx[i]];
             key = s1[pointIdx[i]] + " " + s2[pointIdx[i]];
 
-            bitset = species.get(key);
-            if (bitset == null) {
-                bitset = new BitSet();
+            //row and column totals
+            if (s1[pointIdx[i]] != null && !s1[pointIdx[i]].isEmpty() && !s1[pointIdx[i]].equals("n/a") &&
+                    s2[pointIdx[i]] != null && !s2[pointIdx[i]].isEmpty() && !s2[pointIdx[i]].equals("n/a")) {
+                bitset = speciesTotals.get(col);
+                if (bitset == null) bitset = new BitSet();
+                bitset.set(records.getSpeciesNumber(i));
+                speciesTotals.put(col, bitset);
+
+                bitset = speciesTotals.get(row);
+                if (bitset == null) bitset = new BitSet();
+                bitset.set(records.getSpeciesNumber(i));
+                speciesTotals.put(row, bitset);
+
+                countNa++;
             }
+
+            bitset = species.get(key);
+            if (bitset == null) bitset = new BitSet();
             bitset.set(records.getSpeciesNumber(i));
             species.put(key, bitset);
 
@@ -1371,12 +1133,23 @@ public class TabulationGenerator {
             count = count + 1;
             occurrences.put(key, count);
         }
+
+        System.out.print("|" + countNa);
 
         // produce sql update statements
         for (String k : species.keySet()) {
             String[] pids = k.split(" ");
             sqlUpdates.add("UPDATE tabulation SET " + "species = " + species.get(k).cardinality() + ", " + "occurrences = " + occurrences.get(k) + " WHERE (pid1='" + pids[0] + "' AND pid2='"
                     + pids[1] + "') " + "OR (pid1='" + pids[1] + "' AND pid2='" + pids[0] + "')");
+        }
+
+        // produce sql update statements
+        for (String k : speciesTotals.keySet()) {
+            String pid = k;
+            sqlUpdates.add("UPDATE tabulation SET " + "speciest1 = " + speciesTotals.get(k).cardinality()
+                    + " WHERE pid1='" + pid + "' AND fid1='" + fid1 + "' AND fid2='" + fid2 + "'");
+            sqlUpdates.add("UPDATE tabulation SET " + "speciest2 = " + speciesTotals.get(k).cardinality()
+                    + " WHERE pid2='" + pid + "' AND fid1='" + fid1 + "' AND fid2='" + fid2 + "'");
         }
 
         return sqlUpdates;

@@ -610,7 +610,7 @@ public class IntersectConfig {
         if (fields.length == 1 && fields[0].equalsIgnoreCase("all")) {
             Set shapefiles = new HashSet();
             for (String s : intersectionFiles.keySet()) {
-                if (s.startsWith("cl") && intersectionFiles.get(s).getType().equalsIgnoreCase("contextual")) {
+                if (s.startsWith("cl") && intersectionFiles.get(s).getType().equalsIgnoreCase("c")) {
                     shapefiles.add(intersectionFiles.get(s).getFilePath());
                 }
             }
