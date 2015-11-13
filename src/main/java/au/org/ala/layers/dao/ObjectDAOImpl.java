@@ -165,7 +165,8 @@ public class ObjectDAOImpl implements ObjectDAO {
                 int pos = 0;
 
                 for (Entry<Integer, GridClass> c : f.getClasses().entrySet()) {
-                    if (f.getType().equals("a")) { // class pid
+                    File file = new File(f.getFilePath() + File.separator + c.getKey() + ".wkt.index.dat");
+                    if (f.getType().equals("a") || !file.exists()) { // class pid
                         if (pageSize == -1 || (pos >= start && pos - start < pageSize)) {
                             Objects o = new Objects();
                             o.setPid(f.getLayerPid() + ":" + c.getKey());
@@ -185,7 +186,7 @@ public class ObjectDAOImpl implements ObjectDAO {
                         }
                     } else { // polygon pid
                         try {
-                            RandomAccessFile raf = new RandomAccessFile(f.getFilePath() + File.separator + c.getKey() + ".wkt.index.dat", "r");
+                            RandomAccessFile raf = new RandomAccessFile(file, "r");
                             long itemSize = (4 + 4 + 4 * 4 + 4);
                             long len = raf.length() / itemSize; // group
 
@@ -325,73 +326,74 @@ public class ObjectDAOImpl implements ObjectDAO {
                                 // implementation of fields table defaultLayer
                                 // field
 
-                                if (f.getType().equals("a") || s.length == 2) {
-                                    // class
-                                    File file = new File(f.getFilePath() + File.separator + s[1] + "." + geomtype + ".zip");
-                                    if (file.exists()) {
-                                        ZipInputStream zis = new ZipInputStream(new FileInputStream(file));
-                                        zis.getNextEntry();
-                                        byte[] buffer = new byte[1024];
-                                        int size;
-                                        while ((size = zis.read(buffer)) > 0) {
-                                            os.write(buffer, 0, size);
-                                        }
-                                        zis.close();
+                                File file = new File(f.getFilePath() + File.separator + s[1] + "." + geomtype + ".zip");
+                                if ((f.getType().equals("a") || s.length == 2) && file.exists()) {
+                                    ZipInputStream zis = new ZipInputStream(new FileInputStream(file));
+                                    zis.getNextEntry();
+                                    byte[] buffer = new byte[1024];
+                                    int size;
+                                    while ((size = zis.read(buffer)) > 0) {
+                                        os.write(buffer, 0, size);
                                     }
+                                    zis.close();
                                 } else { // polygon
                                     BufferedInputStream bis = null;
                                     InputStreamReader isr = null;
                                     try {
                                         String[] cells = null;
 
-                                        HashMap<String, Object> map = getGridIndexEntry(f.getFilePath() + File.separator + s[1], s[2]);
+                                        HashMap<String, Object> map = s.length == 2 ? null : getGridIndexEntry(f.getFilePath() + File.separator + s[1], s[2]);
 
-                                        cells = new String[]{s[2], String.valueOf(map.get("charoffset"))};
-                                        if (cells != null) {
-                                            // get polygon wkt string
-                                            File file = new File(f.getFilePath() + File.separator + s[1] + ".wkt");
-                                            bis = new BufferedInputStream(new FileInputStream(file));
-                                            isr = new InputStreamReader(bis);
-                                            isr.skip(Long.parseLong(cells[1]));
-                                            char[] buffer = new char[1024];
-                                            int size;
-                                            StringBuilder sb = new StringBuilder();
-                                            sb.append("POLYGON");
-                                            int end = -1;
-                                            while (end < 0 && (size = isr.read(buffer)) > 0) {
-                                                sb.append(buffer, 0, size);
-                                                end = sb.toString().indexOf("))");
-                                            }
-                                            end += 2;
-
-                                            String wkt = sb.toString().substring(0, end);
-
-                                            if (geomtype.equals("wkt")) {
-                                                os.write(wkt.getBytes());
-                                            } else {
-                                                WKTReader r = new WKTReader();
-                                                Geometry g = r.read(wkt);
-
-                                                if (geomtype.equals("kml")) {
-                                                    os.write(KML_HEADER.getBytes());
-                                                    Encoder encoder = new Encoder(new KMLConfiguration());
-                                                    encoder.setIndenting(true);
-                                                    encoder.encode(g, KML.Geometry, os);
-                                                    os.write(KML_FOOTER.getBytes());
-                                                } else if (geomtype.equals("geojson")) {
-                                                    FeatureJSON fjson = new FeatureJSON();
-                                                    final SimpleFeatureType TYPE = DataUtilities.createType("class", "the_geom:MultiPolygon,name:String");
-                                                    SimpleFeatureBuilder featureBuilder = new SimpleFeatureBuilder(TYPE);
-                                                    featureBuilder.add(g);
-                                                    featureBuilder.add(gc.getName());
-                                                    fjson.writeFeature(featureBuilder.buildFeature(null), os);
-                                                } else if (geomtype == "shp") {
-                                                    File zippedShapeFile = SpatialConversionUtils.buildZippedShapeFile(wkt, id, gc.getName(), null);
-                                                    FileUtils.copyFile(zippedShapeFile, os);
+                                        String wkt = null;
+                                        if (map != null) {
+                                            cells = new String[]{s[2], String.valueOf(map.get("charoffset"))};
+                                            if (cells != null) {
+                                                // get polygon wkt string
+                                                File file2 = new File(f.getFilePath() + File.separator + s[1] + ".wkt");
+                                                bis = new BufferedInputStream(new FileInputStream(file2));
+                                                isr = new InputStreamReader(bis);
+                                                isr.skip(Long.parseLong(cells[1]));
+                                                char[] buffer = new char[1024];
+                                                int size;
+                                                StringBuilder sb = new StringBuilder();
+                                                sb.append("POLYGON");
+                                                int end = -1;
+                                                while (end < 0 && (size = isr.read(buffer)) > 0) {
+                                                    sb.append(buffer, 0, size);
+                                                    end = sb.toString().indexOf("))");
                                                 }
+                                                end += 2;
+
+                                                wkt = sb.toString().substring(0, end);
                                             }
+                                        } else {
+                                            wkt = gc.getBbox();
                                         }
 
+                                        if (geomtype.equals("wkt")) {
+                                            os.write(wkt.getBytes());
+                                        } else {
+                                            WKTReader r = new WKTReader();
+                                            Geometry g = r.read(wkt);
+
+                                            if (geomtype.equals("kml")) {
+                                                os.write(KML_HEADER.getBytes());
+                                                Encoder encoder = new Encoder(new KMLConfiguration());
+                                                encoder.setIndenting(true);
+                                                encoder.encode(g, KML.Geometry, os);
+                                                os.write(KML_FOOTER.getBytes());
+                                            } else if (geomtype.equals("geojson")) {
+                                                FeatureJSON fjson = new FeatureJSON();
+                                                final SimpleFeatureType TYPE = DataUtilities.createType("class", "the_geom:MultiPolygon,name:String");
+                                                SimpleFeatureBuilder featureBuilder = new SimpleFeatureBuilder(TYPE);
+                                                featureBuilder.add(g);
+                                                featureBuilder.add(gc.getName());
+                                                fjson.writeFeature(featureBuilder.buildFeature(null), os);
+                                            } else if (geomtype == "shp") {
+                                                File zippedShapeFile = SpatialConversionUtils.buildZippedShapeFile(wkt, id, gc.getName(), null);
+                                                FileUtils.copyFile(zippedShapeFile, os);
+                                            }
+                                        }
                                     } catch (Exception e) {
                                         e.printStackTrace();
                                     } finally {
@@ -499,7 +501,7 @@ public class ObjectDAOImpl implements ObjectDAO {
                     Map m = (Map) v.get(0);
                     int key = (int) Double.parseDouble(((String) m.get("pid")).split(":")[1]);
                     GridClass gc = f.getClasses().get(key);
-                    if (f.getType().equals("a")) { // class pid
+                    if (f.getType().equals("a") || !new File(f.getFilePath() + File.separator + "polygons.grd").exists()) { // class pid
                         Objects o = new Objects();
                         o.setName(gc.getName());
                         o.setFid(f.getFieldId());

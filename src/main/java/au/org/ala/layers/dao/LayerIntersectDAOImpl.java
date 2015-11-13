@@ -194,11 +194,18 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
                             if (gc != null) {
                                 //TODO: re-enable intersection for type 'a' after correct implementation
                                 //TODO: of 'defaultField' fields table column
-                                g = new Grid(f.getFilePath() + File.separator + "polygons");
-                                if (g != null) {
-                                    int v0 = (int) v[0];
-                                    v = g.getValues(p);
-                                    m.put("pid", f.getLayerPid() + ":" + v0 + ":" + ((int) v[0]));
+
+                                //some grid classes may not have individual polygons created
+                                if (new File(f.getFilePath() + File.separator + "polygons.grd").exists()) {
+                                    g = new Grid(f.getFilePath() + File.separator + "polygons");
+                                    if (g != null) {
+                                        int v0 = (int) v[0];
+                                        v = g.getValues(p);
+                                        m.put("pid", f.getLayerPid() + ":" + v0 + ":" + ((int) v[0]));
+                                    }
+                                } else {
+                                    //no shapes available
+                                    m.put("pid", f.getLayerPid() + ":" + ((int) v[0]));
                                 }
                             }
                         }

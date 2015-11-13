@@ -51,7 +51,6 @@ public class GridClassBuilder {
     final public static int[] colours = {0x003366CC, 0x00DC3912, 0x00FF9900, 0x00109618, 0x00990099, 0x000099C6, 0x00DD4477, 0x0066AA00, 0x00B82E2E, 0x00316395, 0x00994499, 0x0022AA99, 0x00AAAA11, 0x006633CC, 0x00E67300, 0x008B0707, 0x00651067, 0x00329262, 0x005574A6, 0x003B3EAC, 0x00B77322, 0x0016D620, 0x00B91383, 0x00F4359E, 0x009C5935, 0x00A9C413, 0x002A778D, 0x00668D1C, 0x00BEA413, 0x000C5922, 0x00743411};
 
     public static void main(String[] args) {
-        //args = new String[]{"e:\\layers\\ready\\shape_diva\\fci"};
 
         System.out.println("args[0]=diva grid input file (do not include .grd or .gri)\n\n");
 
@@ -111,175 +110,210 @@ public class GridClassBuilder {
                 e.printStackTrace();
             }
         }
+        boolean generateWkt = false;
         java.util.Collections.sort(keys);
-        for (int j = 0; j < keys.size(); j++) {
-            int k = keys.get(j);
-            String key = String.valueOf(k);
-            try {
+
+        if (generateWkt) {
+            for (int j = 0; j < keys.size(); j++) {
+                int k = keys.get(j);
+                String key = String.valueOf(k);
+                try {
+                    String name = p.getProperty(key);
+
+                    GridClass gc = new GridClass();
+                    gc.setName(name);
+                    gc.setId(k);
+
+                    System.out.println("getting wkt for " + filePath + " > " + key);
+
+                    //write class wkt
+                    File zipFile = new File(filePath + File.separator + key + ".wkt.zip");
+                    ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipFile));
+                    zos.putNextEntry(new ZipEntry(key + ".wkt"));
+                    Map wktIndexed = Envelope.getGridSingleLayerEnvelopeAsWktIndexed(filePath + "," + key + "," + key, wktMap);
+                    zos.write(((String) wktIndexed.get("wkt")).getBytes());
+                    zos.close();
+                    BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(filePath + File.separator + key + ".wkt"));
+                    bos.write(((String) wktIndexed.get("wkt")).getBytes());
+                    bos.close();
+                    System.out.println("wkt written to file");
+                    gc.setArea_km(SpatialUtil.calculateArea((String) wktIndexed.get("wkt")) / 1000.0 / 1000.0);
+
+                    //store map
+                    wktMap = (int[]) wktIndexed.get("map");
+
+                    //write wkt index
+                    FileWriter fw = new FileWriter(filePath + File.separator + key + ".wkt.index");
+                    fw.append((String) wktIndexed.get("index"));
+                    fw.close();
+                    //write wkt index a binary, include extents (minx, miny, maxx, maxy) and area (sq km)
+                    RandomAccessFile raf = new RandomAccessFile(filePath + File.separator + key + ".wkt.index.dat", "rw");
+                    String[] index = ((String) wktIndexed.get("index")).split("\n");
+                    int len = ((String) wktIndexed.get("wkt")).length();
+                    WKTReader r = new WKTReader();
+
+                    int minPolygonNumber = 0;
+                    int maxPolygonNumber = 0;
+
+                    for (int i = 0; i < index.length; i++) {
+                        if (index[i].length() > 1) {
+                            String[] cells = index[i].split(",");
+                            int polygonNumber = Integer.parseInt(cells[0]);
+                            raf.writeInt(polygonNumber);   //polygon number
+                            int polygonStart = Integer.parseInt(cells[1]);
+                            raf.writeInt(polygonStart);   //character offset
+
+                            if (i == 0) {
+                                minPolygonNumber = polygonNumber;
+                            } else if (i == index.length - 1) {
+                                maxPolygonNumber = polygonNumber;
+                            }
+
+                            int polygonEnd = len;
+                            if (i + 1 < index.length) {
+                                polygonEnd = Integer.parseInt(index[i + 1].split(",")[1]) - 1; //-1 for comma
+                            }
+                            String polygonWkt = ((String) wktIndexed.get("wkt")).substring(polygonStart, polygonEnd);
+                            Geometry g = r.read("POLYGON" + polygonWkt);
+                            raf.writeFloat((float) g.getEnvelopeInternal().getMinX());
+                            raf.writeFloat((float) g.getEnvelopeInternal().getMinY());
+                            raf.writeFloat((float) g.getEnvelopeInternal().getMaxX());
+                            raf.writeFloat((float) g.getEnvelopeInternal().getMaxY());
+                            raf.writeFloat((float) (SpatialUtil.calculateArea(polygonWkt) / 1000.0 / 1000.0));
+                        }
+                    }
+                    raf.close();
+
+                    //for SLD
+                    maxValues.add(gc.getMaxShapeIdx());
+                    labels.add(name.replace("\"", "'"));
+                    gc.setMinShapeIdx(minPolygonNumber);
+                    gc.setMaxShapeIdx(maxPolygonNumber);
+
+                    System.out.println("getting multipolygon for " + filePath + " > " + key);
+                    MultiPolygon mp = Envelope.getGridEnvelopeAsMultiPolygon(filePath + "," + key + "," + key);
+                    gc.setBbox(mp.getEnvelope().toText().replace(" (", "(").replace(", ", ","));
+
+                    classes.put(k, gc);
+
+                    try {
+                        //write class kml
+                        zos = new ZipOutputStream(new FileOutputStream(filePath + File.separator + key + ".kml.zip"));
+                        zos.putNextEntry(new ZipEntry(key + ".kml"));
+                        Encoder encoder = new Encoder(new KMLConfiguration());
+                        encoder.setIndenting(true);
+                        encoder.encode(mp, KML.Geometry, zos);
+                        zos.close();
+                        System.out.println("kml written to file");
+
+                        //write class geojson
+                        zos = new ZipOutputStream(new FileOutputStream(filePath + File.separator + key + ".geojson.zip"));
+                        zos.putNextEntry(new ZipEntry(key + ".geojson"));
+                        FeatureJSON fjson = new FeatureJSON();
+                        final SimpleFeatureType TYPE = DataUtilities.createType("class", "the_geom:MultiPolygon,id:Integer,name:String");
+                        SimpleFeatureBuilder featureBuilder = new SimpleFeatureBuilder(TYPE);
+                        featureBuilder.add(mp);
+                        featureBuilder.add(k);
+                        featureBuilder.add(name);
+                        SimpleFeature sf = featureBuilder.buildFeature(null);
+                        fjson.writeFeature(sf, zos);
+                        zos.close();
+                        System.out.println("geojson written to file");
+
+                        //write class shape file
+                        File newFile = new File(filePath + File.separator + key + ".shp");
+                        ShapefileDataStoreFactory dataStoreFactory = new ShapefileDataStoreFactory();
+                        Map<String, Serializable> params = new HashMap<String, Serializable>();
+                        params.put("url", newFile.toURI().toURL());
+                        params.put("create spatial index", Boolean.FALSE);
+                        ShapefileDataStore newDataStore = (ShapefileDataStore) dataStoreFactory.createNewDataStore(params);
+                        newDataStore.createSchema(TYPE);
+                        newDataStore.forceSchemaCRS(DefaultGeographicCRS.WGS84);
+                        Transaction transaction = new DefaultTransaction("create");
+                        String typeName = newDataStore.getTypeNames()[0];
+                        SimpleFeatureSource featureSource = newDataStore.getFeatureSource(typeName);
+                        SimpleFeatureStore featureStore = (SimpleFeatureStore) featureSource;
+                        featureStore.setTransaction(transaction);
+                        List<SimpleFeature> features = new ArrayList<SimpleFeature>();
+
+                        DefaultFeatureCollection collection = new DefaultFeatureCollection();
+                        collection.addAll(features);
+                        featureStore.setTransaction(transaction);
+
+                        features.add(sf);
+                        featureStore.addFeatures(collection);
+                        transaction.commit();
+                        transaction.close();
+
+                        zos = new ZipOutputStream(new FileOutputStream(filePath + File.separator + key + ".shp.zip"));
+                        //add .dbf .shp .shx .prj
+                        String[] exts = {".dbf", ".shp", ".shx", ".prj"};
+                        for (String ext : exts) {
+                            zos.putNextEntry(new ZipEntry(key + ext));
+                            FileInputStream fis = new FileInputStream(filePath + File.separator + key + ext);
+                            byte[] buffer = new byte[1024];
+                            int size;
+                            while ((size = fis.read(buffer)) > 0) {
+                                zos.write(buffer, 0, size);
+                            }
+                            fis.close();
+                            //remove unzipped files
+                            new File(filePath + File.separator + key + ext).delete();
+                        }
+                        zos.close();
+                        System.out.println("shape file written to zip");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            //write polygon mapping
+            Grid g = new Grid(filePath);
+            g.writeGrid(filePath + File.separator + "polygons", wktMap, g.xmin, g.ymin, g.xmax, g.ymax, g.xres, g.yres, g.nrows, g.ncols);
+
+            //copy the header file to get it exactly the same, but change the data type
+            copyHeaderAsInt(filePath + ".grd", filePath + File.separator + "polygons.grd");
+        } else {
+            //build classes without generating polygons
+            Map<Float, float[]> info = new HashMap<Float, float[]>();
+            for (int j = 0; j < keys.size(); j++) {
+                info.put(keys.get(j).floatValue(), new float[]{0, Float.NaN, Float.NaN, Float.NaN, Float.NaN});
+            }
+            Grid g = new Grid(filePath);
+            g.getClassInfo(info);
+
+            for (int j = 0; j < keys.size(); j++) {
+                int k = keys.get(j);
+                String key = String.valueOf(k);
+
                 String name = p.getProperty(key);
 
                 GridClass gc = new GridClass();
                 gc.setName(name);
                 gc.setId(k);
 
-                System.out.println("getting wkt for " + filePath + " > " + key);
-
-                //write class wkt
-                File zipFile = new File(filePath + File.separator + key + ".wkt.zip");
-                ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipFile));
-                zos.putNextEntry(new ZipEntry(key + ".wkt"));
-                Map wktIndexed = Envelope.getGridSingleLayerEnvelopeAsWktIndexed(filePath + "," + key + "," + key, wktMap);
-                zos.write(((String) wktIndexed.get("wkt")).getBytes());
-                zos.close();
-                BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(filePath + File.separator + key + ".wkt"));
-                bos.write(((String) wktIndexed.get("wkt")).getBytes());
-                bos.close();
-                System.out.println("wkt written to file");
-                gc.setArea_km(SpatialUtil.calculateArea((String) wktIndexed.get("wkt")) / 1000.0 / 1000.0);
-
-                //store map
-                wktMap = (int[]) wktIndexed.get("map");
-
-                //write wkt index
-                FileWriter fw = new FileWriter(filePath + File.separator + key + ".wkt.index");
-                fw.append((String) wktIndexed.get("index"));
-                fw.close();
-                //write wkt index a binary, include extents (minx, miny, maxx, maxy) and area (sq km)
-                RandomAccessFile raf = new RandomAccessFile(filePath + File.separator + key + ".wkt.index.dat", "rw");
-                String[] index = ((String) wktIndexed.get("index")).split("\n");
-                int len = ((String) wktIndexed.get("wkt")).length();
-                WKTReader r = new WKTReader();
-
-                int minPolygonNumber = 0;
-                int maxPolygonNumber = 0;
-
-                for (int i = 0; i < index.length; i++) {
-                    if (index[i].length() > 1) {
-                        String[] cells = index[i].split(",");
-                        int polygonNumber = Integer.parseInt(cells[0]);
-                        raf.writeInt(polygonNumber);   //polygon number
-                        int polygonStart = Integer.parseInt(cells[1]);
-                        raf.writeInt(polygonStart);   //character offset
-
-                        if (i == 0) {
-                            minPolygonNumber = polygonNumber;
-                        } else if (i == index.length - 1) {
-                            maxPolygonNumber = polygonNumber;
-                        }
-
-                        int polygonEnd = len;
-                        if (i + 1 < index.length) {
-                            polygonEnd = Integer.parseInt(index[i + 1].split(",")[1]) - 1; //-1 for comma
-                        }
-                        String polygonWkt = ((String) wktIndexed.get("wkt")).substring(polygonStart, polygonEnd);
-                        Geometry g = r.read("POLYGON" + polygonWkt);
-                        raf.writeFloat((float) g.getEnvelopeInternal().getMinX());
-                        raf.writeFloat((float) g.getEnvelopeInternal().getMinY());
-                        raf.writeFloat((float) g.getEnvelopeInternal().getMaxX());
-                        raf.writeFloat((float) g.getEnvelopeInternal().getMaxY());
-                        raf.writeFloat((float) (SpatialUtil.calculateArea(polygonWkt) / 1000.0 / 1000.0));
-                    }
-                }
-                raf.close();
-                wktIndexed = null;
-
                 //for SLD
-                maxValues.add(gc.getMaxShapeIdx());
+                maxValues.add(Integer.valueOf(key));
                 labels.add(name.replace("\"", "'"));
-                gc.setMinShapeIdx(minPolygonNumber);
-                gc.setMaxShapeIdx(maxPolygonNumber);
+                gc.setMinShapeIdx(Integer.valueOf(key));
+                gc.setMaxShapeIdx(Integer.valueOf(key));
 
-                System.out.println("getting multipolygon for " + filePath + " > " + key);
-                MultiPolygon mp = Envelope.getGridEnvelopeAsMultiPolygon(filePath + "," + key + "," + key);
-                gc.setBbox(mp.getEnvelope().toText().replace(" (", "(").replace(", ", ","));
+                float[] stats = info.get(keys.get(j).floatValue());
 
-                classes.put(k, gc);
+                //only include if area > 0
+                if (stats[0] > 0) {
+                    gc.setBbox("POLYGON((" + stats[1] + " " + stats[2] + "," + stats[1] + " " + stats[4] + "," +
+                            stats[3] + " " + stats[4] + "," + stats[3] + " " + stats[2] + "," +
+                            stats[1] + " " + stats[2] + "))");
 
-                try {
-//                    if(zipFile.length() < 1024*1024/5) {
-                    //write class kml
-                    zos = new ZipOutputStream(new FileOutputStream(filePath + File.separator + key + ".kml.zip"));
-                    zos.putNextEntry(new ZipEntry(key + ".kml"));
-                    Encoder encoder = new Encoder(new KMLConfiguration());
-                    encoder.setIndenting(true);
-                    encoder.encode(mp, KML.Geometry, zos);
-                    zos.close();
-                    System.out.println("kml written to file");
-
-                    //write class geojson
-                    zos = new ZipOutputStream(new FileOutputStream(filePath + File.separator + key + ".geojson.zip"));
-                    zos.putNextEntry(new ZipEntry(key + ".geojson"));
-                    FeatureJSON fjson = new FeatureJSON();
-                    final SimpleFeatureType TYPE = DataUtilities.createType("class", "the_geom:MultiPolygon,id:Integer,name:String");
-                    SimpleFeatureBuilder featureBuilder = new SimpleFeatureBuilder(TYPE);
-                    featureBuilder.add(mp);
-                    featureBuilder.add(k);
-                    featureBuilder.add(name);
-                    SimpleFeature sf = featureBuilder.buildFeature(null);
-                    fjson.writeFeature(sf, zos);
-                    zos.close();
-                    System.out.println("geojson written to file");
-
-                    //write class shape file
-                    File newFile = new File(filePath + File.separator + key + ".shp");
-                    ShapefileDataStoreFactory dataStoreFactory = new ShapefileDataStoreFactory();
-                    Map<String, Serializable> params = new HashMap<String, Serializable>();
-                    params.put("url", newFile.toURI().toURL());
-                    params.put("create spatial index", Boolean.FALSE);
-                    ShapefileDataStore newDataStore = (ShapefileDataStore) dataStoreFactory.createNewDataStore(params);
-                    newDataStore.createSchema(TYPE);
-                    newDataStore.forceSchemaCRS(DefaultGeographicCRS.WGS84);
-                    Transaction transaction = new DefaultTransaction("create");
-                    String typeName = newDataStore.getTypeNames()[0];
-                    SimpleFeatureSource featureSource = newDataStore.getFeatureSource(typeName);
-                    SimpleFeatureStore featureStore = (SimpleFeatureStore) featureSource;
-                    featureStore.setTransaction(transaction);
-                    List<SimpleFeature> features = new ArrayList<SimpleFeature>();
-
-                    DefaultFeatureCollection collection = new DefaultFeatureCollection();
-                    collection.addAll(features);
-                    featureStore.setTransaction(transaction);
-
-                    features.add(sf);
-                    featureStore.addFeatures(collection);
-                    transaction.commit();
-                    transaction.close();
-
-                    zos = new ZipOutputStream(new FileOutputStream(filePath + File.separator + key + ".shp.zip"));
-                    //add .dbf .shp .shx .prj
-                    String[] exts = {".dbf", ".shp", ".shx", ".prj"};
-                    for (String ext : exts) {
-                        zos.putNextEntry(new ZipEntry(key + ext));
-                        FileInputStream fis = new FileInputStream(filePath + File.separator + key + ext);
-                        byte[] buffer = new byte[1024];
-                        int size;
-                        while ((size = fis.read(buffer)) > 0) {
-                            zos.write(buffer, 0, size);
-                        }
-                        fis.close();
-                        //remove unzipped files
-                        new File(filePath + File.separator + key + ext).delete();
-                    }
-                    zos.close();
-                    System.out.println("shape file written to zip");
-//                    } else {
-//                        System.out.println("polygon too large");
-//                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
+                    gc.setArea_km((double) stats[0]);
+                    classes.put(k, gc);
                 }
-            } catch (Exception e) {
-                //logger.warn("Cannot parse integer key '" + key + "' in file " + filePath + ".txt");
-                e.printStackTrace();
             }
         }
-
-        //write polygon mapping
-        Grid g = new Grid(filePath);
-        g.writeGrid(filePath + File.separator + "polygons", wktMap, g.xmin, g.ymin, g.xmax, g.ymax, g.xres, g.yres, g.nrows, g.ncols);
-
-        //copy the header file to get it exactly the same, but change the data type
-        copyHeaderAsInt(filePath + ".grd", filePath + File.separator + "polygons.grd");
 
         //write sld
         exportSLD(filePath + File.separator + "polygons.sld", new File(filePath + ".txt").getName(), maxValues, labels);

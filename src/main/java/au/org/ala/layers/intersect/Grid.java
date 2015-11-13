@@ -14,6 +14,7 @@
  ***************************************************************************/
 package au.org.ala.layers.intersect;
 
+import au.org.ala.layers.util.SpatialUtil;
 import org.apache.log4j.Logger;
 
 import java.io.File;
@@ -24,6 +25,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Map;
 
 /**
  * Grid.java
@@ -455,6 +457,122 @@ public class Grid { //  implements Serializable
         }
         grid_data = ret;
         return ret;
+    }
+
+
+    /**
+     * Get area sq km, min longitude, min latitude, max longitude, max latitude for each grid value in info.keySet()
+     *
+     * @param map of grid values to match with double[5] for filling with info.
+     * @return
+     */
+    public void getClassInfo(Map<Float, float[]> info) {
+
+        long length = nrows * ncols;
+
+        RandomAccessFile afile;
+        File f2 = new File(filename + ".GRI");
+
+        try { //read of random access file can throw an exception
+            if (!f2.exists()) {
+                afile = new RandomAccessFile(filename + ".gri", "r");
+            } else {
+                afile = new RandomAccessFile(filename + ".GRI", "r");
+            }
+
+            byte[] b = new byte[65536];
+
+            long i = 0;
+            long max = 0;
+            long len;
+            float v;
+            float ndv = (float) nodatavalue;
+
+            while ((len = afile.read(b)) > 0) {
+                ByteBuffer bb = ByteBuffer.wrap(b);
+
+                if (byteorderLSB) {
+                    bb.order(ByteOrder.LITTLE_ENDIAN);
+                }
+
+                if (datatype.equalsIgnoreCase("UBYTE")) {
+                    max += len;
+                    max = Math.min(max, length);
+                    for (; i < max; i++) {
+                        v = bb.get();
+                        if (v < 0) v += 256;
+                        if (v != ndv) updatesStats(info, i, v * rescale);
+                    }
+                } else if (datatype.equalsIgnoreCase("BYTE")) {
+                    max += len;
+                    max = Math.min(max, length);
+                    for (; i < max; i++) {
+                        v = bb.get();
+                        if (v != ndv) updatesStats(info, i, v * rescale);
+                    }
+                } else if (datatype.equalsIgnoreCase("SHORT")) {
+                    max += len / 2;
+                    max = Math.min(max, length);
+                    for (; i < max; i++) {
+                        v = bb.getShort();
+                        if (v != ndv) updatesStats(info, i, v * rescale);
+                    }
+                } else if (datatype.equalsIgnoreCase("INT")) {
+                    max += len / 4;
+                    max = Math.min(max, length);
+                    for (; i < max; i++) {
+                        v = bb.getInt();
+                        if (v != ndv) updatesStats(info, i, v * rescale);
+                    }
+                } else if (datatype.equalsIgnoreCase("LONG")) {
+                    max += len / 8;
+                    max = Math.min(max, length);
+                    for (; i < max; i++) {
+                        v = bb.getLong();
+                        if (v != ndv) updatesStats(info, i, v * rescale);
+                    }
+                } else if (datatype.equalsIgnoreCase("FLOAT")) {
+                    max += len / 4;
+                    max = Math.min(max, length);
+                    for (; i < max; i++) {
+                        v = bb.getFloat();
+                        if (v != ndv) updatesStats(info, i, v * rescale);
+                    }
+                } else if (datatype.equalsIgnoreCase("DOUBLE")) {
+                    max += len / 8;
+                    max = Math.min(max, length);
+                    for (; i < max; i++) {
+                        v = (float) bb.getDouble();
+                        if (v != ndv) updatesStats(info, i, v * rescale);
+                    }
+                } else {
+                    max += len / 4;
+                    for (; i < max; i++) {
+                        // should not happen; catch anyway...
+                    }
+                }
+            }
+
+            afile.close();
+        } catch (Exception e) {
+            logger.error("An error has occurred getting grid class stats", e);
+        }
+
+    }
+
+    private void updatesStats(Map<Float, float[]> info, long i, float v) {
+        float[] stats;
+        if ((stats = info.get(v)) != null) {
+            int row = (int) (i / ncols);
+            float lng = (float) (xmin + xres * (i % ncols));
+            float lat = (float) (ymax - yres * row);
+
+            stats[0] += SpatialUtil.cellArea(yres, ymin + yres * row);
+            if (Float.isNaN(stats[1]) || stats[1] > lng) stats[1] = lng;
+            if (Float.isNaN(stats[2]) || stats[2] > lat) stats[2] = lat;
+            if (Float.isNaN(stats[3]) || stats[3] < lng + xres) stats[3] = (float) (lng + xres);
+            if (Float.isNaN(stats[4]) || stats[4] < lat + yres) stats[4] = (float) (lat + yres);
+        }
     }
 
     /**
