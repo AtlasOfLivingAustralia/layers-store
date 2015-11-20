@@ -25,15 +25,14 @@ import java.util.HashMap;
 public class Bil2diva {
 
     public static void main(String[] args) {
-
         if (args.length < 3) {
             System.out.println("hdr bil to diva.  Must be: \n"
                     + "- single band\n"
                     + "- EPSG:4326\n"
                     + "- no skip byes\n"
                     + "- unless PIXELTYPE value in header; NBITS 8=BYTE 16=SHORT 32=INT 64=LONG\n");
-            System.out.println("args[0] = bil (without .bil or .hdr), \n"
-                    + "args[1] = output prefix (.grd and .gri added), \n"
+            System.out.println("args[0] = bil (without .bil or .hdr) OR directory containing .bil files, \n"
+                    + "args[1] = output prefix (.grd and .gri added) OR output directory if args[0] is a directory, \n"
                     + "args[2] = units to store in .grd");
             return;
         }
@@ -42,7 +41,26 @@ public class Bil2diva {
     }
 
     public static boolean bil2diva(String bilFilename, String divaFilename, String unitsString) {
-        System.out.println("Running .bil to diva grid conversion");
+        //if input is directory, bil2div on all .bil files in the dir
+        File dir = new File(bilFilename);
+        if (dir.isDirectory()) {
+            new File(divaFilename).mkdirs();
+
+            boolean success = false;
+            for (File f : dir.listFiles()) {
+                if (f.getName().toLowerCase().endsWith(".bil")) {
+                    String name = f.getName().substring(0, f.getName().length() - 4);
+                    boolean ret = bil2diva(bilFilename + File.separator + name,
+                            divaFilename + File.separator + name,
+                            unitsString);
+                    //successful if there is at least 1 conversion
+                    if (ret) success = true;
+                }
+            }
+            return success;
+        }
+
+        System.out.println("Running .bil to diva grid conversion for: " + bilFilename);
         boolean ret = true;
         try {
             File headerFile = new File(bilFilename + ".hdr");
@@ -166,7 +184,7 @@ public class Bil2diva {
             fw.close();
 
 
-            System.out.println("Creating diva grid file");
+            System.out.println("Creating diva grid file: " + divaFilename);
 
             //copy bil to gri
             FileInputStream fis = new FileInputStream(bilFile);

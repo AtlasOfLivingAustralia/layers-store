@@ -15,6 +15,7 @@
 package au.org.ala.layers.intersect;
 
 import au.org.ala.layers.util.SpatialUtil;
+import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 
 import java.io.File;
@@ -25,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -61,6 +63,8 @@ public class Grid { //  implements Serializable
     byte nbytes;
     float[] grid_data = null;
     public float rescale = 1;
+    private List<Grid> subgrids = null;
+    private boolean subgrid = false;
 
     /**
      * loads grd for gri file reference
@@ -86,9 +90,49 @@ public class Grid { //  implements Serializable
                 xres = (xmax - xmin) / nrows;
                 yres = (ymax - ymin) / ncols;
             }
+        } else if (grdfile.exists() && grdfile.isDirectory()) {
+            //read dir of grid files
+            File idx = new File(grdfile.getPath() + File.separator + "index.grd");
+            if (!idx.exists()) {
+                makeCollectionIndex(grdfile);
+            }
+            readgrd(grdfile.getPath() + File.separator + "index");
         } else {
             logger.error("cannot find GRID: " + fname);
         }
+    }
+
+    private void makeCollectionIndex(File dir) {
+        double xmin = 181;
+        double xmax = -181;
+        double ymin = 91;
+        double ymax = -91;
+        double minval = Double.NaN;
+        double maxval = Double.NaN;
+        double nodatavalue = Double.NaN;
+
+        for (File f : dir.listFiles()) {
+            if (f.getName().toLowerCase().endsWith(".grd")) {
+                try {
+                    Grid g = new Grid(f.getPath().substring(0, f.getPath().length() - 4).toString());
+                    if (g != null) {
+                        if (g.xmin < xmin) xmin = g.xmin;
+                        if (g.xmax > xmax) xmax = g.xmax;
+                        if (g.ymin < ymin) ymin = g.ymin;
+                        if (g.ymax > ymax) ymax = g.ymax;
+                        if (Double.isNaN(minval) || minval > g.minval) minval = g.minval;
+                        if (Double.isNaN(maxval) || maxval < g.maxval) maxval = g.maxval;
+                        nodatavalue = g.nodatavalue;
+                    }
+                } catch (Exception e) {
+                    System.out.println("cannot add: " + f.getPath());
+                }
+            }
+        }
+
+        Grid n = new Grid();
+        n.writeHeader(dir.getPath() + File.separator + "index", xmin, ymin, xmax, ymax, -1, -1, -1, -1, minval, maxval, "GRIDCOLLECTION", String.valueOf(nodatavalue));
+
     }
 
     Grid(String fname, boolean keepAvailable) { // construct Grid from file
@@ -109,6 +153,13 @@ public class Grid { //  implements Serializable
                 xres = (xmax - xmin) / nrows;
                 yres = (ymax - ymin) / ncols;
             }
+        } else if (grdfile.exists() && grdfile.isDirectory()) {
+            //read dir of grid files
+            File idx = new File(grdfile.getPath() + File.separator + "index.grd");
+            if (!idx.exists()) {
+                makeCollectionIndex(grdfile);
+            }
+            readgrd(grdfile.getPath() + File.separator + "index");
         } else {
             logger.error("Error constructing grid from file: " + fname);
         }
@@ -116,6 +167,10 @@ public class Grid { //  implements Serializable
         if (keepAvailable) {
             Grid.addGrid(this);
         }
+    }
+
+    public Grid() {
+        //empty grid
     }
 
     static void removeAvailable() {
@@ -272,6 +327,8 @@ public class Grid { //  implements Serializable
             datatype = "FLOAT";
         } else if (s.equals("REAL")) {
             datatype = "FLOAT";
+        } else if (s.equals("GRIDCOLLECTION")) {
+            datatype = s;
         } else {
             logger.error("GRID unknown type: " + s);
             datatype = "UNKNOWN";
@@ -347,6 +404,29 @@ public class Grid { //  implements Serializable
             units = units.substring(units.indexOf(' ') + 1);
             maxval *= rescale;
             minval *= rescale;
+        }
+
+        //gri is a collection of grids
+        boolean hasSubgrids = "GRIDCOLLECTION".equals(ir.getStringValue("Data", "DataType"));
+
+        //for each subgrid
+        if (hasSubgrids) {
+            subgrids = new ArrayList<Grid>();
+
+            File dir = new File(filename).getParentFile();
+            for (File f : dir.listFiles()) {
+                if (f.getName().toLowerCase().endsWith(".grd") && !f.getName().equals("index.grd")) {
+                    try {
+                        Grid g = new Grid(f.getPath().substring(0, f.getPath().length() - 4).toString());
+                        if (g != null) {
+                            g.subgrid = true;
+                            subgrids.add(g);
+                        }
+                    } catch (Exception e) {
+                        logger.error("invalid grid file: " + f.getPath());
+                    }
+                }
+            }
         }
     }
 
@@ -587,6 +667,22 @@ public class Grid { //  implements Serializable
      */
     public float[] getGrid(int sampleEveryNthPoint) {
         int maxArrayLength = Integer.MAX_VALUE - 10;
+
+        if (subgrids != null) {
+            //sample points
+            int size = 1000;
+            double[][] points = new double[size * size][2];
+            int pos = 0;
+            for (int i = 0; i < 1000; i++) {
+                for (int j = 0; j < 1000; j++) {
+                    points[pos][0] = xmin + (xmax - xmin) * j / (double) size;
+                    points[pos][1] = ymax - (ymax - ymin) * i / (double) size;
+                    pos++;
+                }
+            }
+
+            return getValues3(points, 64);
+        }
 
         int length = (nrows / sampleEveryNthPoint) * (ncols);
 
@@ -880,6 +976,8 @@ public class Grid { //  implements Serializable
             return null;
         }
 
+        if (subgrid) return getValues3(points, Math.min(1024 * 1024, 64 * points.length));
+
         //init output structure
         float[] ret = new float[points.length];
 
@@ -1089,6 +1187,10 @@ public class Grid { //  implements Serializable
             return g.getValues2(points);
         }
 
+        if (subgrids != null) {
+            return getValues3(points, Math.min(1024 * 1024, 64 * points.length));
+        }
+
         float[] ret = new float[points.length];
 
         int length = points.length;
@@ -1264,6 +1366,10 @@ public class Grid { //  implements Serializable
             return null;
         }
 
+        if (subgrids != null) {
+            return getValuesSubgrids(points, bufferSize);
+        }
+
         //use preloaded grid data if available
         Grid g = Grid.getLoadedGrid(filename);
         if (g != null && g.grid_data != null) {
@@ -1285,9 +1391,9 @@ public class Grid { //  implements Serializable
                 afile = new RandomAccessFile(filename + ".GRI", "r");
             }
 
-            if (afile.length() < 80 * 1024 * 1024) {
+            //do not cache subgrids (using getValues2)
+            if (!subgrid && afile.length() < 80 * 1024 * 1024) {
                 afile.close();
-                return getValues2(points);
             }
 
             byte[] buffer = new byte[bufferSize];    //must be multiple of 64
@@ -1479,6 +1585,70 @@ public class Grid { //  implements Serializable
             logger.error("error getting grid file values", e);
         }
         return null;
+    }
+
+    private float[] getValuesSubgrids(double[][] points, int bufferSize) {
+        int[] subgrid = new int[points.length];
+        int[] subgridCounts = new int[subgrids.size()];
+
+        //match points to subgrids
+        int anySubgrid = -1;
+        for (int i = 0; i < points.length; i++) {
+            subgrid[i] = -1;
+            for (int j = 0; j < subgrids.size(); j++) {
+                Grid g = subgrids.get(j);
+                if (g.xmin <= points[i][0] && g.xmax >= points[i][0] && g.ymin <= points[i][1] && g.ymax >= points[i][1]) {
+                    subgrid[i] = j;
+                    subgridCounts[j]++;
+                    anySubgrid = j;
+                    break;
+                }
+            }
+        }
+
+        //do not need to split because only 1 subgrid
+        if (anySubgrid >= 0 && subgridCounts[anySubgrid] == points.length) {
+            return subgrids.get(anySubgrid).getValues3(points, bufferSize);
+        } else {
+            //intersect
+            float[] values = new float[points.length];
+            for (int i = 0; i < values.length; i++) {
+                values[i] = Float.NaN;
+            }
+
+            //no intersection
+            if (anySubgrid == -1) {
+                return values;
+            }
+
+            for (int i = 0; i < subgridCounts.length; i++) {
+                if (subgridCounts[i] > 0) {
+                    //build new points array
+                    double[][] newpoints = new double[subgridCounts[i]][2];
+                    int p = 0;
+                    for (int j = 0; j < points.length; j++) {
+                        if (subgrid[j] == i) {
+                            newpoints[p] = points[j];
+                            p++;
+                        }
+                    }
+
+                    //intersect
+                    float[] subValues = subgrids.get(i).getValues3(newpoints, bufferSize);
+
+                    //write back intersect values
+                    p = 0;
+                    for (int j = 0; j < points.length; j++) {
+                        if (subgrid[j] == i) {
+                            values[j] = subValues[p];
+                            p++;
+                        }
+                    }
+                }
+            }
+
+            return values;
+        }
     }
 
 

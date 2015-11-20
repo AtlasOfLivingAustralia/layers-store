@@ -86,7 +86,11 @@ public class GridLegend {
             if (sampleInterval > 1) {
                 System.out.println("test output image is messed up because of >1 sample interval (large file)");
             }
-            legends[i].exportImage(d, g.ncols, output_name + /*"_" + legends[i].getTypeName().replace(" ","_") +*/ ".png", Math.max(scaleDown, g.ncols / 50), minAsTransparent);
+            if (g.ncols > 0) {
+                legends[i].exportImage(d, g.ncols, output_name + /*"_" + legends[i].getTypeName().replace(" ","_") +*/ ".png", Math.max(scaleDown, g.ncols / 50), minAsTransparent);
+            } else {
+                legends[i].exportImage(d, 500, output_name + /*"_" + legends[i].getTypeName().replace(" ","_") +*/ ".png", Math.max(scaleDown, 500 / 50), minAsTransparent);
+            }
             legends[i].exportLegend(output_name + /*"_" + legends[i].getTypeName().replace(" ","_") +*/ "_legend.txt");
 
             legends[i].exportSLD(g, output_name + /*"_" + legends[i].getTypeName().replace(" ","_") +*/ ".sld", g.units, true, minAsTransparent);
