@@ -20,6 +20,7 @@ import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -63,6 +64,20 @@ public class SimpleShapeFile extends Object implements Serializable {
      */
     String[] singleLookup;
 
+    /**
+     * one dbf column, for use after loading from a file
+     */
+    List<short[]> multiColumn;
+    /**
+     * one lookup for a dbf column, for use after loading from a file
+     */
+    List<String[]> multiLookup;
+
+    /**
+     * column names as they appear in muliColumn and multiLookup
+     */
+    List<String> multiNames;
+
     protected SimpleShapeFile() {
     }
 
@@ -85,6 +100,41 @@ public class SimpleShapeFile extends Object implements Serializable {
             singleColumn = new short[dbf.dbfrecords.records.size()];
             for (int i = 0; i < singleColumn.length; i++) {
                 singleColumn[i] = (short) java.util.Arrays.binarySearch(singleLookup, dbf.getValue(i, 0));
+            }
+            dbf = null;
+
+            /* read shape header */
+            shapeheader = new ShapeHeader(fileprefix);
+
+            /* read shape records */
+            shaperecords = new ShapeRecords(fileprefix, shapeheader.getShapeType());
+            shapeheader = null;
+
+            /* create shapes reference for intersections */
+            shapesreference = new ShapesReference(shaperecords);
+            shaperecords = null;
+        }
+    }
+
+    public SimpleShapeFile(String fileprefix, String[] columns) {
+        //If fileprefix exists as-is it is probably a saved SimpleShapeFile
+        if (loadRegion(fileprefix)) {
+            //previously saved region loaded
+        } else {
+            /* read dbf */
+            multiColumn = new ArrayList<short[]>();
+            multiLookup = new ArrayList<String[]>();
+            multiNames = new ArrayList<String>();
+            dbf = new DBF(fileprefix + ".dbf", columns);
+            for (int j = 0; j < columns.length; j++) {
+                String[] names = dbf.getColumnLookup(j);
+                short[] ids = new short[dbf.dbfrecords.records.size()];
+                for (int i = 0; i < ids.length; i++) {
+                    ids[i] = (short) java.util.Arrays.binarySearch(names, dbf.getValue(i, j));
+                }
+                multiColumn.add(ids);
+                multiLookup.add(names);
+                multiNames.add(columns[j]);
             }
             dbf = null;
 
@@ -263,6 +313,9 @@ public class SimpleShapeFile extends Object implements Serializable {
         if (singleLookup != null) {
             return singleLookup;
         }
+        if (multiLookup != null) {
+            return multiLookup.get(column);
+        }
         return dbf.getColumnLookup(column);
     }
 
@@ -277,7 +330,35 @@ public class SimpleShapeFile extends Object implements Serializable {
         if (singleColumn != null) {
             return 0;
         }
+        if (multiColumn != null) {
+            for (int i = 0; i < multiNames.size(); i++) {
+                if (multiNames.get(i).equalsIgnoreCase(column_name)) {
+                    return i;
+                }
+            }
+        }
         return dbf.getColumnIdx(column_name);
+    }
+
+    /**
+     * returns the position, zero indexed, of the provided
+     * column_name from within the .dbf
+     *
+     * @param column_name
+     * @return -1 if not found, otherwise column index number, zero base
+     */
+    public short[] getColumnIdxs(String column_name) {
+        if (singleColumn != null) {
+            return singleColumn;
+        }
+        if (multiColumn != null) {
+            for (int i = 0; i < multiNames.size(); i++) {
+                if (multiNames.get(i).equalsIgnoreCase(column_name)) {
+                    return multiColumn.get(i);
+                }
+            }
+        }
+        return null;
     }
 
     /**
@@ -356,7 +437,7 @@ public class SimpleShapeFile extends Object implements Serializable {
         }
 
         //transform target from shapes_idx to column_idx
-        if (singleColumn == null) {
+        if (singleColumn == null && multiColumn == null) {
             for (i = 0; i < target.length; i++) {
                 String s = dbf.getValue(target[i], column);
                 int v = java.util.Arrays.binarySearch(lookup, s);
@@ -365,10 +446,19 @@ public class SimpleShapeFile extends Object implements Serializable {
                 }
                 target[i] = v;
             }
-        } else {
+        } else if (singleColumn != null) {
             for (i = 0; i < target.length; i++) {
                 if (target[i] >= 0 && target[i] < singleColumn.length) {
                     target[i] = singleColumn[target[i]];
+                } else {
+                    target[i] = -1;
+                }
+            }
+        } else {
+            for (i = 0; i < target.length; i++) {
+                short[] multiCol = multiColumn.get(column);
+                if (target[i] >= 0 && target[i] < multiCol.length) {
+                    target[i] = multiCol[target[i]];
                 } else {
                     target[i] = -1;
                 }
@@ -1063,7 +1153,21 @@ class DBF extends Object implements Serializable {
         for (int i = 0; i < idx.length; i++) {
             idx[i] = dbfheader.getColumnIdx(columns[i]);
         }
-        dbfrecords = new DBFRecords(filename, dbfheader, idx);
+        dbfrecords = new DBFRecords(filename, dbfheader, idx, true);
+    }
+
+    DBF(String filename, String[] columns) {
+        singleColumn = false;
+
+        /* get file header */
+        dbfheader = new DBFHeader(filename);
+
+        /* get records */
+        int[] idx = new int[columns.length];
+        for (int i = 0; i < idx.length; i++) {
+            idx[i] = dbfheader.getColumnIdx(columns[i]);
+        }
+        dbfrecords = new DBFRecords(filename, dbfheader, idx, false);
     }
 
     /**
@@ -1496,7 +1600,7 @@ class DBFRecords extends Object implements Serializable {
         }
     }
 
-    DBFRecords(String filename, DBFHeader header, int[] columnIdx) {
+    DBFRecords(String filename, DBFHeader header, int[] columnIdx, boolean mergeColumns) {
         /* init */
         records = new ArrayList();
         isvalid = false;
@@ -1516,7 +1620,7 @@ class DBFRecords extends Object implements Serializable {
             int i = 0;
             ArrayList<DBFField> fields = header.getFields();
             while (i < header.getNumberOfRecords() && buffer.hasRemaining()) {
-                records.add(new DBFRecord(buffer, fields, columnIdx));
+                records.add(new DBFRecord(buffer, fields, columnIdx, mergeColumns));
                 i++;
             }
 
@@ -1614,9 +1718,9 @@ class DBFRecord extends Object implements Serializable {
         }
     }
 
-    DBFRecord(ByteBuffer buffer, ArrayList<DBFField> fields, int[] columnIdx) {
+    DBFRecord(ByteBuffer buffer, ArrayList<DBFField> fields, int[] columnIdx, boolean mergeColumns) {
         deletionflag = (0xFF & buffer.get());
-        record = new String[1];
+        record = mergeColumns ? new String[1] : new String[columnIdx.length];
         fieldValues = new String[fields.size()];
 
         /* iterate through each record to fill */
@@ -1639,13 +1743,17 @@ class DBFRecord extends Object implements Serializable {
         }
 
         for (int j = 0; j < columnIdx.length; j++) {
-            if (record[0] == null) {
-                record[0] = "";
-            } else if (record[0].length() > 0) {
-                record[0] += ", ";
-            }
+            if (mergeColumns) {
+                if (record[0] == null) {
+                    record[0] = "";
+                } else if (record[0].length() > 0) {
+                    record[0] += ", ";
+                }
 
-            record[0] += fieldValues[columnIdx[j]];
+                record[0] += fieldValues[columnIdx[j]];
+            } else {
+                record[j] = fieldValues[columnIdx[j]];
+            }
         }
     }
 

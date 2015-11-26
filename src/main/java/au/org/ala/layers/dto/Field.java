@@ -71,6 +71,11 @@ public class Field {
 
     @Column(name = "number_of_objects")
     private Integer number_of_objects;
+
+    private Layer layer;
+
+    private String wms;
+    
     private List<Objects> objects;
 
     public List<Objects> getObjects() {
@@ -225,6 +230,22 @@ public class Field {
         this.number_of_objects = number_of_objects;
     }
 
+    public Layer getLayer() {
+        return layer;
+    }
+
+    public void setLayer(Layer layer) {
+        this.layer = layer;
+    }
+
+    public String getWms() {
+        return wms;
+    }
+
+    public void setWms(String wms) {
+        this.wms = wms;
+    }
+
     public Map<String, Object> toMap() {
         Map<String, Object> m = new HashMap<String, Object>();
 
@@ -245,6 +266,8 @@ public class Field {
         m.put("sid", sid);
         m.put("type", type);
         m.put("id", id);
+        m.put("wms", wms);
+        if (layer != null) m.put("layer", layer.toMap());
 
         return m;
     }

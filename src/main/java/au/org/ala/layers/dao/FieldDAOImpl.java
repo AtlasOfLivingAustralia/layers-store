@@ -15,14 +15,21 @@
 package au.org.ala.layers.dao;
 
 import au.org.ala.layers.dto.Field;
+import au.org.ala.layers.dto.Layer;
+import au.org.ala.layers.util.Util;
 import org.apache.log4j.Logger;
+import org.codehaus.jackson.map.DeserializationConfig;
+import org.codehaus.jackson.map.ObjectMapper;
 import org.springframework.jdbc.core.simple.ParameterizedBeanPropertyRowMapper;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.jdbc.core.simple.SimpleJdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.sql.DataSource;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -39,9 +46,19 @@ public class FieldDAOImpl implements FieldDAO {
 
     private SimpleJdbcTemplate jdbcTemplate;
     private SimpleJdbcInsert insertField;
-
+    private String selectLayerSql;
+    
     @Resource(name = "layerIntersectDao")
     private LayerIntersectDAO layerIntersectDao;
+
+    @PostConstruct
+    private void init() {
+        StringBuilder sb = new StringBuilder();
+        for (String key : new Layer().toMap().keySet()) {
+            sb.append(",l.").append(key).append(" as layer_").append(key);
+        }
+        selectLayerSql = sb.toString();
+    }
 
     @Resource(name = "layerDao")
     private LayerDAO layerDao;
@@ -108,6 +125,7 @@ public class FieldDAOImpl implements FieldDAO {
 
         Map<String, Object> parameters = field.toMap();
         parameters.remove("id");
+        parameters.remove("layer");
 
         //calc new fieldId
         String idPrefix = "Contextual".equalsIgnoreCase(layerDao.getLayerById(Integer.parseInt(field.getSpid())).getType())
@@ -168,7 +186,9 @@ public class FieldDAOImpl implements FieldDAO {
                 "\"intersect\"=:intersect, layerbranch=:layerbranch, analysis=:analysis," +
                 " addtomap=:addtomap where id=:id";
 
-        jdbcTemplate.update(sql, field.toMap());
+        Map map = field.toMap();
+        map.remove("layer");
+        jdbcTemplate.update(sql, map);
     }
 
     @Override
@@ -179,5 +199,116 @@ public class FieldDAOImpl implements FieldDAO {
             jdbcTemplate.update("delete from objects where fid='" + f.getId() + "'");
             jdbcTemplate.update("delete from fields where id='" + f.getId() + "'");
         }
+    }
+
+    @Override
+    public List<Layer> getLayersByCriteria(String keywords) {
+        logger.info("Getting a list of all enabled fields by criteria: " + keywords);
+        String sql = "";
+        sql += "select f.* " + selectLayerSql + " from fields f inner join layers l on f.spid = l.id || '' where ";
+        sql += " l.enabled=true AND f.enabled=true AND ( ";
+        sql += "lower(l.keywords) like ? ";
+        sql += " or lower(l.displayname) like ? ";
+        //sql += " or lower(type) like ? ";
+        sql += " or lower(l.name) like ? ";
+        sql += " or lower(l.domain) like ? ";
+        sql += " or lower(f.name) like ? ";
+        sql += ") order by f.name ";
+
+        keywords = "%" + keywords.toLowerCase() + "%";
+
+        List<Map<String, Object>> maps = jdbcTemplate.queryForList(sql, keywords, keywords, keywords, keywords, keywords);
+
+        List<Layer> list = mapsToLayers(maps);
+
+        return list;
+    }
+
+    @Override
+    public List<Field> getFieldsByCriteria(String keywords) {
+        logger.info("Getting a list of all enabled fields by criteria: " + keywords);
+        String sql = "";
+        sql += "select f.* " + selectLayerSql + " from fields f inner join layers l on f.spid = l.id || '' where ";
+        sql += " l.enabled=true AND f.enabled=true AND ( ";
+        sql += "lower(l.keywords) like ? ";
+        sql += " or lower(l.displayname) like ? ";
+        //sql += " or lower(type) like ? ";
+        sql += " or lower(l.name) like ? ";
+        sql += " or lower(l.domain) like ? ";
+        sql += " or lower(f.name) like ? ";
+        sql += ") order by f.name ";
+
+        keywords = "%" + keywords.toLowerCase() + "%";
+
+        List<Map<String, Object>> maps = jdbcTemplate.queryForList(sql, keywords, keywords, keywords, keywords, keywords);
+
+        List<Field> list = mapsToFields(maps);
+
+        return list;
+    }
+
+    private List<Layer> mapsToLayers(List<Map<String, Object>> maps) {
+        List<Layer> list = new ArrayList<Layer>();
+
+        ObjectMapper om = new ObjectMapper();
+        om.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        for (Map<String, Object> map : maps) {
+            try {
+                Map field = new HashMap();
+                Map layer = new HashMap();
+                for (Map.Entry<String, Object> entry : map.entrySet()) {
+                    if (entry.getKey().startsWith("layer_"))
+                        layer.put(entry.getKey().substring("layer_".length()), entry.getValue());
+                    else field.put(entry.getKey(), entry.getValue());
+                }
+                Field f = om.readValue(om.writeValueAsString(field), Field.class);
+                Layer l = om.readValue(om.writeValueAsString(layer), Layer.class);
+                Util.updateDisplayPath(l);
+                Util.updateMetadataPath(l);
+                f.setLayer(l);
+                if (layerIntersectDao.getConfig().hasFieldStyles()) {
+                    //conditional so as not to break older ingested layers
+                    l.setDisplaypath(l.getDisplaypath().replace("&styles=", "") + "&styles=" + f.getId() + "_style");
+                }
+                l.setDisplayname(f.getName());
+                l.setPid(f.getId());
+                list.add(l);
+            } catch (Exception e) {
+                logger.error("failed to read field/layer " + map.get("id"), e);
+            }
+        }
+
+        return list;
+    }
+
+    private List<Field> mapsToFields(List<Map<String, Object>> maps) {
+        List<Field> list = new ArrayList<Field>();
+
+        ObjectMapper om = new ObjectMapper();
+        om.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        for (Map<String, Object> map : maps) {
+            try {
+                Map field = new HashMap();
+                Map layer = new HashMap();
+                for (Map.Entry<String, Object> entry : map.entrySet()) {
+                    if (entry.getKey().startsWith("layer_"))
+                        layer.put(entry.getKey().substring("layer_".length()), entry.getValue());
+                    else field.put(entry.getKey(), entry.getValue());
+                }
+                Field f = om.readValue(om.writeValueAsString(field), Field.class);
+                Layer l = om.readValue(om.writeValueAsString(layer), Layer.class);
+                Util.updateDisplayPath(l);
+                Util.updateMetadataPath(l);
+                f.setLayer(l);
+
+                l.setDisplaypath(l.getDisplaypath().replace("&styles=", "") + "&style=" + f.getId() + "_style");
+
+                list.add(f);
+            } catch (Exception e) {
+                logger.error("failed to read field/layer " + map.get("id"), e);
+            }
+        }
+
+        return list;
     }
 }

@@ -18,10 +18,7 @@ package au.org.ala.layers.dto;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 import javax.persistence.*;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Vector;
+import java.util.*;
 
 /**
  * This class serves as a model object for a list of layers

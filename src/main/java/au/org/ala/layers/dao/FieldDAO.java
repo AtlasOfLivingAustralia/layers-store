@@ -16,6 +16,7 @@
 package au.org.ala.layers.dao;
 
 import au.org.ala.layers.dto.Field;
+import au.org.ala.layers.dto.Layer;
 
 import java.util.List;
 
@@ -40,4 +41,8 @@ public interface FieldDAO {
     void updateField(Field field);
 
     void delete(String fieldId);
+
+    public List<Field> getFieldsByCriteria(String keywords);
+
+    public List<Layer> getLayersByCriteria(String keywords);
 }

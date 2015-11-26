@@ -160,12 +160,12 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
             if (layer != null) {
                 if (layer.isShape() && (f != null && f.getClasses() == null)) {
                     ObjectDAO objectDao = (ObjectDAO) appcontext.getBean("objectDao");
-                    Objects o = objectDao.getObjectByIdAndLocation("cl" + layer.getId(), longitude, latitude);
+                    Objects o = objectDao.getObjectByIdAndLocation(f.getFieldId(), longitude, latitude);
                     if (o != null) {
                         Map m = new HashMap();
                         m.put("field", id);
                         m.put("value", o.getName());
-                        m.put("layername", o.getFieldname());   //close enough
+                        m.put("layername", f.getFieldName());
                         m.put("pid", o.getPid());
                         m.put("description", o.getDescription());
                         //m.put("fid", o.getFid());
@@ -175,7 +175,7 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
                         Map m = new HashMap();
                         m.put("field", id);
                         m.put("value", "");
-                        m.put("layername", layer.getDisplayname());   //close enough
+                        m.put("layername", f.getFieldName());
 
                         out.add(m);
                     }
@@ -186,7 +186,7 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
                         //s = "{\"value\":" + v[0] + ",\"layername\":\"" + layer.getDisplayname() + "\"}";
                         Map m = new HashMap();
                         m.put("field", id);
-                        m.put("layername", layer.getDisplayname());   //close enough
+                        m.put("layername", f.getFieldName());   //close enough
 
                         if (f != null && f.getClasses() != null) {
                             GridClass gc = f.getClasses().get((int) v[0]);
@@ -219,7 +219,7 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
                         Map m = new HashMap();
                         m.put("field", id);
                         m.put("value", "");
-                        m.put("layername", layer.getDisplayname());   //close enough
+                        m.put("layername", f.getFieldName());   //close enough
 
                         out.add(m);
                     }
@@ -292,9 +292,12 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
                 if (f.getShapeFields() != null && getConfig().getShapeFileCache() != null) {
                     SimpleShapeFile ssf = getConfig().getShapeFileCache().get(f.getFilePath());
                     if (ssf != null) {
-                        String s = ssf.intersect(longitude, latitude);
-                        if (s != null) {
-                            sb.append(s);
+                        int column_idx = ssf.getColumnIdx(f.getShapeFields());
+                        String[] categories = ssf.getColumnLookup(column_idx);
+                        short[] idx = ssf.getColumnIdxs(f.getShapeFields());
+                        int value = ssf.intersectInt(longitude, latitude);
+                        if (value >= 0) {
+                            sb.append(categories[idx[value]]);
                         }
                     } else {
                         ObjectDAO objectDao = (ObjectDAO) appcontext.getBean("objectDao");

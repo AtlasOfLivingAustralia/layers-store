@@ -1,11 +1,14 @@
 package au.org.ala.layers.util;
 
+import au.org.ala.layers.dto.Layer;
+import au.org.ala.layers.intersect.IntersectConfig;
 import org.apache.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.List;
 
 /**
  * Created by a on 29/01/15.
@@ -44,5 +47,45 @@ public class Util {
             }
         }
         return content.toString();
+    }
+
+    public static void updateDisplayPaths(List<Layer> layers) {
+        if (layers == null) {
+            return;
+        }
+
+        for (Layer layer : layers) {
+            updateDisplayPath(layer);
+        }
+    }
+
+    public static void updateMetadataPaths(List<Layer> layers) {
+        if (layers == null) {
+            return;
+        }
+
+        for (Layer layer : layers) {
+            updateMetadataPath(layer);
+        }
+    }
+
+    public static void updateDisplayPath(Layer layer) {
+        if (layer.getDisplaypath() != null) {
+            if (!layer.getDisplaypath().startsWith("/")) {
+                layer.setDisplaypath(layer.getDisplaypath().replace(IntersectConfig.GEOSERVER_URL_PLACEHOLDER, IntersectConfig.getGeoserverUrl()));
+            } else {
+                layer.setDisplaypath(IntersectConfig.getGeoserverUrl() + layer.getDisplaypath());
+            }
+        }
+    }
+
+    public static void updateMetadataPath(Layer layer) {
+        if (layer.getMetadatapath() != null) {
+            if (!layer.getMetadatapath().startsWith("/")) {
+                layer.setMetadatapath(layer.getMetadatapath().replace(IntersectConfig.GEONETWORK_URL_PLACEHOLDER, IntersectConfig.getGeonetworkUrl()));
+            } else {
+                layer.setMetadatapath(IntersectConfig.getGeonetworkUrl() + layer.getMetadatapath());
+            }
+        }
     }
 }

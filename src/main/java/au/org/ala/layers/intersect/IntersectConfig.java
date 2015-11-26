@@ -106,6 +106,7 @@ public class IntersectConfig {
     static String geoserverUsername;
     static String geoserverPassword;
     static String shp2pgsqlPath;
+    static boolean fieldStyles;
 
     static {
         Properties properties = new Properties();
@@ -604,40 +605,54 @@ public class IntersectConfig {
         String[] fields = preloadedShapeFiles.split(",");
 
         //requres readLayerInfo() first
-        String[] layers = new String[fields.length];
-        String[] columns = new String[fields.length];
-        String[] fid = new String[fields.length];
-        if (fields.length == 1 && fields[0].equalsIgnoreCase("all")) {
-            Set shapefiles = new HashSet();
+        String[] layers;
+        String[] columns;
+        String[] fid;
+
+        Set shapefiles = new HashSet();
+        Set<String> fieldSet = new HashSet<String>();
+        if (fields[0].equalsIgnoreCase("all")) {
             for (String s : intersectionFiles.keySet()) {
                 if (s.startsWith("cl") && intersectionFiles.get(s).getType().equalsIgnoreCase("c")) {
+                    fieldSet.add(s);
                     shapefiles.add(intersectionFiles.get(s).getFilePath());
                 }
             }
-            layers = new String[shapefiles.size()];
-            columns = new String[shapefiles.size()];
-            fid = new String[shapefiles.size()];
-            int i = 0;
+        } else {
+            for (String s : fields) {
+                fieldSet.add(s);
+                shapefiles.add(intersectionFiles.get(s).getFilePath());
+            }
+            //must include other fields that use the same shapefile
             for (String s : intersectionFiles.keySet()) {
-                if (shapefiles.contains(intersectionFiles.get(s).getFilePath())) {
-                    shapefiles.remove(intersectionFiles.get(s).getFilePath());
-
-                    IntersectionFile f = intersectionFiles.get(s);
-                    layers[i] = f.getFilePath();
-                    columns[i] = f.getShapeFields();
-                    fid[i] = f.getFieldId();
-                    i++;
+                if (s.startsWith("cl") && intersectionFiles.get(s).getType().equalsIgnoreCase("c") &&
+                        shapefiles.contains(intersectionFiles.get(s).getFilePath()) &&
+                        !fieldSet.contains(s)) {
+                    fieldSet.add(s);
                 }
             }
-        } else {
-            for (int i = 0; i < fields.length; i++) {
-                try {
-                    layers[i] = getIntersectionFile(fields[i].trim()).getFilePath();
-                    columns[i] = getIntersectionFile(fields[i].trim()).getShapeFields();
-                    fid[i] = fields[i];
-                } catch (Exception e) {
-                    logger.error("failed to load shapefile for field: " + fields[i], e);
-                }
+        }
+        layers = new String[shapefiles.size()];
+        columns = new String[shapefiles.size()];
+        fid = new String[shapefiles.size()];
+        int i = 0;
+        Map<String, Integer> addedShapefiles = new HashMap<String, Integer>();
+        for (String s : fieldSet) {
+            String path = intersectionFiles.get(s).getFilePath();
+
+            IntersectionFile f = intersectionFiles.get(s);
+
+            if (addedShapefiles.containsKey(path)) {
+                //already added, append shape fields
+                Integer pos = addedShapefiles.get(path);
+                columns[pos] += "," + f.getShapeFields();
+                fid[pos] += "," + f.getFieldId();
+            } else {
+                layers[i] = f.getFilePath();
+                columns[i] = f.getShapeFields();
+                fid[i] = f.getFieldId();
+                addedShapefiles.put(path, i);
+                i++;
             }
         }
 
@@ -824,5 +839,9 @@ public class IntersectConfig {
 
     static public boolean getCanGenerateThumbnails() {
         return canGenerateThumbnails;
+    }
+
+    static public boolean hasFieldStyles() {
+        return fieldStyles;
     }
 }

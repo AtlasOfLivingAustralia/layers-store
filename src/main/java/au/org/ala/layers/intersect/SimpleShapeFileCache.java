@@ -46,23 +46,6 @@ public class SimpleShapeFileCache {
     }
 
     public void update(String[] layers, String[] columns, String[] fieldIds) {
-//        //remove layers no longer required
-//        ArrayList<String> toRemove = new ArrayList<String>();
-//        for (String key : cache.keySet()) {
-//            int j = 0;
-//            for (j = 0; j < layers.length; j++) {
-//                if (key.equals(layers[j])) {
-//                    break;
-//                }
-//            }
-//            if (j == layers.length) {
-//                toRemove.add(key);
-//            }
-//        }
-//        for (String key : toRemove) {
-//            cache.remove(key);
-//        }
-
         //add layers not loaded
         logger.info("start caching shape files");
         System.gc();
@@ -70,13 +53,15 @@ public class SimpleShapeFileCache {
         for (int i = 0; i < layers.length; i++) {
             if (get(layers[i]) == null) {
                 try {
-                    SimpleShapeFile ssf = new SimpleShapeFile(layers[i], columns[i]);
+                    SimpleShapeFile ssf = new SimpleShapeFile(layers[i], columns[i].split(","));
                     System.gc();
                     logger.info(layers[i] + " loaded, Memory usage (total/used/free):" + (Runtime.getRuntime().totalMemory() / 1024 / 1024) + "MB / " + (Runtime.getRuntime().totalMemory() / 1024 / 1024 - Runtime.getRuntime().freeMemory() / 1024 / 1024) + "MB / " + (Runtime.getRuntime().freeMemory() / 1024 / 1024) + "MB");
 
                     if (ssf != null) {
                         cache.put(layers[i], ssf);
-                        cacheByFieldId.put(fieldIds[i], ssf);
+                        for (String f : fieldIds[i].split(",")) {
+                            cacheByFieldId.put(f, ssf);
+                        }
                     }
                 } catch (Exception e) {
                     logger.error("error with shape file: " + layers[i] + ", field: " + columns[i]);
