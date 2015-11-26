@@ -548,8 +548,8 @@ public class Grid { //  implements Serializable
      */
     public void getClassInfo(Map<Float, float[]> info) {
 
-        long length = nrows * ncols;
-
+        long length = ((long) nrows) * ((long) ncols);
+        
         RandomAccessFile afile;
         File f2 = new File(filename + ".GRI");
 
