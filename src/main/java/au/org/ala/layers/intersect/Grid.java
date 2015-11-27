@@ -1393,7 +1393,11 @@ public class Grid { //  implements Serializable
 
             //do not cache subgrids (using getValues2)
             if (!subgrid && afile.length() < 80 * 1024 * 1024) {
-                afile.close();
+                try {
+                    afile.close();
+                } catch (Exception e) {
+                }
+                return getValues2(points);
             }
 
             byte[] buffer = new byte[bufferSize];    //must be multiple of 64
