@@ -249,14 +249,14 @@ public class Grid { //  implements Serializable
     }
 
     //transform to file position
-    public int getcellnumber(double x, double y) {
+    public long getcellnumber(double x, double y) {
         if (x < xmin || x > xmax || y < ymin || y > ymax) //handle invalid inputs
         {
             return -1;
         }
 
-        int col = (int) ((x - xmin) / xres);
-        int row = this.nrows - 1 - (int) ((y - ymin) / yres);
+        long col = (long) ((x - xmin) / xres);
+        long row = ((long) this.nrows) - 1 - (long) ((y - ymin) / yres);
 
         //limit each to 0 and ncols-1/nrows-1
         if (col < 0) {
@@ -989,7 +989,7 @@ public class Grid { //  implements Serializable
 
         //points loop
         for (i = 0; i < length; i++) {
-            pos = getcellnumber(points[i][0], points[i][1]);
+            pos = (int) getcellnumber(points[i][0], points[i][1]);
             if (pos >= 0 && pos < glen) {
                 ret[i] = grid[pos];
             } else {
@@ -1211,7 +1211,7 @@ public class Grid { //  implements Serializable
                 size = 1;
                 b = new byte[(int) size];
                 for (i = 0; i < length; i++) {
-                    pos = getcellnumber(points[i][0], points[i][1]);
+                    pos = (int) getcellnumber(points[i][0], points[i][1]);
                     if (pos >= 0) {
                         afile.seek(pos * size);
                         ret[i] = afile.readByte();
@@ -1223,7 +1223,7 @@ public class Grid { //  implements Serializable
                 size = 1;
                 b = new byte[(int) size];
                 for (i = 0; i < length; i++) {
-                    pos = getcellnumber(points[i][0], points[i][1]);
+                    pos = (int) getcellnumber(points[i][0], points[i][1]);
                     if (pos >= 0) {
                         afile.seek(pos * size);
                         ret[i] = afile.readByte();
@@ -1238,7 +1238,7 @@ public class Grid { //  implements Serializable
                 size = 2;
                 b = new byte[(int) size];
                 for (i = 0; i < length; i++) {
-                    pos = getcellnumber(points[i][0], points[i][1]);
+                    pos = (int) getcellnumber(points[i][0], points[i][1]);
                     if (pos >= 0) {
                         afile.seek(pos * size);
                         afile.read(b);
@@ -1256,7 +1256,7 @@ public class Grid { //  implements Serializable
                 size = 4;
                 b = new byte[(int) size];
                 for (i = 0; i < length; i++) {
-                    pos = getcellnumber(points[i][0], points[i][1]);
+                    pos = (int) getcellnumber(points[i][0], points[i][1]);
                     if (pos >= 0) {
                         afile.seek(pos * size);
                         afile.read(b);
@@ -1274,7 +1274,7 @@ public class Grid { //  implements Serializable
                 size = 8;
                 b = new byte[(int) size];
                 for (i = 0; i < length; i++) {
-                    pos = getcellnumber(points[i][0], points[i][1]);
+                    pos = (int) getcellnumber(points[i][0], points[i][1]);
                     if (pos >= 0) {
                         afile.seek(pos * size);
                         afile.read(b);
@@ -1298,7 +1298,7 @@ public class Grid { //  implements Serializable
                 size = 4;
                 b = new byte[(int) size];
                 for (i = 0; i < length; i++) {
-                    pos = getcellnumber(points[i][0], points[i][1]);
+                    pos = (int) getcellnumber(points[i][0], points[i][1]);
                     if (pos >= 0) {
                         afile.seek(pos * size);
                         afile.read(b);
@@ -1316,7 +1316,7 @@ public class Grid { //  implements Serializable
                 size = 8;
                 b = new byte[8];
                 for (i = 0; i < length; i++) {
-                    pos = getcellnumber(points[i][0], points[i][1]);
+                    pos = (int) getcellnumber(points[i][0], points[i][1]);
                     if (pos >= 0) {
                         afile.seek(pos * size);
                         afile.read(b);
@@ -1406,7 +1406,7 @@ public class Grid { //  implements Serializable
             float[] ret = new float[points.length];
 
             //get cell numbers
-            int[][] cells = new int[points.length][2];
+            long[][] cells = new long[points.length][2];
             for (int j = 0; j < points.length; j++) {
                 if (Double.isNaN(points[j][0]) || Double.isNaN(points[j][1])) {
                     cells[j][0] = -1;
@@ -1416,47 +1416,45 @@ public class Grid { //  implements Serializable
                     cells[j][1] = j;
                 }
             }
-            java.util.Arrays.sort(cells, new Comparator<int[]>() {
+            java.util.Arrays.sort(cells, new Comparator<long[]>() {
 
                 @Override
-                public int compare(int[] o1, int[] o2) {
+                public int compare(long[] o1, long[] o2) {
                     if (o1[0] == o2[0]) {
-                        return o1[1] - o2[1];
+                        return o1[1] > o2[1] ? 1 : -1;
                     } else {
-                        return o1[0] - o2[0];
+                        return o1[0] > o2[0] ? 1 : -1;
                     }
                 }
             });
 
             if (datatype.equalsIgnoreCase("BYTE")) {
                 size = 1;
-                b = new byte[size];
                 for (i = 0; i < length; i++) {
                     if (i > 0 && cells[i - 1][0] == cells[i][0]) {
-                        ret[cells[i][1]] = ret[cells[i - 1][1]];
+                        ret[(int) cells[i][1]] = ret[(int) cells[i - 1][1]];
                         continue;
                     }
                     if (cells[i][0] >= 0) {
-                        ret[cells[i][1]] = getByte(afile, buffer, bufferOffset, cells[i][0] * size);
+                        ret[(int) cells[i][1]] = getByte(afile, buffer, bufferOffset, cells[i][0] * size);
                     } else {
-                        ret[cells[i][1]] = Float.NaN;
+                        ret[(int) cells[i][1]] = Float.NaN;
                     }
                 }
             } else if (datatype.equalsIgnoreCase("UBYTE")) {
                 size = 1;
-                b = new byte[size];
                 for (i = 0; i < length; i++) {
                     if (i > 0 && cells[i - 1][0] == cells[i][0]) {
-                        ret[cells[i][1]] = ret[cells[i - 1][1]];
+                        ret[(int) cells[i][1]] = ret[(int) cells[i - 1][1]];
                         continue;
                     }
                     if (cells[i][0] >= 0) {
-                        ret[cells[i][1]] = getByte(afile, buffer, bufferOffset, cells[i][0] * size);
-                        if (ret[cells[i][1]] < 0) {
-                            ret[cells[i][1]] += 256;
+                        ret[(int) cells[i][1]] = getByte(afile, buffer, bufferOffset, cells[i][0] * size);
+                        if (ret[(int) cells[i][1]] < 0) {
+                            ret[(int) cells[i][1]] += 256;
                         }
                     } else {
-                        ret[cells[i][1]] = Float.NaN;
+                        ret[(int) cells[i][1]] = Float.NaN;
                     }
                 }
             } else if (datatype.equalsIgnoreCase("SHORT")) {
@@ -1464,19 +1462,18 @@ public class Grid { //  implements Serializable
                 b = new byte[size];
                 for (i = 0; i < length; i++) {
                     if (i > 0 && cells[i - 1][0] == cells[i][0]) {
-                        ret[cells[i][1]] = ret[cells[i - 1][1]];
+                        ret[(int) cells[i][1]] = ret[(int) cells[i - 1][1]];
                         continue;
                     }
                     if (cells[i][0] >= 0) {
                         bufferOffset = getBytes(afile, buffer, bufferOffset, cells[i][0] * (long) size, b);
                         if (byteorderLSB) {
-                            ret[cells[i][1]] = (short) (((0xFF & b[1]) << 8) | (b[0] & 0xFF));
+                            ret[(int) cells[i][1]] = (short) (((0xFF & b[1]) << 8) | (b[0] & 0xFF));
                         } else {
-                            ret[cells[i][1]] = (short) (((0xFF & b[0]) << 8) | (b[1] & 0xFF));
+                            ret[(int) cells[i][1]] = (short) (((0xFF & b[0]) << 8) | (b[1] & 0xFF));
                         }
-                        //ret[cells[i][1]] = afile.readShort();
                     } else {
-                        ret[cells[i][1]] = Float.NaN;
+                        ret[(int) cells[i][1]] = Float.NaN;
                     }
                 }
             } else if (datatype.equalsIgnoreCase("INT")) {
@@ -1484,19 +1481,18 @@ public class Grid { //  implements Serializable
                 b = new byte[size];
                 for (i = 0; i < length; i++) {
                     if (i > 0 && cells[i - 1][0] == cells[i][0]) {
-                        ret[cells[i][1]] = ret[cells[i - 1][1]];
+                        ret[(int) cells[i][1]] = ret[(int) cells[i - 1][1]];
                         continue;
                     }
                     if (cells[i][0] >= 0) {
                         bufferOffset = getBytes(afile, buffer, bufferOffset, cells[i][0] * (long) size, b);
                         if (byteorderLSB) {
-                            ret[cells[i][1]] = ((0xFF & b[3]) << 24) | ((0xFF & b[2]) << 16) + ((0xFF & b[1]) << 8) + (b[0] & 0xFF);
+                            ret[(int) cells[i][1]] = ((0xFF & b[3]) << 24) | ((0xFF & b[2]) << 16) + ((0xFF & b[1]) << 8) + (b[0] & 0xFF);
                         } else {
-                            ret[cells[i][1]] = ((0xFF & b[0]) << 24) | ((0xFF & b[1]) << 16) + ((0xFF & b[2]) << 8) + ((0xFF & b[3]) & 0xFF);
+                            ret[(int) cells[i][1]] = ((0xFF & b[0]) << 24) | ((0xFF & b[1]) << 16) + ((0xFF & b[2]) << 8) + ((0xFF & b[3]) & 0xFF);
                         }
-                        //ret[cells[i][1]] = afile.readInt();
                     } else {
-                        ret[cells[i][1]] = Float.NaN;
+                        ret[(int) cells[i][1]] = Float.NaN;
                     }
                 }
             } else if (datatype.equalsIgnoreCase("LONG")) {
@@ -1504,25 +1500,24 @@ public class Grid { //  implements Serializable
                 b = new byte[size];
                 for (i = 0; i < length; i++) {
                     if (i > 0 && cells[i - 1][0] == cells[i][0]) {
-                        ret[cells[i][1]] = ret[cells[i - 1][1]];
+                        ret[(int) cells[i][1]] = ret[(int) cells[i - 1][1]];
                         continue;
                     }
                     if (cells[i][0] >= 0) {
                         bufferOffset = getBytes(afile, buffer, bufferOffset, cells[i][0] * (long) size, b);
                         if (byteorderLSB) {
-                            ret[cells[i][1]] = ((long) (0xFF & b[7]) << 56) + ((long) (0xFF & b[6]) << 48)
+                            ret[(int) cells[i][1]] = ((long) (0xFF & b[7]) << 56) + ((long) (0xFF & b[6]) << 48)
                                     + ((long) (0xFF & b[5]) << 40) + ((long) (0xFF & b[4]) << 32)
                                     + ((long) (0xFF & b[3]) << 24) + ((long) (0xFF & b[2]) << 16)
                                     + ((long) (0xFF & b[1]) << 8) + (0xFF & b[0]);
                         } else {
-                            ret[cells[i][1]] = ((long) (0xFF & b[0]) << 56) + ((long) (0xFF & b[1]) << 48)
+                            ret[(int) cells[i][1]] = ((long) (0xFF & b[0]) << 56) + ((long) (0xFF & b[1]) << 48)
                                     + ((long) (0xFF & b[2]) << 40) + ((long) (0xFF & b[3]) << 32)
                                     + ((long) (0xFF & b[4]) << 24) + ((long) (0xFF & b[5]) << 16)
                                     + ((long) (0xFF & b[6]) << 8) + (0xFF & b[7]);
                         }
-                        //ret[cells[i][1]] = afile.readLong();
                     } else {
-                        ret[cells[i][1]] = Float.NaN;
+                        ret[(int) cells[i][1]] = Float.NaN;
                     }
                 }
             } else if (datatype.equalsIgnoreCase("FLOAT")) {
@@ -1530,7 +1525,7 @@ public class Grid { //  implements Serializable
                 b = new byte[size];
                 for (i = 0; i < length; i++) {
                     if (i > 0 && cells[i - 1][0] == cells[i][0]) {
-                        ret[cells[i][1]] = ret[cells[i - 1][1]];
+                        ret[(int) cells[i][1]] = ret[(int) cells[i - 1][1]];
                         continue;
                     }
                     if (cells[i][0] >= 0) {
@@ -1539,9 +1534,9 @@ public class Grid { //  implements Serializable
                         if (byteorderLSB) {
                             bb.order(ByteOrder.LITTLE_ENDIAN);
                         }
-                        ret[cells[i][1]] = bb.getFloat();
+                        ret[(int) cells[i][1]] = bb.getFloat();
                     } else {
-                        ret[cells[i][1]] = Float.NaN;
+                        ret[(int) cells[i][1]] = Float.NaN;
                     }
 
                 }
@@ -1550,7 +1545,7 @@ public class Grid { //  implements Serializable
                 b = new byte[8];
                 for (i = 0; i < length; i++) {
                     if (i > 0 && cells[i - 1][0] == cells[i][0]) {
-                        ret[cells[i][1]] = ret[cells[i - 1][1]];
+                        ret[(int) cells[i][1]] = ret[(int) cells[i - 1][1]];
                         continue;
                     }
                     if (cells[i][0] >= 0) {
@@ -1559,11 +1554,10 @@ public class Grid { //  implements Serializable
                         if (byteorderLSB) {
                             bb.order(ByteOrder.LITTLE_ENDIAN);
                         }
-                        ret[cells[i][1]] = (float) bb.getDouble();
+                        ret[(int) cells[i][1]] = (float) bb.getDouble();
 
-                        //ret[cells[i][1]] = afile.readFloat();
                     } else {
-                        ret[cells[i][1]] = Float.NaN;
+                        ret[(int) cells[i][1]] = Float.NaN;
                     }
                 }
             } else {
