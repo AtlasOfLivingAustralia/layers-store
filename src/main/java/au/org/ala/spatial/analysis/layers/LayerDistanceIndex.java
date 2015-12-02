@@ -358,8 +358,8 @@ class CalcThread extends Thread {
 
         for (double x = minx + g1.xres / 2.0; x < maxx; x += g1.xres) {
             for (double y = miny + g1.yres / 2.0; y < maxy; y += g1.xres) {
-                v1 = d1[g1.getcellnumber(x, y)];
-                v2 = d2[g2.getcellnumber(x, y)];
+                v1 = d1[(int) g1.getcellnumber(x, y)];
+                v2 = d2[(int) g2.getcellnumber(x, y)];
                 if (!Double.isNaN(v1) && !Double.isNaN(v2)) {
                     count++;
                     sum += Math.abs(v1 - v2);
