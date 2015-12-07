@@ -301,7 +301,7 @@ public class FieldDAOImpl implements FieldDAO {
                 Util.updateMetadataPath(l);
                 f.setLayer(l);
 
-                l.setDisplaypath(l.getDisplaypath().replace("&styles=", "") + "&style=" + f.getId() + "_style");
+                l.setDisplaypath(l.getDisplaypath().replace("&styles=", "") + "&styles=" + f.getId() + "_style");
 
                 list.add(f);
             } catch (Exception e) {
