@@ -14,6 +14,7 @@
 package au.org.ala.layers.grid;
 
 import au.org.ala.layers.client.Client;
+import au.org.ala.layers.dto.IntersectionFile;
 import au.org.ala.layers.intersect.Grid;
 import au.org.ala.layers.intersect.IntersectConfig;
 import au.org.ala.layers.intersect.SimpleRegion;
@@ -154,7 +155,9 @@ public class GridCutter {
     }
 
     public static String getLayerPath(String resolution, String layer) {
-        String field = Client.getLayerIntersectDao().getConfig().getIntersectionFile(layer).getFieldId();
+        IntersectionFile f = Client.getLayerIntersectDao().getConfig().getIntersectionFile(layer);
+
+        String field = f != null ? f.getFieldId() : null;
 
         File file = new File(IntersectConfig.getAnalysisLayerFilesPath() + File.separator + resolution + File.separator + field + ".grd");
 
@@ -201,7 +204,9 @@ public class GridCutter {
 
 
     public static boolean existsLayerPath(String resolution, String layer, boolean do_not_lower_resolution) {
-        String field = Client.getLayerIntersectDao().getConfig().getIntersectionFile(layer).getFieldId();
+        IntersectionFile f = Client.getLayerIntersectDao().getConfig().getIntersectionFile(layer);
+
+        String field = f != null ? f.getFieldId() : null;
 
         File file = new File(IntersectConfig.getAnalysisLayerFilesPath() + File.separator + resolution + File.separator + field + ".grd");
 
