@@ -762,13 +762,13 @@ public class IntersectConfig {
             gid = id.substring("srichness_".length());
             filename = getAlaspatialOutputPath() + File.separator + "sitesbyspecies" + File.separator + gid + File.separator + "species_richness";
             name = "Species Richness";
-        } else if (id.endsWith("_odensity")) {
-            //occurrence density layer
+        } else if (id.endsWith("_odensity") && id.indexOf("_") == id.length() - 9) {
+            //occurrence density layer and not of the form GDM's number_number_odensity
             gid = id.substring(0, id.length() - "_odensity".length());
             filename = getAlaspatialOutputPath() + File.separator + "sitesbyspecies" + File.separator + gid + File.separator + "occurrence_density";
             name = "Occurrence Density";
-        } else if (id.endsWith("_srichness")) {
-            //species richness layer
+        } else if (id.endsWith("_srichness") && id.indexOf("_") == id.length() - 10) {
+            //species richness layer and not of the form GDM's number_number_srichness
             gid = id.substring(0, id.length() - "_srichness".length());
             filename = getAlaspatialOutputPath() + File.separator + "sitesbyspecies" + File.separator + gid + File.separator + "species_richness";
             name = "Species Richness";
@@ -784,21 +784,20 @@ public class IntersectConfig {
             String[] gdmparts = new String[]{id.substring(0, pos1), id.substring(pos1 + 1, pos2), id.substring(pos2 + 1)};
             gid = gdmparts[2];
             filename = getAlaspatialOutputPath() + File.separator + "gdm" + File.separator + gid + File.separator + gdmparts[1];
-            //Layer tmpLayer = layerDao.getLayerByName(gdmparts[1].replaceAll("Tran", ""));
-            //name = "Transformed " + tmpLayer.getDisplayname();
-            name = "Transformed " + getIntersectionFile(gdmparts[1].replaceAll("Tran", "")).getFieldName();
+            IntersectionFile f = getIntersectionFile(gdmparts[1].replaceAll("Tran", ""));
+            name = "Transformed " + (f != null ? f.getFieldName() : gdmparts[1].replaceAll("Tran", ""));
         } else if (id.contains("_")) {
             //2nd form of gdm layer name, why?
             int pos = id.indexOf("_");
             String[] gdmparts = new String[]{id.substring(0, pos), id.substring(pos + 1)};
             gid = gdmparts[0];
             filename = getAlaspatialOutputPath() + File.separator + "gdm" + File.separator + gid + File.separator + gdmparts[1] + "Tran";
-            logger.debug("id: " + id);
-            logger.debug("parts: " + gdmparts[0] + ", " + gdmparts[1]);
-            logger.debug("filename: " + filename);
-            //Layer tmpLayer = layerDao.getLayerByName(gdmparts[1].replaceAll("Tran", ""));
-            //name = "Transformed " + tmpLayer.getDisplayname();
-            name = "Transformed " + getIntersectionFile(gdmparts[1]).getFieldName();
+            logger.error("id: " + id);
+            logger.error("parts: " + gdmparts[0] + ", " + gdmparts[1]);
+            System.out.println("parts: " + gdmparts[0] + ", " + gdmparts[1]);
+            logger.error("filename: " + filename);
+            IntersectionFile f = getIntersectionFile(gdmparts[1]);
+            name = "Transformed " + (f != null ? f.getFieldName() : gdmparts[1]);
         }
 
         if (gid != null) {
