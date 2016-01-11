@@ -446,6 +446,9 @@ public class GridCutter {
             }
         }
 
+        //fix y offset
+        miny += 1;
+        maxy += 1;
 
         //update extents, must never be larger than the original extents (res is not negative, minx maxx miny mazy are not negative and < w & h respectively
         extents[0][0] = Math.max(extents[0][0] + minx * res, extents[0][0]); //min x value
