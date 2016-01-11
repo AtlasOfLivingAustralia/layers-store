@@ -111,7 +111,10 @@ public class LayerFilter extends Object implements Serializable {
      * @return true if the value is in the filter range.
      */
     public boolean isValid(double value) {
-        return !Double.isNaN(value) && value >= minimum_value && value <= maximum_value;
+        //correct for data type conversions
+        double correction = 0.0000001;
+
+        return !Double.isNaN(value) && value + correction >= minimum_value && value - correction <= maximum_value;
     }
 
     /**
