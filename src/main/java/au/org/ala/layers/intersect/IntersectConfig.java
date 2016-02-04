@@ -76,7 +76,6 @@ public class IntersectConfig {
     static final String CAN_GENERATE_ANALYSIS_FILES = "CAN_GENERATE_ANALYSIS_FILES";
     static final String CAN_INTERSECT_LAYERS = "CAN_INTERSECT_LAYERS";
     static final String CAN_GENRATE_THUMBNAILS = "CAN_GENRATE_THUMBNAILS";
-    static final String LAYER_PROPERTIES = "layer.properties";
     /**
      * log4j logger
      */
@@ -202,7 +201,6 @@ public class IntersectConfig {
     public IntersectConfig(FieldDAO fieldDao, LayerDAO layerDao) {
         this.fieldDao = fieldDao;
         this.layerDao = layerDao;
-
         load();
     }
 
@@ -604,7 +602,7 @@ public class IntersectConfig {
 
         String[] fields = preloadedShapeFiles.split(",");
 
-        //requres readLayerInfo() first
+        //requires readLayerInfo() first
         String[] layers;
         String[] columns;
         String[] fid;

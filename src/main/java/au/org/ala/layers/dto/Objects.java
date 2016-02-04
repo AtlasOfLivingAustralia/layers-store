@@ -40,6 +40,9 @@ public class Objects {
     private Double degrees;
     private Double distance;
     private String wmsurl;
+    private String featureType;
+    private String centroid;
+
 
     public String getDescription() {
         return description;
@@ -145,6 +148,22 @@ public class Objects {
         this.wmsurl = wmsurl;
     }
 
+    public String getFeatureType() {
+        return featureType;
+    }
+
+    public void setFeatureType(String featureType) {
+        this.featureType = featureType;
+    }
+
+    public String getCentroid() {
+        return centroid;
+    }
+
+    public void setCentroid(String centroid) {
+        this.centroid = centroid;
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -238,6 +257,4 @@ public class Objects {
             return false;
         return true;
     }
-
-
 }

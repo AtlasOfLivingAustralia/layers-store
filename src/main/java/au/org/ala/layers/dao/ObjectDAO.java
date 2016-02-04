@@ -30,64 +30,67 @@ import java.util.Map;
  * @author ajay
  */
 public interface ObjectDAO {
-    public List<Objects> getObjects();
 
-    public List<Objects> getObjectsById(String id);
+    List<Objects> getObjects();
 
-    public List<Objects> getObjectsById(String id, int start, int pageSize);
+    List<Objects> getObjectsById(String id);
 
-    public String getObjectsGeometryById(String id, String geomtype);
+    List<Objects> getObjectsById(String id, int start, int pageSize);
 
-    public Objects getObjectByPid(String pid);
+    void writeObjectsToCSV(OutputStream output, String id) throws Exception;
 
-    public Objects getObjectByIdAndLocation(String fid, Double lng, Double lat);
+    String getObjectsGeometryById(String id, String geomtype);
 
-    public List<Objects> getNearestObjectByIdAndLocation(String fid, int limit, Double lng, Double lat);
+    Objects getObjectByPid(String pid);
 
-    public void streamObjectsGeometryById(OutputStream os, String id, String geomtype) throws IOException;
+    Objects getObjectByIdAndLocation(String fid, Double lng, Double lat);
 
-    public List<Objects> getObjectByFidAndName(String fid, String name);
+    List<Objects> getNearestObjectByIdAndLocation(String fid, int limit, Double lng, Double lat);
 
-    public List<Objects> getObjectsByIdAndArea(String id, Integer limit, String wkt);
+    void streamObjectsGeometryById(OutputStream os, String id, String geomtype) throws IOException;
 
-    public List<Objects> getObjectsByIdAndIntersection(String id, Integer limit, LayerFilter layerFilter);
+    List<Objects> getObjectByFidAndName(String fid, String name);
 
-    public List<Objects> getObjectsByIdAndIntersection(String id, Integer limit, String intersectingPid);
+    List<Objects> getObjectsByIdAndArea(String id, Integer limit, String wkt);
 
-    public String createUserUploadedObject(String wkt, String name, String description, String userid);
+    List<Objects> getObjectsByIdAndIntersection(String id, Integer limit, LayerFilter layerFilter);
 
-    public String createUserUploadedObject(String wkt, String name, String description, String userid, boolean namesearch);
+    List<Objects> getObjectsByIdAndIntersection(String id, Integer limit, String intersectingPid);
 
-    public boolean updateUserUploadedObject(int pid, String wkt, String name, String description, String userid);
+    String createUserUploadedObject(String wkt, String name, String description, String userid);
 
-    public boolean deleteUserUploadedObject(int pid);
+    String createUserUploadedObject(String wkt, String name, String description, String userid, boolean namesearch);
 
-    public int createPointOfInterest(String objectId, String name, String type, Double latitude, Double longitude, Double bearing, String userId, String description, Double focalLength);
+    boolean updateUserUploadedObject(int pid, String wkt, String name, String description, String userid);
 
-    public boolean updatePointOfInterest(int id, String objectId, String name, String type, Double latitude, Double longitude, Double bearing, String userId, String description, Double focalLength);
+    boolean deleteUserUploadedObject(int pid);
 
-    public boolean deletePointOfInterest(int id);
+    int createPointOfInterest(String objectId, String name, String type, Double latitude, Double longitude, Double bearing, String userId, String description, Double focalLength);
 
-    public Map<String, Object> getPointOfInterestDetails(int id);
+    boolean updatePointOfInterest(int id, String objectId, String name, String type, Double latitude, Double longitude, Double bearing, String userId, String description, Double focalLength);
 
-    public List<Objects> getObjectsWithinRadius(String fid, double latitude, double longitude, double radiusKm);
+    boolean deletePointOfInterest(int id);
 
-    public List<Objects> getObjectsIntersectingWithGeometry(String fid, String wkt);
+    Map<String, Object> getPointOfInterestDetails(int id);
 
-    public List<Objects> getObjectsIntersectingWithObject(String fid, String objectPid);
+    List<Objects> getObjectsWithinRadius(String fid, double latitude, double longitude, double radiusKm);
 
-    public List<Map<String, Object>> getPointsOfInterestWithinRadius(double latitude, double longitude, double radiusKm);
+    List<Objects> getObjectsIntersectingWithGeometry(String fid, String wkt);
 
-    public List<Map<String, Object>> pointsOfInterestGeometryIntersect(String wkt);
+    List<Objects> getObjectsIntersectingWithObject(String fid, String objectPid);
 
-    public List<Map<String, Object>> pointsOfInterestObjectIntersect(String objectPid);
+    List<Map<String, Object>> getPointsOfInterestWithinRadius(double latitude, double longitude, double radiusKm);
 
-    public int getPointsOfInterestWithinRadiusCount(double latitude, double longitude, double radiusKm);
+    List<Map<String, Object>> pointsOfInterestGeometryIntersect(String wkt);
 
-    public int pointsOfInterestGeometryIntersectCount(String wkt);
+    List<Map<String, Object>> pointsOfInterestObjectIntersect(String objectPid);
 
-    public int pointsOfInterestObjectIntersectCount(String objectPid);
+    int getPointsOfInterestWithinRadiusCount(double latitude, double longitude, double radiusKm);
+
+    int pointsOfInterestGeometryIntersectCount(String wkt);
+
+    int pointsOfInterestObjectIntersectCount(String objectPid);
 
     @Async
-    public void updateObjectNames();
+    void updateObjectNames();
 }

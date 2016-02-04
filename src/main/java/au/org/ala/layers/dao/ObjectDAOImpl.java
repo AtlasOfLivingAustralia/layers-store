@@ -14,6 +14,7 @@
  ***************************************************************************/
 package au.org.ala.layers.dao;
 
+import au.com.bytecode.opencsv.CSVWriter;
 import au.org.ala.layers.dto.GridClass;
 import au.org.ala.layers.dto.IntersectionFile;
 import au.org.ala.layers.dto.Objects;
@@ -33,9 +34,15 @@ import org.geotools.kml.KML;
 import org.geotools.kml.KMLConfiguration;
 import org.geotools.xml.Encoder;
 import org.opengis.feature.simple.SimpleFeatureType;
+import org.postgresql.copy.CopyManager;
+import org.postgresql.core.BaseConnection;
+import org.springframework.beans.BeansException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.ParameterizedBeanPropertyRowMapper;
 import org.springframework.jdbc.core.simple.SimpleJdbcTemplate;
+import org.springframework.jdbc.support.nativejdbc.C3P0NativeJdbcExtractor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +51,9 @@ import javax.annotation.Resource;
 import javax.sql.DataSource;
 import java.io.*;
 import java.net.URLEncoder;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.text.MessageFormat;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.zip.ZipInputStream;
@@ -52,7 +62,7 @@ import java.util.zip.ZipInputStream;
  * @author ajay
  */
 @Service("objectDao")
-public class ObjectDAOImpl implements ObjectDAO {
+public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
 
     static final String objectWmsUrl = "/wms?service=WMS&version=1.1.0&request=GetMap&layers=ALA:Objects&format=image/png&viewparams=s:<pid>";
     static final String gridPolygonSld;
@@ -98,6 +108,7 @@ public class ObjectDAOImpl implements ObjectDAO {
     private SimpleJdbcTemplate jdbcTemplate;
     @Resource(name = "layerIntersectDao")
     private LayerIntersectDAO layerIntersectDao;
+    private ApplicationContext applicationContext;
 
     @Resource(name = "dataSource")
     public void setDataSource(DataSource dataSource) {
@@ -147,12 +158,27 @@ public class ObjectDAOImpl implements ObjectDAO {
         return getObjectsById(id, 0, -1);
     }
 
+    public void writeObjectsToCSV(OutputStream output, String fid) throws Exception {
+        String sql = MessageFormat.format("COPY (select o.pid as pid, o.id as id, o.name as name, " +
+                    "ST_AsText(ST_Centroid(o.the_geom)) as centroid, " +
+                    "GeometryType(o.the_geom) as featureType from objects o " +
+                    "where o.fid = ''{0}'') TO STDOUT WITH CSV HEADER", fid);
+        DataSource ds = (DataSource) applicationContext.getBean("dataSource");
+        Connection conn = ds.getConnection();
+        BaseConnection baseConn = (BaseConnection) new C3P0NativeJdbcExtractor().getNativeConnection(conn);
+        Writer csvOutput = new OutputStreamWriter(output);
+        CopyManager copyManager = new CopyManager(baseConn);
+        copyManager.copyOut(sql, csvOutput);
+    }
+
     @Override
     public List<Objects> getObjectsById(String id, int start, int pageSize) {
         logger.info("Getting object info for fid = " + id);
         String limit_offset = " limit " + (pageSize < 0 ? "all" : pageSize) + " offset " + start;
         String sql = "select o.pid as pid, o.id as id, o.name as name, o.desc as description, " +
-                "o.fid as fid, f.name as fieldname, o.bbox, o.area_km from objects o, fields f " +
+                "o.fid as fid, f.name as fieldname, o.bbox, o.area_km, " +
+                "ST_AsText(ST_Centroid(o.the_geom)) as centroid," +
+                "GeometryType(o.the_geom) as featureType from objects o, fields f " +
                 "where o.fid = ? and o.fid = f.id order by o.pid " + limit_offset;
         List<Objects> objects = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Objects.class), id);
 
@@ -248,7 +274,7 @@ public class ObjectDAOImpl implements ObjectDAO {
                             raf.close();
 
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            logger.error(e.getMessage(), e);
                         }
 
                         if (pageSize != -1 && pos >= start + pageSize) {
@@ -258,7 +284,6 @@ public class ObjectDAOImpl implements ObjectDAO {
                 }
             }
         }
-
         return objects;
     }
 
@@ -268,12 +293,12 @@ public class ObjectDAOImpl implements ObjectDAO {
         try {
             streamObjectsGeometryById(baos, id, geomtype);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         } finally {
             try {
                 baos.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
         }
 
@@ -397,20 +422,20 @@ public class ObjectDAOImpl implements ObjectDAO {
                                             }
                                         }
                                     } catch (Exception e) {
-                                        e.printStackTrace();
+                                        logger.error(e.getMessage(), e);
                                     } finally {
                                         if (bis != null) {
                                             try {
                                                 bis.close();
                                             } catch (Exception e) {
-                                                e.printStackTrace();
+                                                logger.error(e.getMessage(), e);
                                             }
                                         }
                                         if (isr != null) {
                                             try {
                                                 isr.close();
                                             } catch (Exception e) {
-                                                e.printStackTrace();
+                                                logger.error(e.getMessage(), e);
                                             }
                                         }
                                     }
@@ -419,7 +444,7 @@ public class ObjectDAOImpl implements ObjectDAO {
                         }
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    logger.error(e.getMessage(), e);
                 }
             }
         }
@@ -475,7 +500,7 @@ public class ObjectDAOImpl implements ObjectDAO {
                     }
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
         }
 
@@ -551,7 +576,7 @@ public class ObjectDAOImpl implements ObjectDAO {
     public List<Objects> getObjectByFidAndName(String fid, String name) {
         logger.info("Getting object info for fid = " + fid + " and name: (" + name + ") ");
         String sql = "select o.pid, o.id, o.name, o.desc as description, o.fid as fid, f.name as fieldname, o.bbox, " +
-                "o.area_km, ST_AsText(the_geom) as geometry from objects o, fields f where o.fid = ? and o.name like ? and o.fid = f.id";
+                "o.area_km, ST_AsText(the_geom) as geometry, GeometryType(the_geom) as featureType from objects o, fields f where o.fid = ? and o.name like ? and o.fid = f.id";
         List<Objects> objects = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Objects.class), new Object[]{fid, name});
         updateObjectWms(objects);
         return objects;
@@ -600,14 +625,14 @@ public class ObjectDAOImpl implements ObjectDAO {
             map.put("maxy", raf.readFloat());
             map.put("area", raf.readFloat());
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         } finally {
             try {
                 if (raf != null) {
                     raf.close();
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
         }
 
@@ -616,7 +641,7 @@ public class ObjectDAOImpl implements ObjectDAO {
 
     @Override
     public List<Objects> getObjectsByIdAndArea(String id, Integer limit, String wkt) {
-        String sql = "select fid, name, \"desc\", pid, id, ST_AsText(the_geom) as geometry from objects where fid= ? and " +
+        String sql = "select fid, name, \"desc\", pid, id, ST_AsText(the_geom) as geometry, GeometryType(the_geom) as featureType from objects where fid= ? and " +
                 "ST_Within(the_geom, ST_GeomFromText( ? , 4326)) limit ? ";
 
         List<Objects> objects = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Objects.class), id, wkt, new Integer(limit));
@@ -675,7 +700,7 @@ public class ObjectDAOImpl implements ObjectDAO {
 
     @Override
     public List<Objects> getObjectsByIdAndIntersection(String id, Integer limit, String intersectingPid) {
-        String sql = "select fid, name, \"desc\", pid, id, ST_AsText(the_geom) as geometry from objects, " +
+        String sql = "select fid, name, \"desc\", pid, id, ST_AsText(the_geom) as geometry, GeometryType(the_geom) as featureType from objects, " +
                 "(select the_geom as g from Objects where pid = ? ) t where fid= ? and ST_Within(the_geom, g) limit ? ";
 
         List<Objects> objects = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Objects.class), intersectingPid, id, new Integer(limit));
@@ -768,7 +793,6 @@ public class ObjectDAOImpl implements ObjectDAO {
         } else {
             return true;
         }
-
     }
 
     @Override
@@ -815,7 +839,7 @@ public class ObjectDAOImpl implements ObjectDAO {
     @Override
     public List<Objects> getObjectsWithinRadius(String fid, double latitude, double longitude, double radiusKm) {
         String sql = "SELECT o.pid, o.id, o.name, o.desc AS description, o.fid AS fid, f.name AS fieldname, o.bbox, " +
-                "o.area_km FROM objects o, fields f WHERE o.fid = ? AND o.fid = f.id AND " +
+                "o.area_km, GeometryType(o.the_geom) as featureType FROM objects o, fields f WHERE o.fid = ? AND o.fid = f.id AND " +
                 "ST_DWithin(ST_GeographyFromText('POINT(" + longitude + " " + latitude + ")'), geography(the_geom), ?)";
         List<Objects> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Objects.class), fid, radiusKm * 1000);
         updateObjectWms(l);
@@ -884,4 +908,7 @@ public class ObjectDAOImpl implements ObjectDAO {
         return jdbcTemplate.queryForInt(sql, objectPid);
     }
 
+    public void setApplicationContext(ApplicationContext applicationContext)  throws BeansException {
+        this.applicationContext = applicationContext;
+    }
 }
