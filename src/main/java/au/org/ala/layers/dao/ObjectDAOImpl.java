@@ -14,7 +14,6 @@
  ***************************************************************************/
 package au.org.ala.layers.dao;
 
-import au.com.bytecode.opencsv.CSVWriter;
 import au.org.ala.layers.dto.GridClass;
 import au.org.ala.layers.dto.IntersectionFile;
 import au.org.ala.layers.dto.Objects;
@@ -42,6 +41,7 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.ParameterizedBeanPropertyRowMapper;
 import org.springframework.jdbc.core.simple.SimpleJdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.jdbc.support.nativejdbc.C3P0NativeJdbcExtractor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -52,10 +52,11 @@ import javax.sql.DataSource;
 import java.io.*;
 import java.net.URLEncoder;
 import java.sql.Connection;
-import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipInputStream;
 
 /**
@@ -160,15 +161,31 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
 
     public void writeObjectsToCSV(OutputStream output, String fid) throws Exception {
         String sql = MessageFormat.format("COPY (select o.pid as pid, o.id as id, o.name as name, " +
+                    "o.desc as description, " +
                     "ST_AsText(ST_Centroid(o.the_geom)) as centroid, " +
                     "GeometryType(o.the_geom) as featureType from objects o " +
                     "where o.fid = ''{0}'') TO STDOUT WITH CSV HEADER", fid);
+
         DataSource ds = (DataSource) applicationContext.getBean("dataSource");
-        Connection conn = ds.getConnection();
-        BaseConnection baseConn = (BaseConnection) new C3P0NativeJdbcExtractor().getNativeConnection(conn);
-        Writer csvOutput = new OutputStreamWriter(output);
-        CopyManager copyManager = new CopyManager(baseConn);
-        copyManager.copyOut(sql, csvOutput);
+        Connection conn = DataSourceUtils.getConnection(ds);
+
+        try {
+            BaseConnection baseConn = (BaseConnection) new C3P0NativeJdbcExtractor().getNativeConnection(conn);
+            Writer csvOutput = new OutputStreamWriter(output);
+            CopyManager copyManager = new CopyManager(baseConn);
+            copyManager.copyOut(sql, csvOutput);
+            conn.close();
+        } catch (SQLException ex) {
+            // something has failed and we print a stack trace to analyse the error
+            logger.error(ex.getMessage(), ex);
+            // ignore failure closing connection
+            try {
+                conn.close();
+            } catch (SQLException e) { /*do nothing for failure to close */ }
+        } finally {
+            // properly release our connection
+            DataSourceUtils.releaseConnection(conn, ds);
+        }
     }
 
     @Override
