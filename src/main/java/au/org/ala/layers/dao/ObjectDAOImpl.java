@@ -174,6 +174,7 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
             Writer csvOutput = new OutputStreamWriter(output);
             CopyManager copyManager = new CopyManager(baseConn);
             copyManager.copyOut(sql, csvOutput);
+            csvOutput.flush();
             conn.close();
         } catch (SQLException ex) {
             // something has failed and we print a stack trace to analyse the error
