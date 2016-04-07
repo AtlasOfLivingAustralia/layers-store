@@ -83,7 +83,7 @@ public class AnalysisLayerUtil {
         }
     }
 
-    static boolean diva2Analysis(String srcFilepath, String dstFilepath, Double resolution, String gdalPath, boolean force) {
+    public static boolean diva2Analysis(String srcFilepath, String dstFilepath, Double resolution, String gdalPath, boolean force) {
         try {
             File sgrd = new File(srcFilepath + ".grd");
             File sgri = new File(srcFilepath + ".gri");
@@ -318,7 +318,7 @@ public class AnalysisLayerUtil {
         }
     }
 
-    static boolean shp2Analysis(String srcOrigFilepath, String srcFilepath, String fieldId, String dstFilepath, Double resolution, String gdalPath, boolean force) {
+    public static boolean shp2Analysis(String srcOrigFilepath, String srcFilepath, String fieldId, String dstFilepath, Double resolution, String gdalPath, boolean force) {
         try {
             File sshp = new File(srcOrigFilepath + ".shp");
             File tmpShp = new File(srcFilepath + ".shp");
@@ -372,7 +372,7 @@ public class AnalysisLayerUtil {
         return false;
     }
 
-    private static boolean gdal_rasterize(String gdalPath, String srcFilename, String dstFilename, double resolution, double minx, double miny, double maxx, double maxy) {
+    public static boolean gdal_rasterize(String gdalPath, String srcFilename, String dstFilename, double resolution, double minx, double miny, double maxx, double maxy) {
         Runtime runtime = Runtime.getRuntime();
         try {
 

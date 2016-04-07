@@ -606,4 +606,8 @@ public class Records {
     public double getSortedLatitude(int pos) {
         return points.get(sortOrder[pos] * 2 + 1);
     }
+
+    public String getSpeciesN(int speciesNumber) {
+        return lsids[speciesNumber];
+    }
 }
