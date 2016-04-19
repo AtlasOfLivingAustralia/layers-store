@@ -1,16 +1,16 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.util;
 
@@ -25,6 +25,7 @@ import au.org.ala.layers.dto.Objects;
 import au.org.ala.layers.intersect.Grid;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.WKTReader;
+import org.apache.log4j.Logger;
 import org.geotools.data.*;
 import org.geotools.data.shapefile.ShapefileDataStore;
 import org.geotools.data.shapefile.ShapefileDataStoreFactory;
@@ -48,8 +49,10 @@ import java.util.Map;
  */
 public class AnalysisLayerUtil {
 
+    private static final Logger logger = Logger.getLogger(AnalysisLayerUtil.class);
+
     public static void main(String[] args) {
-        System.out.println(
+        logger.info(
                 "prepare one grid file for analysis.\n"
                         + "args[0] = source diva grid filename (without .gri or .grd)\n"
                         + "args[1] = output diva grid filename (without .gri or .grd)\n"
@@ -76,9 +79,9 @@ public class AnalysisLayerUtil {
             }
         } else if (args.length == 4) {
             if (diva2Analysis(args[0], args[1], Double.parseDouble(args[2]), args[3], true)) {
-                System.out.println("successful");
+                logger.info("successful");
             } else {
-                System.out.println("unsuccessful");
+                logger.info("unsuccessful");
             }
         }
     }
@@ -137,7 +140,7 @@ public class AnalysisLayerUtil {
 
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
         return false;
     }
@@ -146,7 +149,7 @@ public class AnalysisLayerUtil {
         Runtime runtime = Runtime.getRuntime();
         try {
 
-            System.out.println("Got gdal_path: " + gdalPath);
+            logger.info("Got gdal_path: " + gdalPath);
 
             //gdalwarp -te 109.51 -44.37 157.28 -8.19 -tr 0.01 -0.01
             //-s_srs '" + edlconfig.s_srs + "' -t_srs '" + edlconfig.t_srs + "'
@@ -157,35 +160,35 @@ public class AnalysisLayerUtil {
 
             String command = base_command + srcFilename + " " + dstFilename;
 
-            System.out.println("Exec'ing " + command);
+            logger.info("Exec'ing " + command);
             Process proc = runtime.exec(command);
 
-            System.out.println("Setting up output stream readers");
+            logger.info("Setting up output stream readers");
             InputStreamReader isr = new InputStreamReader(proc.getInputStream());
             InputStreamReader eisr = new InputStreamReader(proc.getErrorStream());
             BufferedReader br = new BufferedReader(isr);
             BufferedReader ebr = new BufferedReader(eisr);
             String line;
 
-            System.out.printf("Output of running %s is:", command);
+            logger.info(String.format("Output of running %s is:", command));
 
             while ((line = br.readLine()) != null) {
-                System.out.println(line);
+                logger.info(line);
             }
 
             while ((line = ebr.readLine()) != null) {
-                System.out.println(line);
+                logger.info(line);
             }
 
             int exitVal = proc.waitFor();
 
-            System.out.println(exitVal);
+            logger.info(exitVal);
 
             if (exitVal == 0) {
                 return true;
             }
         } catch (Exception e) {
-            e.printStackTrace(System.out);
+            logger.error(e.getMessage(), e);
         }
         return false;
     }
@@ -195,24 +198,40 @@ public class AnalysisLayerUtil {
             try {
                 new File(s).delete();
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
         }
     }
 
     private static void fileCopy(String src, String dst) {
+        FileInputStream fis = null;
+        FileOutputStream fos = null;
         try {
-            FileInputStream fis = new FileInputStream(src);
-            FileOutputStream fos = new FileOutputStream(dst);
+            fis = new FileInputStream(src);
+            fos = new FileOutputStream(dst);
             byte[] buf = new byte[1024 * 1024];
             int len;
             while ((len = fis.read(buf)) > 0) {
                 fos.write(buf, 0, len);
             }
-            fis.close();
-            fos.close();
+            fos.flush();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
+            if (fos != null) {
+                try {
+                    fos.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 
@@ -227,7 +246,7 @@ public class AnalysisLayerUtil {
         for (Field f : fields) {
             try {
                 if (f.isAnalysis() && f.getType().equals("c")) {
-                    System.out.println("processing: " + f.getId());
+                    logger.info("processing: " + f.getId());
 
                     Layer l = layerDao.getLayerById(Integer.parseInt(f.getSpid()));
 
@@ -244,9 +263,9 @@ public class AnalysisLayerUtil {
                             liDao.getConfig().getGdalPath(),
                             false)) {
 
-                        System.out.println("successful for: " + f.getId() + " @ " + d);
+                        logger.info("successful for: " + f.getId() + " @ " + d);
                     } else {
-                        System.out.println("unsuccessful for: " + f.getId() + " @ " + d);
+                        logger.info("unsuccessful for: " + f.getId() + " @ " + d);
                     }
                     //}
 
@@ -256,8 +275,7 @@ public class AnalysisLayerUtil {
                             , tmpShp.getPath() + ".prj", tmpShp.getPath() + ".txt"});
                 }
             } catch (Exception e) {
-                System.out.println("Error processing: " + f.getId());
-                e.printStackTrace();
+                logger.error("Error processing: " + f.getId(), e);
             }
         }
 
@@ -290,7 +308,7 @@ public class AnalysisLayerUtil {
                     }
                     while (i < resolutions.size()) {
                         if (resolutions.get(i) >= minRes) {
-                            System.out.println("processing: " + l.getPath_orig());
+                            logger.info("processing: " + l.getPath_orig());
                             if (diva2Analysis(liDao.getConfig().getLayerFilesPath() + l.getPath_orig(),
                                     liDao.getConfig().getAnalysisLayerFilesPath() + resolutions.get(i) + File.separator + f.getId(),
                                     resolutions.get(i),
@@ -303,17 +321,16 @@ public class AnalysisLayerUtil {
                                             liDao.getConfig().getAnalysisLayerFilesPath() + resolutions.get(i) + File.separator + f.getId() + ".txt");
                                 }
 
-                                System.out.println("successful for: " + f.getId() + " @ " + resolutions.get(i));
+                                logger.info("successful for: " + f.getId() + " @ " + resolutions.get(i));
                             } else {
-                                System.out.println("unsuccessful for: " + f.getId() + " @ " + resolutions.get(i));
+                                logger.info("unsuccessful for: " + f.getId() + " @ " + resolutions.get(i));
                             }
                         }
                         i++;
                     }
                 }
             } catch (Exception e) {
-                System.out.println("error processing: " + f.getId());
-                e.printStackTrace();
+                logger.error("error processing: " + f.getId(), e);
             }
         }
     }
@@ -367,7 +384,7 @@ public class AnalysisLayerUtil {
             }
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
         return false;
     }
@@ -376,7 +393,7 @@ public class AnalysisLayerUtil {
         Runtime runtime = Runtime.getRuntime();
         try {
 
-            System.out.println("Got gdal_path: " + gdalPath);
+            logger.info("Got gdal_path: " + gdalPath);
 
             String layername = new File(srcFilename).getName().replace(".shp", "");
 
@@ -389,41 +406,42 @@ public class AnalysisLayerUtil {
 
             String command = base_command + srcFilename + " " + dstFilename;
 
-            System.out.println("Exec'ing " + command);
+            logger.info("Exec'ing " + command);
             Process proc = runtime.exec(command);
 
-            System.out.println("Setting up output stream readers");
+            logger.info("Setting up output stream readers");
             InputStreamReader isr = new InputStreamReader(proc.getInputStream());
             InputStreamReader eisr = new InputStreamReader(proc.getErrorStream());
             BufferedReader br = new BufferedReader(isr);
             BufferedReader ebr = new BufferedReader(eisr);
             String line;
 
-            System.out.printf("Output of running %s is:", command);
+            logger.info(String.format("Output of running %s is:", command));
 
             while ((line = br.readLine()) != null) {
-                System.out.println(line);
+                logger.info(line);
             }
 
             while ((line = ebr.readLine()) != null) {
-                System.out.println(line);
+                logger.info(line);
             }
 
             int exitVal = proc.waitFor();
 
-            System.out.println(exitVal);
+            logger.info(exitVal);
 
             if (exitVal == 0) {
                 return true;
             }
         } catch (Exception e) {
-            e.printStackTrace(System.out);
+            logger.error(e.getMessage(), e);
         }
         return false;
     }
 
     private static boolean fieldToShapeFile(String fid, String path) {
         boolean ret = true;
+        ShapefileDataStore newDataStore = null;
         try {
             final SimpleFeatureType TYPE = DataUtilities.createType("tmpshp", "the_geom:MultiPolygon,id:int");
 
@@ -431,7 +449,7 @@ public class AnalysisLayerUtil {
             Map<String, Serializable> params = new HashMap<String, Serializable>();
             params.put("url", new File(path + ".shp").toURI().toURL());
             params.put("create spatial index", Boolean.FALSE);
-            ShapefileDataStore newDataStore = (ShapefileDataStore) dataStoreFactory.createNewDataStore(params);
+            newDataStore = (ShapefileDataStore) dataStoreFactory.createNewDataStore(params);
             newDataStore.createSchema(TYPE);
             newDataStore.forceSchemaCRS(DefaultGeographicCRS.WGS84);
             Transaction transaction = new DefaultTransaction("create");
@@ -482,7 +500,7 @@ public class AnalysisLayerUtil {
                     transaction.close();
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
                 ret = false;
             } finally {
                 if (fw != null) {
@@ -490,13 +508,21 @@ public class AnalysisLayerUtil {
                         fw.close();
                     } catch (Exception e) {
                         ret = false;
-                        e.printStackTrace();
+                        logger.error(e.getMessage(), e);
                     }
                 }
             }
         } catch (Exception e) {
             ret = false;
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (newDataStore != null) {
+                try {
+                    newDataStore.dispose();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
 
         return ret;
@@ -513,25 +539,23 @@ public class AnalysisLayerUtil {
             while ((n = br.read(buffer)) > 0) {
                 fw.write(buffer, 0, n);
             }
-            br.close();
-            fw.close();
+            fw.flush();
         } catch (Exception e) {
-            System.out.println("failure to copy: " + src + " to " + dst);
-            e.printStackTrace();
+            logger.error("failure to copy: " + src + " to " + dst, e);
         } finally {
             try {
                 if (br != null) {
                     br.close();
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
             try {
                 if (fw != null) {
                     fw.close();
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
         }
     }

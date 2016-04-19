@@ -1,21 +1,22 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.util;
 
 import au.org.ala.layers.client.Client;
 import au.org.ala.layers.dto.Field;
+import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -26,18 +27,21 @@ import java.util.List;
  */
 public class IntersectUtil {
 
+    private static final Logger logger = Logger.getLogger(IntersectUtil.class);
+
     static public void main(String[] args) {
         if (args.length < 3) {
-            System.out.println("intersect a points file with fields");
-            System.out.println("args[0] = points filename, a csv with first column latitude, second column longitude \n"
+            logger.info("intersect a points file with fields");
+            logger.info("args[0] = points filename, a csv with first column latitude, second column longitude \n"
                     + "args[1] = comma separated field ids.  'all' can be used with local sampling, \n"
                     + "args[2] = output csv filename\n");
-            System.out.println("\nnumber of threads for local sampling can be set to 4 with -DBATCH_THREAD_COUNT=4");
-            System.out.println("\nremote sample can be set with -DLAYER_INDEX_URL=http://localhost:8082/layers-index");
+            logger.info("\nnumber of threads for local sampling can be set to 4 with -DBATCH_THREAD_COUNT=4");
+            logger.info("\nremote sample can be set with -DLAYER_INDEX_URL=http://localhost:8082/layers-index");
 
             return;
         }
 
+        FileOutputStream fos = null;
         try {
             String fields = args[1];
             if (args[1].equals("all")) {
@@ -51,11 +55,19 @@ public class IntersectUtil {
 
             ArrayList<String> sample = Client.getLayerIntersectDao().sampling(fields, points);
 
-            FileOutputStream fos = new FileOutputStream(args[2]);
+            fos = new FileOutputStream(args[2]);
             writeSampleToStream(fields.split(","), points.split(","), sample, fos);
-            fos.close();
+            fos.flush();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (fos != null) {
+                try {
+                    fos.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 

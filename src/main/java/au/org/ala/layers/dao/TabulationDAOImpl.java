@@ -1,16 +1,16 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.dao;
 
@@ -68,21 +68,11 @@ public class TabulationDAOImpl implements TabulationDAO {
         }
 
         if (wkt == null || wkt.length() == 0) {
-            /*  after "tabulation" table is updated with column "occurrences" and column "species"
-             * String sql = "SELECT i.pid1, i.pid2, i.fid1, i.fid2, i.area, i.occurrences, i.species, o1.name as name1, o2.name as name2 FROM "
-                    + "(SELECT * FROM tabulation WHERE fid1= ? AND fid2 = ? ) i, "
-                    + "(SELECT * FROM objects WHERE fid= ? ) o1, "
-                    + "(SELECT * FROM objects WHERE fid= ? ) o2 "
-                    + "WHERE i.pid1=o1.pid AND i.pid2=o2.pid ;";
-                    * 
-                    */
             /* before "tabulation" table is updated with column "occurrences", to just make sure column "area" is all good */
             String sql = "SELECT i.pid1, i.pid2, i.fid1, i.fid2, i.area, o1.name as name1, o2.name as name2, i.occurrences, i.species, i.speciest1, i.speciest2 FROM "
                     + "(SELECT pid1, pid2, fid1, fid2, area, occurrences, species, speciest1, speciest2 FROM tabulation WHERE fid1= ? AND fid2 = ? ) i, "
                     + "(select t1.pid1 as pid, name from tabulation t1 left join objects o3 on t1.fid1=o3.fid and t1.pid1=o3.pid where t1.fid1= ? group by t1.pid1, name) o1, "
-                    //+ "(SELECT pid, name FROM objects WHERE fid= ? ) o1, "
                     + "(select t2.pid2 as pid, name from tabulation t2 left join objects o4 on t2.fid2=o4.fid and t2.pid2=o4.pid where t2.fid2= ? group by t2.pid2, name) o2 "
-                    //+ "(SELECT pid, name FROM objects WHERE fid= ? ) o2 "
                     + "WHERE i.pid1=o1.pid AND i.pid2=o2.pid ;";
 
             tabulations = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Tabulation.class), min, max, min, max);
@@ -92,9 +82,7 @@ public class TabulationDAOImpl implements TabulationDAO {
                     + "(SELECT fid1, pid1, fid2, pid2, (ST_INTERSECTION(ST_GEOMFROMTEXT( ? ,4326), i.the_geom)) as newgeom, o1.name as name1, o2.name as name2, i.occurrences, i.species FROM "
                     + "(SELECT * FROM tabulation WHERE fid1= ? AND fid2 = ? ) i, "
                     + "(select t1.pid1 as pid, name from tabulation t1 left join objects o3 on t1.fid1=o3.fid and t1.pid1=o3.pid where t1.fid1= ? group by t1.pid1, name) o1, "
-                    //+ "(SELECT pid, name FROM objects WHERE fid= ? ) o1, "
                     + "(select t2.pid2 as pid, name from tabulation t2 left join objects o4 on t2.fid2=o4.fid and t2.pid2=o4.pid where t2.fid2= ? group by t2.pid2, name) o2 "
-                    //+ "(SELECT pid, name FROM objects WHERE fid= ? ) o2 "
                     + "WHERE i.pid1=o1.pid AND i.pid2=o2.pid) a "
                     + "WHERE a.newgeom is not null AND ST_Area(a.newgeom) > 0;";
 
@@ -209,13 +197,13 @@ public class TabulationDAOImpl implements TabulationDAO {
                 return tabulations;
             }
         } else {
-            System.out.println("wkt: " + wkt);
+            logger.debug("wkt: " + wkt);
             String w = wkt;
             if (isPid) {
                 //get wkt
                 w = objectDao.getObjectsGeometryById(wkt, "wkt");
             }
-            System.out.println("w: " + w);
+            logger.debug("w: " + w);
             return TabulationGenerator.calc(fid, w);
         }
     }

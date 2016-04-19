@@ -128,49 +128,60 @@ public class SpatialConversionUtils {
         File tempDir = Files.createTempDir();
 
         // Unpack the zipped shape file into the temp directory
-        ZipFile zf = new ZipFile(zippedShpFile);
-
-        boolean shpPresent = false;
-        boolean shxPresent = false;
-        boolean dbfPresent = false;
-
-        Enumeration<? extends ZipEntry> entries = zf.entries();
-
+        ZipFile zf = null;
         File shpFile = null;
+        try {
+            zf = new ZipFile(zippedShpFile);
 
-        while (entries.hasMoreElements()) {
-            ZipEntry entry = entries.nextElement();
-            InputStream inStream = zf.getInputStream(entry);
-            File f = new File(tempDir, entry.getName());
-            if (!f.getName().startsWith(".")) {
-                if (entry.isDirectory()) {
-                    f.mkdirs();
-                } else {
-                    FileOutputStream outStream = new FileOutputStream(f);
-                    IOUtils.copy(inStream, outStream);
+            boolean shpPresent = false;
+            boolean shxPresent = false;
+            boolean dbfPresent = false;
 
-                    if (entry.getName().endsWith(".shp")) {
-                        shpPresent = true;
-                        shpFile = f;
-                    } else if (entry.getName().endsWith(".shx") && !f.getName().startsWith("/")) {
-                        shxPresent = true;
-                    } else if (entry.getName().endsWith(".dbf") && !f.getName().startsWith("/")) {
-                        dbfPresent = true;
+            Enumeration<? extends ZipEntry> entries = zf.entries();
+
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                InputStream inStream = zf.getInputStream(entry);
+                File f = new File(tempDir, entry.getName());
+                if (!f.getName().startsWith(".")) {
+                    if (entry.isDirectory()) {
+                        f.mkdirs();
+                    } else {
+                        FileOutputStream outStream = new FileOutputStream(f);
+                        IOUtils.copy(inStream, outStream);
+
+                        if (entry.getName().endsWith(".shp")) {
+                            shpPresent = true;
+                            shpFile = f;
+                        } else if (entry.getName().endsWith(".shx") && !f.getName().startsWith("/")) {
+                            shxPresent = true;
+                        } else if (entry.getName().endsWith(".dbf") && !f.getName().startsWith("/")) {
+                            dbfPresent = true;
+                        }
                     }
+                }
+            }
+
+            if (!shpPresent || !shxPresent || !dbfPresent) {
+                throw new IllegalArgumentException("Invalid archive. Must contain .shp, .shx and .dbf at a minimum.");
+            }
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (zf != null) {
+                try {
+                    zf.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
                 }
             }
         }
 
-        if (!shpPresent || !shxPresent || !dbfPresent) {
-            throw new IllegalArgumentException("Invalid archive. Must contain .shp, .shx and .dbf at a minimum.");
+        if (shpFile == null) {
+            return null;
+        } else {
+            return Pair.of(shpFile.getParentFile().getName(), shpFile);
         }
-
-        ShapefileDataStore store = (ShapefileDataStore) FileDataStoreFinder.getDataStore(shpFile);
-        SimpleFeatureType schema = store.getSchema();
-
-        zf.close();
-
-        return Pair.of(shpFile.getParentFile().getName(), shpFile);
     }
 
     public static List<List<Pair<String, Object>>> getShapeFileManifest(File shpFile) throws IOException {
@@ -276,8 +287,6 @@ public class SpatialConversionUtils {
             i++;
         }
 
-        //it.close();
-
         return wkt;
     }
 
@@ -290,27 +299,40 @@ public class SpatialConversionUtils {
         saveShapefile(shpFile, wktString, name, description);
 
         File zipFile = new File(tempDir, filenamePrefix + ".zip");
-        ZipOutputStream zipOS = new ZipOutputStream(new FileOutputStream(zipFile));
+        ZipOutputStream zipOS = null;
+        try {
+            zipOS = new ZipOutputStream(new FileOutputStream(zipFile));
 
-        List<File> excludedFiles = new ArrayList<File>();
-        excludedFiles.add(zipFile);
+            List<File> excludedFiles = new ArrayList<File>();
+            excludedFiles.add(zipFile);
 
-        Iterator<File> iterFile = FileUtils.iterateFiles(shpFile.getParentFile(), new BaseFileNameInDirectoryFilter(filenamePrefix, tempDir, excludedFiles), null);
+            Iterator<File> iterFile = FileUtils.iterateFiles(shpFile.getParentFile(), new BaseFileNameInDirectoryFilter(filenamePrefix, tempDir, excludedFiles), null);
 
-        while (iterFile.hasNext()) {
-            File nextFile = iterFile.next();
-            ZipEntry zipEntry = new ZipEntry(nextFile.getName());
-            zipOS.putNextEntry(zipEntry);
-            zipOS.write(FileUtils.readFileToByteArray(nextFile));
-            zipOS.closeEntry();
+            while (iterFile.hasNext()) {
+                File nextFile = iterFile.next();
+                ZipEntry zipEntry = new ZipEntry(nextFile.getName());
+                zipOS.putNextEntry(zipEntry);
+                zipOS.write(FileUtils.readFileToByteArray(nextFile));
+                zipOS.closeEntry();
+            }
+            zipOS.flush();
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (zipOS != null) {
+                try {
+                    zipOS.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
-
-        zipOS.close();
 
         return zipFile;
     }
 
     public static File saveShapefile(File shpfile, String wktString, String name, String description) {
+        ShapefileDataStore newDataStore = null;
         try {
             String wkttype = "POLYGON";
             if (wktString.contains("MULTIPOLYGON")) {
@@ -363,7 +385,7 @@ public class SpatialConversionUtils {
             params.put("url", shpfile.toURI().toURL());
             params.put("create spatial index", Boolean.TRUE);
 
-            ShapefileDataStore newDataStore = (ShapefileDataStore) dataStoreFactory.createNewDataStore(params);
+            newDataStore = (ShapefileDataStore) dataStoreFactory.createNewDataStore(params);
             newDataStore.createSchema(TYPE);
 
             newDataStore.forceSchemaCRS(DefaultGeographicCRS.WGS84);
@@ -384,8 +406,8 @@ public class SpatialConversionUtils {
                     featureStore.addFeatures(collection);
                     transaction.commit();
 
-                } catch (Exception problem) {
-                    problem.printStackTrace();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
                     transaction.rollback();
 
                 } finally {
@@ -397,6 +419,14 @@ public class SpatialConversionUtils {
         } catch (Exception e) {
             logger.error("Error saving shape file", e);
             return null;
+        } finally {
+            if (newDataStore != null) {
+                try {
+                    newDataStore.dispose();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 

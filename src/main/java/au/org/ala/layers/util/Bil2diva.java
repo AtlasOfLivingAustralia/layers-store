@@ -1,18 +1,20 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.util;
+
+import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.nio.ByteBuffer;
@@ -24,14 +26,16 @@ import java.util.HashMap;
 
 public class Bil2diva {
 
+    private static final Logger logger = Logger.getLogger(Bil2diva.class);
+
     public static void main(String[] args) {
         if (args.length < 3) {
-            System.out.println("hdr bil to diva.  Must be: \n"
+            logger.info("hdr bil to diva.  Must be: \n"
                     + "- single band\n"
                     + "- EPSG:4326\n"
                     + "- no skip byes\n"
                     + "- unless PIXELTYPE value in header; NBITS 8=BYTE 16=SHORT 32=INT 64=LONG\n");
-            System.out.println("args[0] = bil (without .bil or .hdr) OR directory containing .bil files, \n"
+            logger.info("args[0] = bil (without .bil or .hdr) OR directory containing .bil files, \n"
                     + "args[1] = output prefix (.grd and .gri added) OR output directory if args[0] is a directory, \n"
                     + "args[2] = units to store in .grd");
             return;
@@ -60,14 +64,18 @@ public class Bil2diva {
             return success;
         }
 
-        System.out.println("Running .bil to diva grid conversion for: " + bilFilename);
+        logger.info("Running .bil to diva grid conversion for: " + bilFilename);
         boolean ret = true;
+        BufferedReader br = null;
+        FileWriter fw = null;
+        FileInputStream fis = null;
+        FileOutputStream fos = null;
         try {
             File headerFile = new File(bilFilename + ".hdr");
             File bilFile = new File(bilFilename + ".bil");
 
             String line;
-            BufferedReader br = new BufferedReader(new FileReader(headerFile));
+            br = new BufferedReader(new FileReader(headerFile));
             HashMap<String, String> map = new HashMap<String, String>();
             while ((line = br.readLine()) != null) {
                 int p = line.indexOf(" ");
@@ -78,10 +86,8 @@ public class Bil2diva {
                     map.put(line.substring(0, p).trim().toLowerCase(), line.substring(p).trim().toLowerCase());
                 }
             }
-            br.close();
 
-
-            FileWriter fw = new FileWriter(divaFilename + ".grd");
+            fw = new FileWriter(divaFilename + ".grd");
 
             fw.write("[General]\n");
             fw.write("Creator=Bil2diva\n");
@@ -163,7 +169,7 @@ public class Bil2diva {
                 missingValue = Double.parseDouble(noDataValueString);
             }
 
-            System.out.println("Reading .bil min and max values");
+            logger.info("Reading .bil min and max values");
             double[] minmax = getMinMax(nbits, pixelType, nrows, ncols, byteOrder, missingValue, bilFile);
 
             //If no nodata value was supplied, use the minimum value - 1.
@@ -181,27 +187,54 @@ public class Bil2diva {
             String units = unitsString;
             fw.write("Units=" + units + "\n");
 
-            fw.close();
+            fw.flush();
 
-
-            System.out.println("Creating diva grid file: " + divaFilename);
+            logger.info("Creating diva grid file: " + divaFilename);
 
             //copy bil to gri
-            FileInputStream fis = new FileInputStream(bilFile);
-            FileOutputStream fos = new FileOutputStream(divaFilename + ".gri");
+            fis = new FileInputStream(bilFile);
+            fos = new FileOutputStream(divaFilename + ".gri");
             byte[] buf = new byte[1024 * 1024];
             int len;
             while ((len = fis.read(buf)) > 0) {
                 fos.write(buf, 0, len);
             }
-            fis.close();
-            fos.close();
+            fos.flush();
         } catch (Exception e) {
             ret = false;
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (fw != null) {
+                try {
+                    fw.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
+            if (br != null) {
+                try {
+                    br.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
+            if (fos != null) {
+                try {
+                    fos.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
 
-        System.out.println(".bil to diva grid conversion complete");
+        logger.info(".bil to diva grid conversion complete");
         return ret;
     }
 
@@ -296,12 +329,12 @@ public class Bil2diva {
                         updateMinMax(minmax, byteBuffer.getDouble(), missingValue);
 
                     } else {
-                        System.out.println("UNKNOWN TYPE: " + datatype);
+                        logger.info("UNKNOWN TYPE: " + datatype);
                     }
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
 
         return minmax;

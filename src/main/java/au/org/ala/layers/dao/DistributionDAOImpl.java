@@ -1,16 +1,16 @@
 /**************************************************************************
- *  Copyright (C) 2012 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2012 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.dao;
 
@@ -168,11 +168,6 @@ public class DistributionDAOImpl implements DistributionDAO {
         params.put("type", type);
         String pointGeom = "POINT(" + longitude + " " + latitude + ")";
 
-        //String sql = SELECT_CLAUSE + " from " + viewName + " where ST_Distance_Sphere(the_geom, ST_GeomFromText('" + pointGeom + "', 4326)) <= :radius";
-
-        //ST_intersects(points_geom, ST_buffer(search_point_geom, Distance))
-
-
         String sql = SELECT_CLAUSE + " from " + viewName + " where ST_DWithin(the_geom, ST_GeomFromText('" + pointGeom + "', 4326), :radius)";
         // add additional criteria
         StringBuilder whereClause = new StringBuilder();
@@ -201,9 +196,6 @@ public class DistributionDAOImpl implements DistributionDAO {
         params.put("type", type);
         String pointGeom = "POINT(" + longitude + " " + latitude + ")";
 
-        //String sql = "Select family as name, count(*) as count from " + viewName + " where ST_Distance_Sphere(the_geom, ST_GeomFromText('" + pointGeom + "', 4326)) <= :radius";
-        //String sql = "Select family as name, count(*) as count from " + viewName + " where ST_Distance_Sphere(the_geom, ST_GeomFromText('" + pointGeom + "', 4326)) <= :radius";
-        //select count(*) from distributions where ST_DWithin(the_geom, ST_GeomFromText('POINT(150.2177 -35.7316)', 4326), 10000);
         String sql = "Select family as name, count(*) as count from " + viewName + " where ST_DWithin(the_geom, ST_GeomFromText('" + pointGeom + "', 4326), :radius)";
 
         // add additional criteria
@@ -255,8 +247,8 @@ public class DistributionDAOImpl implements DistributionDAO {
     private void constructWhereClause(double min_depth, double max_depth, Boolean pelagic, Boolean coastal,
                                       Boolean estuarine, Boolean desmersal, String groupName, Integer geomIdx,
                                       String lsids, String[] families, String[] familyLsids, String[] genera,
-                                      String[] generaLsids, String type, String[] dataResources, Map<String, Object> params, StringBuilder where
-            , Boolean endemic) {
+                                      String[] generaLsids, String type, String[] dataResources, Map<String, Object> params,
+                                      StringBuilder where, Boolean endemic) {
         if (geomIdx != null && geomIdx >= 0) {
             where.append(" geom_idx = :geom_idx ");
             params.put("geom_idx", geomIdx);

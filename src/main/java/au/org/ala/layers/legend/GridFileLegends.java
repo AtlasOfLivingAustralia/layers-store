@@ -5,6 +5,7 @@
 package au.org.ala.layers.legend;
 
 import au.org.ala.layers.intersect.Grid;
+import org.apache.log4j.Logger;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -15,6 +16,8 @@ import java.io.FileWriter;
  * @author Adam
  */
 public class GridFileLegends {
+
+    private static final Logger logger = Logger.getLogger(GridFileLegends.class);
 
     /**
      * @param filename    grid file name.  must reside in
@@ -66,7 +69,7 @@ public class GridFileLegends {
             legends[i].exportImage(d, g.ncols, output_name + "_" + legends[i].getTypeName() + ".jpg", Math.max(8, g.ncols / 800), false);
             legends[i].exportLegend(output_name + "_" + legends[i].getTypeName() + "_legend.txt");
 
-            System.out.println(output_name + "," + legends[i].getTypeName() + ": " + String.valueOf(e2));
+            logger.info(output_name + "," + legends[i].getTypeName() + ": " + String.valueOf(e2));
             if (firstTime || e2 <= minE) {
                 minE = e2;
                 minI = i;
@@ -103,9 +106,9 @@ public class GridFileLegends {
                 cutpointFile.append("\n");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
 
-        System.out.println(output_name + ",best=" + legends[minI].getTypeName());
+        logger.info(output_name + ",best=" + legends[minI].getTypeName());
     }
 }

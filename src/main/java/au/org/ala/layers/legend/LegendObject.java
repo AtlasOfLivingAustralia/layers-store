@@ -112,8 +112,6 @@ public class LegendObject implements Serializable {
                     for (int i = 0; i < cutoffs.length; i++) {
                         if (i == 0 || cutoffs[i - 1] < cutoffs[i]) {
                             String rgb = getRGB(numericLegend.getColour(cutoffs[i]));
-                            //sb.append("\n>= ").append(String.format(format, cutoffMins[i])).append(" and ");
-                            //sb.append("<= ").append(String.format(format, cutoffs[i])).append(",").append(rgb).append(",").append(numericLegend.groupSizesArea[i]);
                             String start = String.valueOf(cutoffMins[i]);
                             String end = String.valueOf(cutoffs[i]);
                             if (i == 0) {

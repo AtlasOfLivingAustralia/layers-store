@@ -1,21 +1,20 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.intersect;
 
 import au.org.ala.layers.util.SpatialUtil;
-import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 
 import java.io.File;
@@ -56,13 +55,13 @@ public class Grid { //  implements Serializable
     public double minval, maxval;
     public String filename;
     public String units;
+    public float rescale = 1;
     /**
      * Log4j instance
      */
     protected Logger logger = Logger.getLogger(this.getClass());
     byte nbytes;
     float[] grid_data = null;
-    public float rescale = 1;
     private List<Grid> subgrids = null;
     private boolean subgrid = false;
 
@@ -100,39 +99,6 @@ public class Grid { //  implements Serializable
         } else {
             logger.error("cannot find GRID: " + fname);
         }
-    }
-
-    private void makeCollectionIndex(File dir) {
-        double xmin = 181;
-        double xmax = -181;
-        double ymin = 91;
-        double ymax = -91;
-        double minval = Double.NaN;
-        double maxval = Double.NaN;
-        double nodatavalue = Double.NaN;
-
-        for (File f : dir.listFiles()) {
-            if (f.getName().toLowerCase().endsWith(".grd")) {
-                try {
-                    Grid g = new Grid(f.getPath().substring(0, f.getPath().length() - 4).toString());
-                    if (g != null) {
-                        if (g.xmin < xmin) xmin = g.xmin;
-                        if (g.xmax > xmax) xmax = g.xmax;
-                        if (g.ymin < ymin) ymin = g.ymin;
-                        if (g.ymax > ymax) ymax = g.ymax;
-                        if (Double.isNaN(minval) || minval > g.minval) minval = g.minval;
-                        if (Double.isNaN(maxval) || maxval < g.maxval) maxval = g.maxval;
-                        nodatavalue = g.nodatavalue;
-                    }
-                } catch (Exception e) {
-                    System.out.println("cannot add: " + f.getPath());
-                }
-            }
-        }
-
-        Grid n = new Grid();
-        n.writeHeader(dir.getPath() + File.separator + "index", xmin, ymin, xmax, ymax, -1, -1, -1, -1, minval, maxval, "GRIDCOLLECTION", String.valueOf(nodatavalue));
-
     }
 
     Grid(String fname, boolean keepAvailable) { // construct Grid from file
@@ -246,6 +212,39 @@ public class Grid { //  implements Serializable
             }
             return g;
         }
+    }
+
+    private void makeCollectionIndex(File dir) {
+        double xmin = 181;
+        double xmax = -181;
+        double ymin = 91;
+        double ymax = -91;
+        double minval = Double.NaN;
+        double maxval = Double.NaN;
+        double nodatavalue = Double.NaN;
+
+        for (File f : dir.listFiles()) {
+            if (f.getName().toLowerCase().endsWith(".grd")) {
+                try {
+                    Grid g = new Grid(f.getPath().substring(0, f.getPath().length() - 4).toString());
+                    if (g != null) {
+                        if (g.xmin < xmin) xmin = g.xmin;
+                        if (g.xmax > xmax) xmax = g.xmax;
+                        if (g.ymin < ymin) ymin = g.ymin;
+                        if (g.ymax > ymax) ymax = g.ymax;
+                        if (Double.isNaN(minval) || minval > g.minval) minval = g.minval;
+                        if (Double.isNaN(maxval) || maxval < g.maxval) maxval = g.maxval;
+                        nodatavalue = g.nodatavalue;
+                    }
+                } catch (Exception e) {
+                    logger.error("cannot add: " + f.getPath());
+                }
+            }
+        }
+
+        Grid n = new Grid();
+        n.writeHeader(dir.getPath() + File.separator + "index", xmin, ymin, xmax, ymax, -1, -1, -1, -1, minval, maxval, "GRIDCOLLECTION", String.valueOf(nodatavalue));
+
     }
 
     //transform to file position
@@ -446,7 +445,7 @@ public class Grid { //  implements Serializable
 
         float[] ret = new float[length];
 
-        RandomAccessFile afile;
+        RandomAccessFile afile = null;
         File f2 = new File(filename + ".GRI");
 
         try { //read of random access file can throw an exception
@@ -530,27 +529,27 @@ public class Grid { //  implements Serializable
                     ret[i] *= rescale;
                 }
             }
-
-            afile.close();
         } catch (Exception e) {
             logger.error("An error has occurred - probably a file error", e);
+        } finally {
+            if (afile != null) {
+                try {
+                    afile.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
         grid_data = ret;
         return ret;
     }
 
 
-    /**
-     * Get area sq km, min longitude, min latitude, max longitude, max latitude for each grid value in info.keySet()
-     *
-     * @param map of grid values to match with double[5] for filling with info.
-     * @return
-     */
     public void getClassInfo(Map<Float, float[]> info) {
 
         long length = ((long) nrows) * ((long) ncols);
-        
-        RandomAccessFile afile;
+
+        RandomAccessFile afile = null;
         File f2 = new File(filename + ".GRI");
 
         try { //read of random access file can throw an exception
@@ -632,10 +631,16 @@ public class Grid { //  implements Serializable
                     }
                 }
             }
-
-            afile.close();
         } catch (Exception e) {
             logger.error("An error has occurred getting grid class stats", e);
+        } finally {
+            if (afile != null) {
+                try {
+                    afile.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
 
     }
@@ -688,7 +693,7 @@ public class Grid { //  implements Serializable
 
         float[] ret = new float[length];
 
-        RandomAccessFile afile;
+        RandomAccessFile afile = null;
         File f2 = new File(filename + ".GRI");
 
         try { //read of random access file can throw an exception
@@ -774,10 +779,16 @@ public class Grid { //  implements Serializable
                     ret[(int) i] *= rescale;
                 }
             }
-
-            afile.close();
         } catch (Exception e) {
             logger.error("An error has occurred - probably a file error", e);
+        } finally {
+            if (afile != null) {
+                try {
+                    afile.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
         grid_data = ret;
         return ret;
@@ -800,7 +811,7 @@ public class Grid { //  implements Serializable
         double minvalue = Integer.MAX_VALUE;
 
         //write data as whole file
-        RandomAccessFile afile;
+        RandomAccessFile afile = null;
         try { //read of random access file can throw an exception
             afile = new RandomAccessFile(newfilename + ".gri", "rw");
 
@@ -818,12 +829,17 @@ public class Grid { //  implements Serializable
             }
 
             afile.write(b);
-
-            afile.close();
         } catch (Exception e) {
             logger.error("error writing grid file", e);
+        } finally {
+            if (afile != null) {
+                try {
+                    afile.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
-
 
         writeHeader(newfilename, xmin, ymin, xmin + xres * ncols, ymin + yres * nrows, xres, yres, nrows, ncols, minvalue, maxvalue, "INT4BYTES", "-9999");
 
@@ -846,7 +862,7 @@ public class Grid { //  implements Serializable
         double minvalue = Double.MAX_VALUE;
 
         //write data as whole file
-        RandomAccessFile afile;
+        RandomAccessFile afile = null;
         try { //read of random access file can throw an exception
             afile = new RandomAccessFile(newfilename + ".gri", "rw");
 
@@ -874,10 +890,16 @@ public class Grid { //  implements Serializable
             }
 
             afile.write(b);
-
-            afile.close();
         } catch (Exception e) {
             logger.error("error writing grid file", e);
+        } finally {
+            if (afile != null) {
+                try {
+                    afile.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
 
         writeHeader(newfilename, xmin, ymin, xmin + xres * ncols, ymin + yres * nrows, xres, yres, nrows, ncols, minvalue, maxvalue, "FLT4BYTES", String.valueOf(noDataValueDefault));
@@ -889,7 +911,7 @@ public class Grid { //  implements Serializable
         double minvalue = Double.MAX_VALUE;
 
         //write data as whole file
-        RandomAccessFile afile;
+        RandomAccessFile afile = null;
         try { //read of random access file can throw an exception
             afile = new RandomAccessFile(newfilename + ".gri", "rw");
 
@@ -917,10 +939,16 @@ public class Grid { //  implements Serializable
             }
 
             afile.write(b);
-
-            afile.close();
         } catch (Exception e) {
             logger.error("error writing grid file", e);
+        } finally {
+            if (afile != null) {
+                try {
+                    afile.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
 
         writeHeader(newfilename, xmin, ymin, xmin + xres * ncols, ymin + yres * nrows, xres, yres, nrows, ncols, minvalue, maxvalue, "FLT4BYTES", String.valueOf(noDataValueDefault));
@@ -932,8 +960,9 @@ public class Grid { //  implements Serializable
     }
 
     public void writeHeader(String newfilename, double xmin, double ymin, double xmax, double ymax, double xres, double yres, int nrows, int ncols, double minvalue, double maxvalue, String datatype, String nodata) {
+        FileWriter fw = null;
         try {
-            FileWriter fw = new FileWriter(newfilename + ".grd");
+            fw = new FileWriter(newfilename + ".grd");
 
             fw.append("[General]");
             fw.append("\r\n").append("Title=").append(newfilename);
@@ -956,10 +985,17 @@ public class Grid { //  implements Serializable
             fw.append("\r\n").append("NoDataValue=").append(nodata);
             fw.append("\r\n").append("Transparent=0");
             fw.flush();
-            fw.close();
         } catch (Exception e) {
             logger.error("error writing grid file header", e);
 
+        } finally {
+            if (fw != null) {
+                try {
+                    fw.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 
@@ -1017,7 +1053,7 @@ public class Grid { //  implements Serializable
         int pos = 0;
 
         int i;
-        RandomAccessFile afile;
+        RandomAccessFile afile = null;
         File f2 = new File(filename + ".GRI");
 
         int size = 4;
@@ -1051,7 +1087,6 @@ public class Grid { //  implements Serializable
             byte[] b = new byte[readSize];
             afile.read(b);
             ByteBuffer bb = ByteBuffer.wrap(b);
-            afile.close();
 
             if (byteorderLSB) {
                 bb.order(ByteOrder.LITTLE_ENDIAN);
@@ -1140,6 +1175,14 @@ public class Grid { //  implements Serializable
             }
         } catch (Exception e) {
             logger.error("GRID: " + e.toString(), e);
+        } finally {
+            if (afile != null) {
+                try {
+                    afile.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
         grid_data = ret;
         return ret;
@@ -1197,7 +1240,7 @@ public class Grid { //  implements Serializable
         long size;
         int i, pos;
         byte[] b;
-        RandomAccessFile afile;
+        RandomAccessFile afile = null;
         File f2 = new File(filename + ".GRI");
 
         try { //read of random access file can throw an exception
@@ -1346,10 +1389,16 @@ public class Grid { //  implements Serializable
                     ret[i] *= rescale;
                 }
             }
-
-            afile.close();
         } catch (Exception e) {
             logger.error("error getting grid file values", e);
+        } finally {
+            if (afile != null) {
+                try {
+                    afile.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
         return ret;
     }
@@ -1380,7 +1429,7 @@ public class Grid { //  implements Serializable
         int size, i;
         byte[] b;
 
-        RandomAccessFile afile;
+        RandomAccessFile afile = null;
 
         File f2 = new File(filename + ".GRI");
 
@@ -1395,6 +1444,7 @@ public class Grid { //  implements Serializable
             if (!subgrid && afile.length() < 80 * 1024 * 1024) {
                 try {
                     afile.close();
+                    afile = null;
                 } catch (Exception e) {
                 }
                 return getValues2(points);
@@ -1575,12 +1625,17 @@ public class Grid { //  implements Serializable
                     ret[i] *= rescale;
                 }
             }
-
-            afile.close();
-
             return ret;
         } catch (Exception e) {
             logger.error("error getting grid file values", e);
+        } finally {
+            if (afile != null) {
+                try {
+                    afile.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
         return null;
     }
@@ -1663,7 +1718,7 @@ public class Grid { //  implements Serializable
         int length = actual.length;
 
         int i;
-        RandomAccessFile afile;
+        RandomAccessFile afile = null;
         File f2 = new File(filename + ".GRI");
 
         try { //read of random access file can throw an exception
@@ -1749,9 +1804,16 @@ public class Grid { //  implements Serializable
             }
 
             afile.write(bb.array());
-            afile.close();
         } catch (Exception e) {
             logger.error("error getting grid file values", e);
+        } finally {
+            if (afile != null) {
+                try {
+                    afile.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 
@@ -1821,7 +1883,7 @@ public class Grid { //  implements Serializable
         long i;
         int size;
         byte[] b;
-        RandomAccessFile afile;
+        RandomAccessFile afile = null;
 
         try { //read of random access file can throw an exception
             File f2 = new File(filename + ".GRI");
@@ -1941,10 +2003,16 @@ public class Grid { //  implements Serializable
             } else {
                 logger.error("datatype not supported in Grid.getValues: " + datatype);
             }
-
-            afile.close();
         } catch (Exception e) {
             logger.error("error calculating min/max of a grid file", e);
+        } finally {
+            if (afile != null) {
+                try {
+                    afile.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
         return ret;
     }

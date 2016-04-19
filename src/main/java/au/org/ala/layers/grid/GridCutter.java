@@ -1,11 +1,11 @@
 /**
  * ************************************************************************
  * Copyright (C) 2010 Atlas of Living Australia All Rights Reserved.
- *
+ * <p>
  * The contents of this file are subject to the Mozilla Public License Version
  * 1.1 (the "License"); you may not use this file except in compliance with the
  * License. You may obtain a copy of the License at http://www.mozilla.org/MPL/
- *
+ * <p>
  * Software distributed under the License is distributed on an "AS IS" basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
  * the specific language governing rights and limitations under the License.
@@ -21,6 +21,7 @@ import au.org.ala.layers.intersect.SimpleRegion;
 import au.org.ala.layers.intersect.SimpleShapeFile;
 import au.org.ala.layers.util.LayerFilter;
 import au.org.ala.layers.util.SpatialUtil;
+import org.apache.log4j.Logger;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -32,6 +33,8 @@ import java.util.TreeMap;
  * @author adam
  */
 public class GridCutter {
+
+    private static final Logger logger = Logger.getLogger(GridCutter.class);
 
     /**
      * exports a list of layers cut against a region
@@ -102,7 +105,7 @@ public class GridCutter {
             File directory = new File(newPath);
             directory.mkdir();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
 
         //apply mask
@@ -196,7 +199,7 @@ public class GridCutter {
             if (info != null) {
                 return info[1];
             } else {
-                System.out.println("getLayerPath, cannot find for: " + layer + ", " + resolution);
+                logger.info("getLayerPath, cannot find for: " + layer + ", " + resolution);
                 return null;
             }
         }
@@ -283,17 +286,26 @@ public class GridCutter {
 
     static void writeExtents(String filename, double[][] extents, int w, int h) {
         if (filename != null) {
+            FileWriter fw = null;
             try {
-                FileWriter fw = new FileWriter(filename);
+                fw = new FileWriter(filename);
                 fw.append(String.valueOf(w)).append("\n");
                 fw.append(String.valueOf(h)).append("\n");
                 fw.append(String.valueOf(extents[0][0])).append("\n");
                 fw.append(String.valueOf(extents[0][1])).append("\n");
                 fw.append(String.valueOf(extents[1][0])).append("\n");
                 fw.append(String.valueOf(extents[1][1]));
-                fw.close();
+                fw.flush();
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
+            } finally {
+                if (fw != null) {
+                    try {
+                        fw.close();
+                    } catch (Exception e) {
+                        logger.error(e.getMessage(), e);
+                    }
+                }
             }
         }
     }
@@ -550,7 +562,7 @@ public class GridCutter {
                         extents = internalExtents(extents, bbox);
                     } catch (Exception e) {
                         //Expecting this to fail often!
-                        e.printStackTrace();
+                        logger.error(e.getMessage(), e);
                     }
 
                 }
@@ -611,7 +623,7 @@ public class GridCutter {
                 resolution = resolutions.firstEntry().getValue();
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
         return resolution;
     }

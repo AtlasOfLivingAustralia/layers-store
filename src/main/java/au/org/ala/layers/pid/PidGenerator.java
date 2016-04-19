@@ -1,16 +1,16 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.pid;
 
@@ -31,6 +31,8 @@ import java.util.logging.Logger;
  * @author ajay
  */
 public class PidGenerator {
+
+    private static final org.apache.log4j.Logger logger = org.apache.log4j.Logger.getLogger(PidGenerator.class);
 
     private static String ANDS_APPID_TEST = "2c6ed180e966774eee8409f7152b0cc885d07f71";
     private static String ANDS_AUTH_DOMAIN_TEST = "csiro.au";
@@ -75,14 +77,10 @@ public class PidGenerator {
             ands.setRequestorIdentity(andsid);
             AndsPidResponse mintHandleFormattedResponse = ands.mintHandleFormattedResponse(handleType, value);
 
-            //System.out.println("handle creation status: " + mintHandleFormattedResponse.isSuccess());
-            //System.out.println(mintHandleFormattedResponse.getXmlResponse());
-
             return mintHandleFormattedResponse.getHandle();
 
         } catch (Exception e) {
-            System.out.println("Unable to generate PID");
-            e.printStackTrace(System.out);
+            logger.error("Unable to generate PID");
         }
 
         return null;
@@ -117,12 +115,10 @@ public class PidGenerator {
         try {
             Class.forName(db_driver);
             String url = db_url;
-            //String url = "jdbc:postgresql://localhost:5432/layersdb";
             conn = DriverManager.getConnection(url, db_user, db_pass);
 
         } catch (Exception e) {
-            System.out.println("Unable to create Connection");
-            e.printStackTrace(System.out);
+            logger.error("Unable to create Connection", e);
         }
 
         return conn;
@@ -142,18 +138,17 @@ public class PidGenerator {
             ands.setRequestorIdentity(andsid);
             AndsPidResponse mintHandleFormattedResponse = ands.mintHandleFormattedResponse(AndsPidClient.HandleType.DESC, "test");
 
-            System.out.println("handle creation status: " + mintHandleFormattedResponse.isSuccess());
-            System.out.println(mintHandleFormattedResponse.getXmlResponse());
+            logger.info("handle creation status: " + mintHandleFormattedResponse.isSuccess());
+            logger.info(mintHandleFormattedResponse.getXmlResponse());
 
         } catch (Exception e) {
-            System.out.println("Unable to generate PID");
-            e.printStackTrace(System.out);
+            logger.error("Unable to generate PID", e);
         }
 
     }
 
     private void startGeneration() {
-        System.out.println("starting PID generation...");
+        logger.info("starting PID generation...");
 
         try {
             Connection conn = getConnection();
@@ -180,7 +175,7 @@ public class PidGenerator {
                 i++;
 
                 if (i % 100 == 0) {
-                    System.out.println("processed: " + i + " at " + (100 / ((System.currentTimeMillis() - start) / 1000.0)) + " records/s");
+                    logger.info("processed: " + i + " at " + (100 / ((System.currentTimeMillis() - start) / 1000.0)) + " records/s");
                     start = System.currentTimeMillis();
                 }
             }
@@ -193,7 +188,7 @@ public class PidGenerator {
         }
 
 
-        System.out.println("Completed PID threading");
+        logger.info("Completed PID threading");
     }
 }
 

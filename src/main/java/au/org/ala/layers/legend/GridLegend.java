@@ -2,11 +2,14 @@ package au.org.ala.layers.legend;
 
 
 import au.org.ala.layers.intersect.Grid;
+import org.apache.log4j.Logger;
 
 import java.io.File;
 import java.io.FileWriter;
 
 public class GridLegend {
+
+    private static final Logger logger = Logger.getLogger(GridLegend.class);
 
     /**
      * @param filename    grid file name.  must reside in
@@ -73,7 +76,7 @@ public class GridLegend {
                 e2 = legends[i].evaluateStdDev(d);
             }
             try {
-                (new File(output_name + /*"_" + legends[i].getTypeName().replace(" ","_") +*/ ".png")).delete();
+                (new File(output_name + ".png")).delete();
             } catch (Exception e) {
             }
 
@@ -84,18 +87,18 @@ public class GridLegend {
             g = new Grid(filename);
             d = g.getGrid(sampleInterval);
             if (sampleInterval > 1) {
-                System.out.println("test output image is messed up because of >1 sample interval (large file)");
+                logger.info("test output image is messed up because of >1 sample interval (large file)");
             }
             if (g.ncols > 0) {
-                legends[i].exportImage(d, g.ncols, output_name + /*"_" + legends[i].getTypeName().replace(" ","_") +*/ ".png", Math.max(scaleDown, g.ncols / 50), minAsTransparent);
+                legends[i].exportImage(d, g.ncols, output_name + ".png", Math.max(scaleDown, g.ncols / 50), minAsTransparent);
             } else {
-                legends[i].exportImage(d, 500, output_name + /*"_" + legends[i].getTypeName().replace(" ","_") +*/ ".png", Math.max(scaleDown, 500 / 50), minAsTransparent);
+                legends[i].exportImage(d, 500, output_name + ".png", Math.max(scaleDown, 500 / 50), minAsTransparent);
             }
-            legends[i].exportLegend(output_name + /*"_" + legends[i].getTypeName().replace(" ","_") +*/ "_legend.txt");
+            legends[i].exportLegend(output_name + "_legend.txt");
 
-            legends[i].exportSLD(g, output_name + /*"_" + legends[i].getTypeName().replace(" ","_") +*/ ".sld", g.units, true, minAsTransparent);
+            legends[i].exportSLD(g, output_name + ".sld", g.units, true, minAsTransparent);
 
-            System.out.println(output_name + ", " + legends[i].getTypeName() + ": " + String.valueOf(e2));
+            logger.info(output_name + ", " + legends[i].getTypeName() + ": " + String.valueOf(e2));
             if (firstTime || e2 <= minE) {
                 minE = e2;
                 minI = i;
@@ -132,14 +135,14 @@ public class GridLegend {
                 cutpointFile.append("\n");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
     }
 
     static public void main(String[] args) {
 
         if (args.length == 0) {
-            System.out.println("args[0]=grid file without .grd or .gri\n"
+            logger.info("args[0]=grid file without .grd or .gri\n"
                     + "args[1]=output prefix for +_cutpoints.csv +.jpg +_legend.txt\n"
                     + "args[2]=thumbnail scale down factor (optional) e.g. 1 (default), 2, 4, 8, 16 (16x16 times smaller)\n"
                     + "args[3]=min as transparent (optional) e.g. 0=false (default), 1=true");
@@ -172,19 +175,27 @@ public class GridLegend {
         String[] legendTypes = {"Equal Area"};
         //String [] legendTypes = {"Even Interval","Even Interval Log 10","Equal Size","Equal Area"};
 
+        FileWriter fw = null;
         try {
-            FileWriter fw = new FileWriter(outputfilename + "_cutpoints.csv");
+            fw = new FileWriter(outputfilename + "_cutpoints.csv");
 
             new GridLegend(
                     gridfilename,
                     outputfilename,
                     true,
                     legendTypes, fw, scaleDown, minAsTransparent);
-
-            fw.close();
+            fw.flush();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             ret = false;
+        } finally {
+            if (fw != null) {
+                try {
+                    fw.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
 
         return ret;

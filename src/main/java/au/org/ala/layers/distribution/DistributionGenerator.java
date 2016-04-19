@@ -1,21 +1,22 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 
 package au.org.ala.layers.distribution;
 
 import au.org.ala.layers.util.SpatialUtil;
+import org.apache.log4j.Logger;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -28,6 +29,9 @@ import java.util.concurrent.LinkedBlockingQueue;
  * @author Adam
  */
 public class DistributionGenerator {
+
+    private static final Logger logger = Logger.getLogger(DistributionGenerator.class);
+
     static int CONCURRENT_THREADS = 6;
     static String db_url = "jdbc:postgresql://localhost:5432/layersdb";
     static String db_usr = "postgres";
@@ -37,20 +41,18 @@ public class DistributionGenerator {
         Connection conn = null;
         try {
             Class.forName("org.postgresql.Driver");
-            //String url = "jdbc:postgresql://ala-devmaps-db.vm.csiro.au:5432/layersdb";
             String url = db_url;
             conn = DriverManager.getConnection(url, db_usr, db_pwd);
 
         } catch (Exception e) {
-            System.out.println("Unable to create Connection");
-            e.printStackTrace(System.out);
+            logger.error(e.getMessage(), e);
         }
 
         return conn;
     }
 
     static public void main(String[] args) {
-        System.out.println("Calculates and fills empty area_km in table distributionshapes.\n\nargs[0] = threadcount, args[1] = db connection string,\n args[2] = db username,\n args[3] = password\n");
+        logger.info("Calculates and fills empty area_km in table distributionshapes.\n\nargs[0] = threadcount, args[1] = db connection string,\n args[2] = db username,\n args[3] = password\n");
         if (args.length >= 4) {
             CONCURRENT_THREADS = Integer.parseInt(args[0]);
             db_url = args[1];
@@ -59,7 +61,7 @@ public class DistributionGenerator {
         }
         long start = System.currentTimeMillis();
         while (updateArea() > 0) {
-            System.out.println("time since start= " + (System.currentTimeMillis() - start) + "ms");
+            logger.info("time since start= " + (System.currentTimeMillis() - start) + "ms");
         }
     }
 
@@ -70,9 +72,9 @@ public class DistributionGenerator {
             String sql = "SELECT id, ST_AsText(the_geom) as wkt FROM distributionshapes WHERE area_km is null"
                     + " limit 100";
             if (conn == null) {
-                System.out.println("connection is null");
+                logger.error("connection is null");
             } else {
-                System.out.println("connection is not null");
+                logger.debug("connection is not null");
             }
             Statement s1 = conn.createStatement();
             ResultSet rs1 = s1.executeQuery(sql);
@@ -82,7 +84,7 @@ public class DistributionGenerator {
                 data.put(new String[]{rs1.getString("id"), rs1.getString("wkt")});
             }
 
-            System.out.println("next " + data.size());
+            logger.info("next " + data.size());
 
             int size = data.size();
 
@@ -104,19 +106,19 @@ public class DistributionGenerator {
                 try {
                     threads[j].s.getConnection().close();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    logger.error(e.getMessage(), e);
                 }
                 threads[j].interrupt();
             }
             return size;
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         } finally {
             if (conn != null) {
                 try {
                     conn.close();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    logger.error(e.getMessage(), e);
                 }
             }
         }
@@ -125,6 +127,8 @@ public class DistributionGenerator {
 }
 
 class AreaThread extends Thread {
+
+    private static final Logger logger = Logger.getLogger(AreaThread.class);
 
     Statement s;
     LinkedBlockingQueue<String[]> lbq;
@@ -152,12 +156,12 @@ class AreaThread extends Thread {
                 } catch (InterruptedException e) {
                     break;
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    logger.error(e.getMessage(), e);
                 }
                 cdl.countDown();
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
     }
 }

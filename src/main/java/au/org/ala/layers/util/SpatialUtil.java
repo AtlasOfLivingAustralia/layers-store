@@ -4,6 +4,8 @@
  */
 package au.org.ala.layers.util;
 
+import org.apache.log4j.Logger;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -11,6 +13,8 @@ import java.util.HashMap;
  * @author Adam
  */
 public class SpatialUtil {
+
+    private static final Logger logger = Logger.getLogger(SpatialUtil.class);
 
     static HashMap<Double, double[]> commonGridLatitudeArea = new HashMap<Double, double[]>();
     static double meters_per_pixel = 78271.5170; //at zoom level 1
@@ -33,8 +37,7 @@ public class SpatialUtil {
             return totalarea / 1000.0 / 1000.0;
 
         } catch (Exception e) {
-            System.out.println("Error in calculateArea");
-            e.printStackTrace(System.out);
+            logger.error("Error in calculateArea", e);
         }
 
         return 0;

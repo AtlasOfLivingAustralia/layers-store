@@ -1,16 +1,16 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.intersect;
 
@@ -41,8 +41,6 @@ import java.util.Map.Entry;
  * @author Adam
  */
 public class IntersectConfig {
-
-    private static final Logger LOGGER = Logger.getLogger(IntersectConfig.class);
 
     public static final String GEOSERVER_URL_PLACEHOLDER = "<COMMON_GEOSERVER_URL>";
     public static final String GEONETWORK_URL_PLACEHOLDER = "<COMMON_GEONETWORK_URL>";
@@ -106,6 +104,11 @@ public class IntersectConfig {
     static String geoserverPassword;
     static String shp2pgsqlPath;
     static boolean fieldStyles;
+    static private boolean canUpdateLayerDistances;
+    static private boolean canUpdateGridCache;
+    static private boolean canGenerateAnalysisLayers;
+    static private boolean canIntersectLayers;
+    static private boolean canGenerateThumbnails;
 
     static {
         Properties properties = new Properties();
@@ -179,7 +182,7 @@ public class IntersectConfig {
             try {
                 Grid.maxGridsLoaded = Integer.parseInt(gridsToCache);
             } catch (Exception e) {
-                LOGGER.error("failed to parse 'GRIDS_TO_CACHE' property as Integer: " + gridsToCache);
+                logger.error("failed to parse 'GRIDS_TO_CACHE' property as Integer: " + gridsToCache, e);
             }
         }
 
@@ -192,11 +195,6 @@ public class IntersectConfig {
     HashMap<String, HashMap<Integer, GridClass>> classGrids;
     private FieldDAO fieldDao;
     private LayerDAO layerDao;
-    static private boolean canUpdateLayerDistances;
-    static private boolean canUpdateGridCache;
-    static private boolean canGenerateAnalysisLayers;
-    static private boolean canIntersectLayers;
-    static private boolean canGenerateThumbnails;
 
     public IntersectConfig(FieldDAO fieldDao, LayerDAO layerDao) {
         this.fieldDao = fieldDao;
@@ -241,9 +239,10 @@ public class IntersectConfig {
 
     private static void isValidUrl(String url, String desc) {
         HttpClient client = new HttpClient();
-        GetMethod get = new GetMethod(url);
+        GetMethod get = null;
 
         try {
+            get = new GetMethod(url);
             int result = client.executeMethod(get);
 
             if (result != 200) {
@@ -251,6 +250,10 @@ public class IntersectConfig {
             }
         } catch (Exception e) {
             logger.error("Config error. Property \"" + desc + "\" with value \"" + url + "\"  is not a valid URL.  Error executing GET request.");
+        } finally {
+            if (get != null) {
+                get.releaseConnection();
+            }
         }
 
     }
@@ -405,16 +408,56 @@ public class IntersectConfig {
         return analysisTmpLayerFilesPath;
     }
 
-    public String getBiocacheServiceUrl() {
-        return biocacheServiceUrl;
+    public static int getMaxGridsLoaded() {
+        return Grid.maxGridsLoaded;
     }
 
     public static void setMaxGridsLoaded(int maxGridsLoaded) {
         Grid.maxGridsLoaded = maxGridsLoaded;
     }
 
-    public static int getMaxGridsLoaded() {
-        return Grid.maxGridsLoaded;
+    public static void main(String[] args) {
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < 100000; i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            sb.append(Math.random() * (-12 + 44) - 44).append(',').append(Math.random() * (154 - 112) + 112);
+        }
+        try {
+            FileUtils.writeStringToFile(new File("/data/p.txt"), sb.toString());
+        } catch (IOException e) {
+            logger.error(e.getMessage(), e);
+        }
+    }
+
+    static public boolean getCanUpdateLayerDistances() {
+        return canUpdateLayerDistances;
+    }
+
+    static public boolean getCanUpdateGridCache() {
+        return canUpdateGridCache;
+    }
+
+    static public boolean getCanGenerateAnalysisLayers() {
+        return canGenerateAnalysisLayers;
+    }
+
+    static public boolean getCanIntersectLayers() {
+        return canIntersectLayers;
+    }
+
+    static public boolean getCanGenerateThumbnails() {
+        return canGenerateThumbnails;
+    }
+
+    static public boolean hasFieldStyles() {
+        return fieldStyles;
+    }
+
+    public String getBiocacheServiceUrl() {
+        return biocacheServiceUrl;
     }
 
     public void load() {
@@ -424,7 +467,7 @@ public class IntersectConfig {
             updateIntersectionFiles();
             updateShapeFileCache();
 
-            System.out.println("**** grids to cache ***** = " + Grid.maxGridsLoaded);
+            logger.info("**** grids to cache ***** = " + Grid.maxGridsLoaded);
             if (Grid.maxGridsLoaded <= 0) {
                 seedGridFileCache();
             }
@@ -435,7 +478,6 @@ public class IntersectConfig {
         }
     }
 
-
     private void seedGridFileCache() {
         int count = 0;
         for (String s : intersectionFiles.keySet()) {
@@ -444,11 +486,11 @@ public class IntersectConfig {
                     Grid g = Grid.getGrid(intersectionFiles.get(s).getFilePath());
                     g.getGrid();
                 } catch (Exception e) {
-                    System.out.println("error caching grid: " + s);
+                    logger.info("error caching grid: " + s);
                 }
                 count++;
                 if (count % 5 == 0) {
-                    System.out.println("cached " + count + " grids");
+                    logger.info("cached " + count + " grids");
                 }
             }
         }
@@ -474,22 +516,6 @@ public class IntersectConfig {
             }
         }
         return file;
-    }
-
-    public static void main(String[] args) {
-        StringBuilder sb = new StringBuilder();
-
-        for (int i = 0; i < 100000; i++) {
-            if (i > 0) {
-                sb.append(',');
-            }
-            sb.append(Math.random() * (-12 + 44) - 44).append(',').append(Math.random() * (154 - 112) + 112);
-        }
-        try {
-            FileUtils.writeStringToFile(new File("/data/p.txt"), sb.toString());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     private void updateIntersectionFiles() throws MalformedURLException, IOException {
@@ -580,17 +606,22 @@ public class IntersectConfig {
     }
 
     String getUrl(String url) {
+        HttpClient client = new HttpClient();
+        GetMethod get = null;
+
         try {
             logger.info("opening url: " + url);
-
-            HttpClient client = new HttpClient();
-            GetMethod get = new GetMethod(url);
+            get = new GetMethod(url);
 
             int result = client.executeMethod(get);
             String slist = get.getResponseBodyAsString();
             return slist;
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (get != null) {
+                get.releaseConnection();
+            }
         }
         return "";
     }
@@ -792,7 +823,7 @@ public class IntersectConfig {
             filename = getAlaspatialOutputPath() + File.separator + "gdm" + File.separator + gid + File.separator + gdmparts[1] + "Tran";
             logger.error("id: " + id);
             logger.error("parts: " + gdmparts[0] + ", " + gdmparts[1]);
-            System.out.println("parts: " + gdmparts[0] + ", " + gdmparts[1]);
+            logger.info("parts: " + gdmparts[0] + ", " + gdmparts[1]);
             logger.error("filename: " + filename);
             IntersectionFile f = getIntersectionFile(gdmparts[1]);
             name = "Transformed " + (f != null ? f.getFieldName() : gdmparts[1]);
@@ -815,30 +846,5 @@ public class IntersectConfig {
 
     public String getShp2pgsqlPath() {
         return shp2pgsqlPath;
-    }
-
-    static public boolean getCanUpdateLayerDistances() {
-        return canUpdateLayerDistances;
-    }
-
-    static public boolean getCanUpdateGridCache() {
-        return canUpdateGridCache;
-    }
-
-    static public boolean getCanGenerateAnalysisLayers() {
-        return canGenerateAnalysisLayers;
-    }
-
-    static public boolean getCanIntersectLayers() {
-        return canIntersectLayers;
-    }
-
-
-    static public boolean getCanGenerateThumbnails() {
-        return canGenerateThumbnails;
-    }
-
-    static public boolean hasFieldStyles() {
-        return fieldStyles;
     }
 }

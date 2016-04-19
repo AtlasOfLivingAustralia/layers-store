@@ -1,16 +1,16 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.dao;
 
@@ -29,7 +29,10 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
-import java.io.*;
+import java.io.File;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
@@ -100,11 +103,7 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
             }
         } catch (Exception e) {
             logger.error("error reloading properties and table images", e);
-            StringWriter sw = new StringWriter();
-            PrintWriter pw = new PrintWriter(sw);
-            e.printStackTrace(pw);
-            pw.close();
-            error = "error reloading properties and table images\n" + sw.getBuffer().toString();
+            error = "error reloading properties and table images";
         }
         return error;
     }
@@ -168,7 +167,6 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
                         m.put("layername", f.getFieldName());
                         m.put("pid", o.getPid());
                         m.put("description", o.getDescription());
-                        //m.put("fid", o.getFid());
 
                         out.add(m);
                     } else {
@@ -183,7 +181,7 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
                     Grid g = new Grid(getConfig().getLayerFilesPath() + layer.getPath_orig());
                     if (g != null) {
                         float[] v = g.getValues3(p, 40960);
-                        //s = "{\"value\":" + v[0] + ",\"layername\":\"" + layer.getDisplayname() + "\"}";
+
                         Map m = new HashMap();
                         m.put("field", id);
                         m.put("layername", f.getFieldName());   //close enough
@@ -404,13 +402,13 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
                 gcr = gridReaders.take();
                 gridValues = gcr.sample(longitude, latitude);
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             } finally {
                 if (gcr != null) {
                     try {
                         gridReaders.put(gcr);
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        logger.error(e.getMessage(), e);
                     }
                 }
             }
@@ -493,13 +491,13 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
                         output[i].putAll(gcr.sample(points[i][0], points[i][1]));
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    logger.error(e.getMessage(), e);
                 } finally {
                     if (gcr != null) {
                         try {
                             gridReaders.put(gcr);
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            logger.error(e.getMessage(), e);
                         }
                     }
                 }
@@ -540,10 +538,10 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
             intersectionFiles[i] = intersectConfig.getIntersectionFile(fieldIds[i]);
             if (intersectionFiles[i] == null) {
                 //test for local analysis layer
-                String [] info = getConfig().getAnalysisLayerInfo(fieldIds[i]);
+                String[] info = getConfig().getAnalysisLayerInfo(fieldIds[i]);
                 if (info != null) {
                     intersectionFiles[i] = new IntersectionFile(fieldIds[i],
-                            info[1],null,fieldIds[i],fieldIds[i],null,null,null,null);
+                            info[1], null, fieldIds[i], fieldIds[i], null, null, null, null);
                 } else {
                     logger.warn("failed to find layer for id '" + fieldIds[i] + "'");
                 }
@@ -643,24 +641,38 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
             URLConnection c = url.openConnection();
             c.setDoOutput(true);
 
-            OutputStreamWriter out = new OutputStreamWriter(c.getOutputStream());
-            out.write("fids=");
-            for (int i = 0; i < intersectionFiles.length; i++) {
-                if (i > 0) {
-                    out.write(",");
+            OutputStreamWriter out = null;
+            try {
+                out = new OutputStreamWriter(c.getOutputStream());
+                out.write("fids=");
+                for (int i = 0; i < intersectionFiles.length; i++) {
+                    if (i > 0) {
+                        out.write(",");
+                    }
+                    out.write(intersectionFiles[i].getFieldId());
                 }
-                out.write(intersectionFiles[i].getFieldId());
-            }
-            out.write("&points=");
-            for (int i = 0; i < points.length; i++) {
-                if (i > 0) {
+                out.write("&points=");
+                for (int i = 0; i < points.length; i++) {
+                    if (i > 0) {
+                        out.write(",");
+                    }
+                    out.write(String.valueOf(points[i][1]));
                     out.write(",");
+                    out.write(String.valueOf(points[i][0]));
                 }
-                out.write(String.valueOf(points[i][1]));
-                out.write(",");
-                out.write(String.valueOf(points[i][0]));
+                out.flush();
+            } catch (Exception e) {
+                logger.error(e.getMessage(), e);
+            } finally {
+                if (out != null) {
+                    try {
+                        out.close();
+                    } catch (Exception e) {
+                        logger.error(e.getMessage(), e);
+                    }
+                }
             }
-            out.close();
+
 
             JSONObject jo = JSONObject.fromObject(IOUtils.toString(c.getInputStream()));
 
@@ -689,31 +701,59 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
                 }
             }
 
-            ZipInputStream zis = new ZipInputStream((new URI(downloadUrl).toURL().openStream()));
-            ZipEntry ze = zis.getNextEntry();
-            CSVReader csv = new CSVReader(new InputStreamReader(zis));
-
-            long mid = System.currentTimeMillis();
-
+            ZipInputStream zis = null;
+            CSVReader csv = null;
+            InputStream is = null;
             ArrayList<StringBuilder> tmpOutput = new ArrayList<StringBuilder>();
-            for (int i = 0; i < intersectionFiles.length; i++) {
-                tmpOutput.add(new StringBuilder());
-            }
-            String[] line;
-            int row = 0;
-            csv.readNext(); //discard header
-            while ((line = csv.readNext()) != null) {
-                //order is consistent with request
-                for (int i = 2; i < line.length && i - 2 < tmpOutput.size(); i++) {
-                    if (row > 0) {
-                        tmpOutput.get(i - 2).append("\n");
-                    }
-                    tmpOutput.get(i - 2).append(line[i]);
+            long mid = System.currentTimeMillis();
+            try {
+                is = new URI(downloadUrl).toURL().openStream();
+                zis = new ZipInputStream(is);
+                ZipEntry ze = zis.getNextEntry();
+                csv = new CSVReader(new InputStreamReader(zis));
+
+                for (int i = 0; i < intersectionFiles.length; i++) {
+                    tmpOutput.add(new StringBuilder());
                 }
-                row++;
+                String[] line;
+                int row = 0;
+                csv.readNext(); //discard header
+                while ((line = csv.readNext()) != null) {
+                    //order is consistent with request
+                    for (int i = 2; i < line.length && i - 2 < tmpOutput.size(); i++) {
+                        if (row > 0) {
+                            tmpOutput.get(i - 2).append("\n");
+                        }
+                        tmpOutput.get(i - 2).append(line[i]);
+                    }
+                    row++;
+                }
+
+            } catch (Exception e) {
+                logger.error(e.getMessage(), e);
+            } finally {
+                if (zis != null) {
+                    try {
+                        zis.close();
+                    } catch (Exception e) {
+                        logger.error(e.getMessage(), e);
+                    }
+                }
+                if (is != null) {
+                    try {
+                        is.close();
+                    } catch (Exception e) {
+                        logger.error(e.getMessage(), e);
+                    }
+                }
+                if (csv != null) {
+                    try {
+                        csv.close();
+                    } catch (Exception e) {
+                        logger.error(e.getMessage(), e);
+                    }
+                }
             }
-            csv.close();
-            zis.close();
 
             output = new ArrayList<String>();
             for (int i = 0; i < tmpOutput.size(); i++) {

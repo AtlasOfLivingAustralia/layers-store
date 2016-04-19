@@ -1,25 +1,24 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.grid;
 
 import au.org.ala.layers.dto.GridClass;
 import au.org.ala.layers.intersect.Grid;
 import au.org.ala.layers.util.SpatialUtil;
-import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.MultiPolygon;
-import com.vividsolutions.jts.io.WKTReader;
+import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.geotools.data.DataUtilities;
 import org.geotools.data.DefaultTransaction;
@@ -49,10 +48,11 @@ import java.util.zip.ZipOutputStream;
 public class GridClassBuilder {
 
     final public static int[] colours = {0x003366CC, 0x00DC3912, 0x00FF9900, 0x00109618, 0x00990099, 0x000099C6, 0x00DD4477, 0x0066AA00, 0x00B82E2E, 0x00316395, 0x00994499, 0x0022AA99, 0x00AAAA11, 0x006633CC, 0x00E67300, 0x008B0707, 0x00651067, 0x00329262, 0x005574A6, 0x003B3EAC, 0x00B77322, 0x0016D620, 0x00B91383, 0x00F4359E, 0x009C5935, 0x00A9C413, 0x002A778D, 0x00668D1C, 0x00BEA413, 0x000C5922, 0x00743411};
+    private static final Logger logger = Logger.getLogger(GridClassBuilder.class);
 
     public static void main(String[] args) {
 
-        System.out.println("args[0]=diva grid input file (do not include .grd or .gri)\n\n");
+        logger.info("args[0]=diva grid input file (do not include .grd or .gri)\n\n");
 
         if (args.length > 0) {
             //remove existing
@@ -73,14 +73,14 @@ public class GridClassBuilder {
                 }
 
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
 
             //build new
             try {
                 buildFromGrid(args[0]);
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
         }
     }
@@ -105,9 +105,9 @@ public class GridClassBuilder {
                 int k = Integer.parseInt(key);
                 keys.add(k);
             } catch (NumberFormatException e) {
-                System.out.println("Excluding shape key '" + key + "'");
+                logger.info("Excluding shape key '" + key + "'");
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
         }
         boolean generateWkt = false;
@@ -124,65 +124,104 @@ public class GridClassBuilder {
                     gc.setName(name);
                     gc.setId(k);
 
-                    System.out.println("getting wkt for " + filePath + " > " + key);
+                    logger.info("getting wkt for " + filePath + " > " + key);
+
+                    Map wktIndexed = Envelope.getGridSingleLayerEnvelopeAsWktIndexed(filePath + "," + key + "," + key, wktMap);
 
                     //write class wkt
                     File zipFile = new File(filePath + File.separator + key + ".wkt.zip");
-                    ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipFile));
-                    zos.putNextEntry(new ZipEntry(key + ".wkt"));
-                    Map wktIndexed = Envelope.getGridSingleLayerEnvelopeAsWktIndexed(filePath + "," + key + "," + key, wktMap);
-                    zos.write(((String) wktIndexed.get("wkt")).getBytes());
-                    zos.close();
-                    BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(filePath + File.separator + key + ".wkt"));
-                    bos.write(((String) wktIndexed.get("wkt")).getBytes());
-                    bos.close();
-                    System.out.println("wkt written to file");
+                    ZipOutputStream zos = null;
+                    try {
+                        zos = new ZipOutputStream(new FileOutputStream(zipFile));
+                        zos.putNextEntry(new ZipEntry(key + ".wkt"));
+                        zos.write(((String) wktIndexed.get("wkt")).getBytes());
+                        zos.flush();
+                    } catch (Exception e) {
+                        logger.error(e.getMessage(), e);
+                    } finally {
+                        if (zos != null) {
+                            try {
+                                zos.close();
+                            } catch (Exception e) {
+                                logger.error(e.getMessage(), e);
+                            }
+                        }
+                    }
+                    BufferedOutputStream bos = null;
+                    try {
+                        bos = new BufferedOutputStream(new FileOutputStream(filePath + File.separator + key + ".wkt"));
+                        bos.write(((String) wktIndexed.get("wkt")).getBytes());
+                        bos.flush();
+                    } catch (Exception e) {
+                        logger.error(e.getMessage(), e);
+                    } finally {
+                        if (bos != null) {
+                            try {
+                                bos.close();
+                            } catch (Exception e) {
+                                logger.error(e.getMessage(), e);
+                            }
+                        }
+                    }
+                    logger.info("wkt written to file");
                     gc.setArea_km(SpatialUtil.calculateArea((String) wktIndexed.get("wkt")) / 1000.0 / 1000.0);
 
                     //store map
                     wktMap = (int[]) wktIndexed.get("map");
 
                     //write wkt index
-                    FileWriter fw = new FileWriter(filePath + File.separator + key + ".wkt.index");
-                    fw.append((String) wktIndexed.get("index"));
-                    fw.close();
+                    FileWriter fw = null;
+                    try {
+                        fw = new FileWriter(filePath + File.separator + key + ".wkt.index");
+                        fw.append((String) wktIndexed.get("index"));
+                        fw.flush();
+                    } catch (Exception e) {
+                        logger.error(e.getMessage(), e);
+                    } finally {
+                        if (fw != null) {
+                            try {
+                                fw.close();
+                            } catch (Exception e) {
+                                logger.error(e.getMessage(), e);
+                            }
+                        }
+                    }
                     //write wkt index a binary, include extents (minx, miny, maxx, maxy) and area (sq km)
-                    RandomAccessFile raf = new RandomAccessFile(filePath + File.separator + key + ".wkt.index.dat", "rw");
-                    String[] index = ((String) wktIndexed.get("index")).split("\n");
-                    int len = ((String) wktIndexed.get("wkt")).length();
-                    WKTReader r = new WKTReader();
-
                     int minPolygonNumber = 0;
                     int maxPolygonNumber = 0;
 
-                    for (int i = 0; i < index.length; i++) {
-                        if (index[i].length() > 1) {
-                            String[] cells = index[i].split(",");
-                            int polygonNumber = Integer.parseInt(cells[0]);
-                            raf.writeInt(polygonNumber);   //polygon number
-                            int polygonStart = Integer.parseInt(cells[1]);
-                            raf.writeInt(polygonStart);   //character offset
+                    RandomAccessFile raf = null;
+                    try {
+                        raf = new RandomAccessFile(filePath + File.separator + key + ".wkt.index.dat", "rw");
 
-                            if (i == 0) {
-                                minPolygonNumber = polygonNumber;
-                            } else if (i == index.length - 1) {
-                                maxPolygonNumber = polygonNumber;
-                            }
+                        String[] index = ((String) wktIndexed.get("index")).split("\n");
 
-                            int polygonEnd = len;
-                            if (i + 1 < index.length) {
-                                polygonEnd = Integer.parseInt(index[i + 1].split(",")[1]) - 1; //-1 for comma
+                        for (int i = 0; i < index.length; i++) {
+                            if (index[i].length() > 1) {
+                                String[] cells = index[i].split(",");
+                                int polygonNumber = Integer.parseInt(cells[0]);
+                                raf.writeInt(polygonNumber);   //polygon number
+                                int polygonStart = Integer.parseInt(cells[1]);
+                                raf.writeInt(polygonStart);   //character offset
+
+                                if (i == 0) {
+                                    minPolygonNumber = polygonNumber;
+                                } else if (i == index.length - 1) {
+                                    maxPolygonNumber = polygonNumber;
+                                }
                             }
-                            String polygonWkt = ((String) wktIndexed.get("wkt")).substring(polygonStart, polygonEnd);
-                            Geometry g = r.read("POLYGON" + polygonWkt);
-                            raf.writeFloat((float) g.getEnvelopeInternal().getMinX());
-                            raf.writeFloat((float) g.getEnvelopeInternal().getMinY());
-                            raf.writeFloat((float) g.getEnvelopeInternal().getMaxX());
-                            raf.writeFloat((float) g.getEnvelopeInternal().getMaxY());
-                            raf.writeFloat((float) (SpatialUtil.calculateArea(polygonWkt) / 1000.0 / 1000.0));
+                        }
+                    } catch (Exception e) {
+                        logger.error(e.getMessage(), e);
+                    } finally {
+                        if (raf != null) {
+                            try {
+                                raf.close();
+                            } catch (Exception e) {
+                                logger.error(e.getMessage(), e);
+                            }
                         }
                     }
-                    raf.close();
 
                     //for SLD
                     maxValues.add(gc.getMaxShapeIdx());
@@ -190,7 +229,7 @@ public class GridClassBuilder {
                     gc.setMinShapeIdx(minPolygonNumber);
                     gc.setMaxShapeIdx(maxPolygonNumber);
 
-                    System.out.println("getting multipolygon for " + filePath + " > " + key);
+                    logger.info("getting multipolygon for " + filePath + " > " + key);
                     MultiPolygon mp = Envelope.getGridEnvelopeAsMultiPolygon(filePath + "," + key + "," + key);
                     gc.setBbox(mp.getEnvelope().toText().replace(" (", "(").replace(", ", ","));
 
@@ -198,27 +237,56 @@ public class GridClassBuilder {
 
                     try {
                         //write class kml
-                        zos = new ZipOutputStream(new FileOutputStream(filePath + File.separator + key + ".kml.zip"));
-                        zos.putNextEntry(new ZipEntry(key + ".kml"));
-                        Encoder encoder = new Encoder(new KMLConfiguration());
-                        encoder.setIndenting(true);
-                        encoder.encode(mp, KML.Geometry, zos);
-                        zos.close();
-                        System.out.println("kml written to file");
+                        zos = null;
+                        try {
+                            zos = new ZipOutputStream(new FileOutputStream(filePath + File.separator + key + ".kml.zip"));
+
+                            zos.putNextEntry(new ZipEntry(key + ".kml"));
+                            Encoder encoder = new Encoder(new KMLConfiguration());
+                            encoder.setIndenting(true);
+                            encoder.encode(mp, KML.Geometry, zos);
+                            zos.flush();
+                        } catch (Exception e) {
+                            logger.error(e.getMessage(), e);
+                        } finally {
+                            if (zos != null) {
+                                try {
+                                    zos.close();
+                                } catch (Exception e) {
+                                    logger.error(e.getMessage(), e);
+                                }
+                            }
+                        }
+                        logger.info("kml written to file");
+
+                        final SimpleFeatureType TYPE = DataUtilities.createType("class", "the_geom:MultiPolygon,id:Integer,name:String");
+                        FeatureJSON fjson = new FeatureJSON();
+                        SimpleFeatureBuilder featureBuilder = new SimpleFeatureBuilder(TYPE);
+                        SimpleFeature sf = featureBuilder.buildFeature(null);
 
                         //write class geojson
-                        zos = new ZipOutputStream(new FileOutputStream(filePath + File.separator + key + ".geojson.zip"));
-                        zos.putNextEntry(new ZipEntry(key + ".geojson"));
-                        FeatureJSON fjson = new FeatureJSON();
-                        final SimpleFeatureType TYPE = DataUtilities.createType("class", "the_geom:MultiPolygon,id:Integer,name:String");
-                        SimpleFeatureBuilder featureBuilder = new SimpleFeatureBuilder(TYPE);
-                        featureBuilder.add(mp);
-                        featureBuilder.add(k);
-                        featureBuilder.add(name);
-                        SimpleFeature sf = featureBuilder.buildFeature(null);
-                        fjson.writeFeature(sf, zos);
-                        zos.close();
-                        System.out.println("geojson written to file");
+                        zos = null;
+                        try {
+                            zos = new ZipOutputStream(new FileOutputStream(filePath + File.separator + key + ".geojson.zip"));
+                            zos.putNextEntry(new ZipEntry(key + ".geojson"));
+                            featureBuilder.add(mp);
+                            featureBuilder.add(k);
+                            featureBuilder.add(name);
+
+                            fjson.writeFeature(sf, zos);
+                            zos.flush();
+                        } catch (Exception e) {
+                            logger.error(e.getMessage(), e);
+                        } finally {
+                            if (zos != null) {
+                                try {
+                                    zos.close();
+                                } catch (Exception e) {
+                                    logger.error(e.getMessage(), e);
+                                }
+                            }
+                        }
+                        logger.info("geojson written to file");
 
                         //write class shape file
                         File newFile = new File(filePath + File.separator + key + ".shp");
@@ -226,47 +294,85 @@ public class GridClassBuilder {
                         Map<String, Serializable> params = new HashMap<String, Serializable>();
                         params.put("url", newFile.toURI().toURL());
                         params.put("create spatial index", Boolean.FALSE);
-                        ShapefileDataStore newDataStore = (ShapefileDataStore) dataStoreFactory.createNewDataStore(params);
-                        newDataStore.createSchema(TYPE);
-                        newDataStore.forceSchemaCRS(DefaultGeographicCRS.WGS84);
-                        Transaction transaction = new DefaultTransaction("create");
-                        String typeName = newDataStore.getTypeNames()[0];
-                        SimpleFeatureSource featureSource = newDataStore.getFeatureSource(typeName);
-                        SimpleFeatureStore featureStore = (SimpleFeatureStore) featureSource;
-                        featureStore.setTransaction(transaction);
-                        List<SimpleFeature> features = new ArrayList<SimpleFeature>();
+                        ShapefileDataStore newDataStore = null;
+                        try {
+                            newDataStore = (ShapefileDataStore) dataStoreFactory.createNewDataStore(params);
+                            newDataStore.createSchema(TYPE);
+                            newDataStore.forceSchemaCRS(DefaultGeographicCRS.WGS84);
+                            Transaction transaction = new DefaultTransaction("create");
+                            String typeName = newDataStore.getTypeNames()[0];
+                            SimpleFeatureSource featureSource = newDataStore.getFeatureSource(typeName);
+                            SimpleFeatureStore featureStore = (SimpleFeatureStore) featureSource;
+                            featureStore.setTransaction(transaction);
+                            List<SimpleFeature> features = new ArrayList<SimpleFeature>();
 
-                        DefaultFeatureCollection collection = new DefaultFeatureCollection();
-                        collection.addAll(features);
-                        featureStore.setTransaction(transaction);
+                            DefaultFeatureCollection collection = new DefaultFeatureCollection();
+                            collection.addAll(features);
+                            featureStore.setTransaction(transaction);
 
-                        features.add(sf);
-                        featureStore.addFeatures(collection);
-                        transaction.commit();
-                        transaction.close();
-
-                        zos = new ZipOutputStream(new FileOutputStream(filePath + File.separator + key + ".shp.zip"));
-                        //add .dbf .shp .shx .prj
-                        String[] exts = {".dbf", ".shp", ".shx", ".prj"};
-                        for (String ext : exts) {
-                            zos.putNextEntry(new ZipEntry(key + ext));
-                            FileInputStream fis = new FileInputStream(filePath + File.separator + key + ext);
-                            byte[] buffer = new byte[1024];
-                            int size;
-                            while ((size = fis.read(buffer)) > 0) {
-                                zos.write(buffer, 0, size);
+                            features.add(sf);
+                            featureStore.addFeatures(collection);
+                            transaction.commit();
+                            transaction.close();
+                        } catch (Exception e) {
+                            logger.error(e.getMessage(), e);
+                        } finally {
+                            if (newDataStore != null) {
+                                try {
+                                    newDataStore.dispose();
+                                } catch (Exception e) {
+                                    logger.error(e.getMessage(), e);
+                                }
                             }
-                            fis.close();
-                            //remove unzipped files
-                            new File(filePath + File.separator + key + ext).delete();
                         }
-                        zos.close();
-                        System.out.println("shape file written to zip");
+
+                        zos = null;
+                        try {
+                            zos = new ZipOutputStream(new FileOutputStream(filePath + File.separator + key + ".shp.zip"));
+                            //add .dbf .shp .shx .prj
+                            String[] exts = {".dbf", ".shp", ".shx", ".prj"};
+                            for (String ext : exts) {
+                                zos.putNextEntry(new ZipEntry(key + ext));
+                                FileInputStream fis = null;
+                                try {
+                                    fis = new FileInputStream(filePath + File.separator + key + ext);
+                                    byte[] buffer = new byte[1024];
+                                    int size;
+                                    while ((size = fis.read(buffer)) > 0) {
+                                        zos.write(buffer, 0, size);
+                                    }
+                                } catch (Exception e) {
+                                    logger.error(e.getMessage(), e);
+                                } finally {
+                                    if (fis != null) {
+                                        try {
+                                            fis.close();
+                                        } catch (Exception e) {
+                                            logger.error(e.getMessage(), e);
+                                        }
+                                    }
+                                }
+                                //remove unzipped files
+                                new File(filePath + File.separator + key + ext).delete();
+                            }
+                            zos.flush();
+                        } catch (Exception e) {
+                            logger.error(e.getMessage(), e);
+                        } finally {
+                            if (zos != null) {
+                                try {
+                                    zos.close();
+                                } catch (Exception e) {
+                                    logger.error(e.getMessage(), e);
+                                }
+                            }
+                        }
+                        logger.info("shape file written to zip");
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        logger.error(e.getMessage(), e);
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    logger.error(e.getMessage(), e);
                 }
             }
 
@@ -328,47 +434,56 @@ public class GridClassBuilder {
     }
 
     static void exportSLD(String filename, String name, ArrayList<Integer> maxValues, ArrayList<String> labels) {
+        StringBuffer sld = new StringBuffer();
+        /* header */
+        sld.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+        sld.append("<sld:StyledLayerDescriptor xmlns=\"http://www.opengis.net/sld\" xmlns:sld=\"http://www.opengis.net/sld\" xmlns:ogc=\"http://www.opengis.net/ogc\" xmlns:gml=\"http://www.opengis.net/gml\" version=\"1.0.0\">");
+        sld.append("<sld:NamedLayer>");
+        sld.append("<sld:Name>raster</sld:Name>");
+        sld.append(" <sld:UserStyle>");
+        sld.append("<sld:Name>raster</sld:Name>");
+        sld.append("<sld:Title>A very simple color map</sld:Title>");
+        sld.append("<sld:Abstract>A very basic color map</sld:Abstract>");
+        sld.append("<sld:FeatureTypeStyle>");
+        sld.append(" <sld:Name>name</sld:Name>");
+        sld.append("<sld:FeatureTypeName>Feature</sld:FeatureTypeName>");
+        sld.append(" <sld:Rule>");
+        sld.append("   <sld:RasterSymbolizer>");
+        sld.append(" <sld:Geometry>");
+        sld.append(" <ogc:PropertyName>geom</ogc:PropertyName>");
+        sld.append(" </sld:Geometry>");
+        sld.append(" <sld:ChannelSelection>");
+        sld.append(" <sld:GrayChannel>");
+        sld.append("   <sld:SourceChannelName>1</sld:SourceChannelName>");
+        sld.append(" </sld:GrayChannel>");
+        sld.append(" </sld:ChannelSelection>");
+        sld.append(" <sld:ColorMap type=\"intervals\">");
+
+        /* outputs */
+        sld.append("\n<sld:ColorMapEntry color=\"#ffffff\" opacity=\"0\" quantity=\"1\"/>\n");
+        for (int i = 0; i < labels.size(); i++) {
+            sld.append("<sld:ColorMapEntry color=\"#" + getHexColour(colours[i % colours.length]) + "\" quantity=\"" + (maxValues.get(i) + 1) + ".0\" label=\"" + labels.get(i) + "\" opacity=\"1\"/>\r\n");
+        }
+
+        /* footer */
+        sld.append("</sld:ColorMap></sld:RasterSymbolizer></sld:Rule></sld:FeatureTypeStyle></sld:UserStyle></sld:NamedLayer></sld:StyledLayerDescriptor>");
+
+        /* write */
+        FileWriter fw = null;
         try {
-            StringBuffer sld = new StringBuffer();
-            /* header */
-            sld.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
-            sld.append("<sld:StyledLayerDescriptor xmlns=\"http://www.opengis.net/sld\" xmlns:sld=\"http://www.opengis.net/sld\" xmlns:ogc=\"http://www.opengis.net/ogc\" xmlns:gml=\"http://www.opengis.net/gml\" version=\"1.0.0\">");
-            sld.append("<sld:NamedLayer>");
-            sld.append("<sld:Name>raster</sld:Name>");
-            sld.append(" <sld:UserStyle>");
-            sld.append("<sld:Name>raster</sld:Name>");
-            sld.append("<sld:Title>A very simple color map</sld:Title>");
-            sld.append("<sld:Abstract>A very basic color map</sld:Abstract>");
-            sld.append("<sld:FeatureTypeStyle>");
-            sld.append(" <sld:Name>name</sld:Name>");
-            sld.append("<sld:FeatureTypeName>Feature</sld:FeatureTypeName>");
-            sld.append(" <sld:Rule>");
-            sld.append("   <sld:RasterSymbolizer>");
-            sld.append(" <sld:Geometry>");
-            sld.append(" <ogc:PropertyName>geom</ogc:PropertyName>");
-            sld.append(" </sld:Geometry>");
-            sld.append(" <sld:ChannelSelection>");
-            sld.append(" <sld:GrayChannel>");
-            sld.append("   <sld:SourceChannelName>1</sld:SourceChannelName>");
-            sld.append(" </sld:GrayChannel>");
-            sld.append(" </sld:ChannelSelection>");
-            sld.append(" <sld:ColorMap type=\"intervals\">");
-
-            /* outputs */
-            sld.append("\n<sld:ColorMapEntry color=\"#ffffff\" opacity=\"0\" quantity=\"1\"/>\n");
-            for (int i = 0; i < labels.size(); i++) {
-                sld.append("<sld:ColorMapEntry color=\"#" + getHexColour(colours[i % colours.length]) + "\" quantity=\"" + (maxValues.get(i) + 1) + ".0\" label=\"" + labels.get(i) + "\" opacity=\"1\"/>\r\n");
-            }
-
-            /* footer */
-            sld.append("</sld:ColorMap></sld:RasterSymbolizer></sld:Rule></sld:FeatureTypeStyle></sld:UserStyle></sld:NamedLayer></sld:StyledLayerDescriptor>");
-
-            /* write */
-            FileWriter fw = new FileWriter(filename);
+            fw = new FileWriter(filename);
             fw.append(sld.toString());
-            fw.close();
+            fw.flush();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (fw != null) {
+                try {
+                    fw.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 
@@ -384,8 +499,9 @@ public class GridClassBuilder {
     }
 
     private static void writeProjectionFile(String filename) {
+        FileWriter spWriter = null;
         try {
-            FileWriter spWriter = new FileWriter(filename);
+            spWriter = new FileWriter(filename);
 
             StringBuffer sbProjection = new StringBuffer();
             sbProjection.append("GEOGCS[\"WGS 84\", ").append("\n");
@@ -401,19 +517,27 @@ public class GridClassBuilder {
 
             //spWriter.write("spname, longitude, latitude \n");
             spWriter.append(sbProjection.toString());
-            spWriter.close();
+            spWriter.flush();
 
-        } catch (IOException ex) {
-            //Logger.getLogger(MaxentServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
-            System.out.println("error writing species file:");
-            ex.printStackTrace(System.out);
+        } catch (IOException e) {
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (spWriter != null) {
+                try {
+                    spWriter.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 
     private static void copyHeaderAsInt(String src, String dst) {
+        BufferedReader br = null;
+        FileWriter fw = null;
         try {
-            BufferedReader br = new BufferedReader(new FileReader(src));
-            FileWriter fw = new FileWriter(dst);
+            br = new BufferedReader(new FileReader(src));
+            fw = new FileWriter(dst);
             String line;
             while ((line = br.readLine()) != null) {
                 if (line.startsWith("DataType=")) {
@@ -423,10 +547,24 @@ public class GridClassBuilder {
                     fw.write("\n");
                 }
             }
-            fw.close();
-            br.close();
+            fw.flush();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (br != null) {
+                try {
+                    br.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
+            if (fw != null) {
+                try {
+                    fw.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 }

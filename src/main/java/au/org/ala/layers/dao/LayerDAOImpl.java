@@ -1,16 +1,16 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.dao;
 
@@ -61,7 +61,6 @@ public class LayerDAOImpl implements LayerDAO {
 
     @Override
     public List<Layer> getLayers() {
-        //return hibernateTemplate.find("from Layer where enabled=true");
         logger.info("Getting a list of all enabled layers");
         String sql = "select * from layers where enabled=true";
         List<Layer> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Layer.class));
@@ -77,7 +76,6 @@ public class LayerDAOImpl implements LayerDAO {
 
     @Override
     public Layer getLayerById(int id, boolean enabledLayersOnly) {
-        //List<Layer> layers = hibernateTemplate.find("from Layer where enabled=true and id=?", id);
         logger.info("Getting enabled layer info for id = " + id);
         String sql = "select * from layers where id = ? ";
         if (enabledLayersOnly) {
@@ -100,8 +98,6 @@ public class LayerDAOImpl implements LayerDAO {
 
     @Override
     public Layer getLayerByName(String name, boolean enabledLayersOnly) {
-        //List<Layer> layers = hibernateTemplate.find("from Layer where enabled=true and name=?", name);
-
         logger.info("Getting enabled layer info for name = " + name);
         String sql = "select * from layers where name = ? ";
         if (enabledLayersOnly) {
@@ -120,8 +116,6 @@ public class LayerDAOImpl implements LayerDAO {
 
     @Override
     public Layer getLayerByDisplayName(String name) {
-        //List<Layer> layers = hibernateTemplate.find("from Layer where enabled=true and name=?", name);
-
         logger.info("Getting enabled layer info for name = " + name);
         String sql = "select * from layers where enabled=true and displayname = ?";
         List<Layer> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Layer.class), name);
@@ -136,7 +130,6 @@ public class LayerDAOImpl implements LayerDAO {
 
     @Override
     public List<Layer> getLayersByEnvironment() {
-        //return hibernateTemplate.find("from Layer where enabled=true and type='Environmental'");
         String type = "Environmental";
         logger.info("Getting a list of all enabled environmental layers");
         String sql = "select * from layers where enabled=true and type = ?";
@@ -148,7 +141,6 @@ public class LayerDAOImpl implements LayerDAO {
 
     @Override
     public List<Layer> getLayersByContextual() {
-        //return hibernateTemplate.find("from Layer where enabled=true and type='Contextual'");
         String type = "Contextual";
         logger.info("Getting a list of all enabled Contextual layers");
         String sql = "select * from layers where enabled=true and type = ?";
@@ -166,14 +158,13 @@ public class LayerDAOImpl implements LayerDAO {
         sql += " enabled=true AND ( ";
         sql += "lower(keywords) like ? ";
         sql += " or lower(displayname) like ? ";
-        //sql += " or lower(type) like ? ";
+
         sql += " or lower(name) like ? ";
         sql += " or lower(domain) like ? ";
         sql += ") order by displayname ";
 
         keywords = "%" + keywords.toLowerCase() + "%";
 
-        //List list = hibernateTemplate.find(sql, new String[]{keywords, keywords, keywords}); // keywords,
         List<Layer> list = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Layer.class), keywords, keywords, keywords, keywords);
 
         //remove duplicates if any
@@ -184,17 +175,11 @@ public class LayerDAOImpl implements LayerDAO {
         Util.updateDisplayPaths(list);
         Util.updateMetadataPaths(list);
 
-        return list;//no duplicates now
-//        logger.info("Getting a list of all enabled layers");
-//        String sql = "select * from layers where enabled=true";
-//        List<Layer> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Layer.class));
-//        return l;
-
+        return list;
     }
 
     @Override
     public Layer getLayerByIdForAdmin(int id) {
-        //List<Layer> layers = hibernateTemplate.find("from Layer where enabled=true and id=?", id);
         logger.info("Getting enabled layer info for id = " + id);
         String sql = "select * from layers where id = ?";
         List<Layer> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Layer.class), id);
@@ -223,7 +208,6 @@ public class LayerDAOImpl implements LayerDAO {
 
     @Override
     public List<Layer> getLayersForAdmin() {
-        //return hibernateTemplate.find("from Layer where enabled=true");
         logger.info("Getting a list of all layers");
         String sql = "select * from layers";
         List<Layer> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Layer.class));
@@ -236,7 +220,6 @@ public class LayerDAOImpl implements LayerDAO {
     public void addLayer(Layer layer) {
         logger.info("Add new layer metadta for " + layer.getName());
 
-        //jdbcTemplate.update(sql, layer.toMap());
         Map<String, Object> parameters = layer.toMap();
         parameters.remove("uid");
         parameters.remove("id");

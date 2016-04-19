@@ -14,7 +14,7 @@ import java.util.List;
  * Created by a on 29/01/15.
  */
 public class Util {
-    private static final Logger LOGGER = Logger.getLogger(Util.class);
+    private static final Logger logger = Logger.getLogger(Util.class);
 
     public static String readUrl(String feature) {
         StringBuilder content = new StringBuilder();
@@ -36,13 +36,13 @@ public class Util {
             }
 
         } catch (Exception e) {
-            LOGGER.error("failed to read URL: " + feature);
+            logger.error("failed to read URL: " + feature);
         } finally {
             if (conn != null) {
                 try {
                     conn.disconnect();
                 } catch (Exception e) {
-                    LOGGER.error("failed to close url: " + feature, e);
+                    logger.error("failed to close url: " + feature, e);
                 }
             }
         }

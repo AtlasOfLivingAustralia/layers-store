@@ -1,18 +1,20 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.grid;
+
+import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.util.*;
@@ -22,6 +24,8 @@ import java.util.concurrent.*;
  * @author Adam
  */
 public class GridCacheReader {
+
+    private static final Logger logger = Logger.getLogger(GridCacheReader.class);
 
     ArrayList<GridGroup> groups;
 
@@ -38,7 +42,7 @@ public class GridCacheReader {
                             groups.add(g);
                         }
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        logger.error(e.getMessage(), e);
                     }
                 }
             }
@@ -46,34 +50,30 @@ public class GridCacheReader {
     }
 
     public static void main(String[] args) {
-        //args = new String[] {"d:\\timing_test_sampling_diva_cache.csv", ""e:\\layers\\ready\\diva_cache"};
-        System.out.println("Test sampling on a grid cache with random points.\n\nargs[0] = output test results\nargs[1] = ready/diva_cache path");
+        logger.info("Test sampling on a grid cache with random points.\n\nargs[0] = output test results\nargs[1] = ready/diva_cache path");
+
+        FileWriter fw = null;
         try {
-            FileWriter fw = new FileWriter(args[0]);
+            fw = new FileWriter(args[0]);
+
             for (int i = 1; i < 5000; i += 10) {
                 long t = largerTest(i, args[1]);
                 fw.append(String.valueOf(i)).append(",").append(String.valueOf(t)).append("\n");
             }
-            fw.close();
+            fw.flush();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (fw != null) {
+                try {
+                    fw.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
-        //smallerTest();
 
         System.exit(0);
-    }
-
-    static void smallerTest(String diva_cache_path) {
-        try {
-            HashMap<String, Float> map = new GridCacheReader(diva_cache_path).sample(130, -22);
-
-            for (String k : map.keySet()) {
-                System.out.println(k + " > " + map.get(k));
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
     }
 
     static long largerTest(int size, String diva_cache_path) {
@@ -123,26 +123,27 @@ public class GridCacheReader {
                 });
             }
 
-            System.out.println("starting...");
+            logger.info("starting...");
             long start = System.currentTimeMillis();
 
             ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
             List<Future<ArrayList<HashMap<String, Float>>>> output = executorService.invokeAll(tasks);
 
             long end = System.currentTimeMillis() - start;
-            System.out.println("sampling time " + end + "ms for " + points.size() / 2);
+            logger.info("sampling time " + end + "ms for " + points.size() / 2);
 
             return end;
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
         return 0;
     }
 
     static ArrayList<Double> loadPoints(String filename) {
         ArrayList<Double> points = new ArrayList<Double>();
+        BufferedReader br = null;
         try {
-            BufferedReader br = new BufferedReader(new FileReader(filename));
+            br = new BufferedReader(new FileReader(filename));
             String line;
             br.readLine();
             while ((line = br.readLine()) != null) {
@@ -157,8 +158,16 @@ public class GridCacheReader {
                     }
                 }
             }
-            br.close();
         } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (br != null) {
+                try {
+                    br.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
         return points;
     }

@@ -1,16 +1,16 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.grid;
 
@@ -19,7 +19,10 @@ import au.org.ala.layers.intersect.Grid;
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -28,12 +31,10 @@ import java.util.ArrayList;
  * @author Adam
  */
 public class GridCacheBuilder {
-    private static final Logger LOGGER = Logger.getLogger(GridCacheBuilder.class);
+    private static final Logger logger = Logger.getLogger(GridCacheBuilder.class);
 
     public static void main(String[] args) throws IOException {
-//        args = new String[]{"e:\\layers\\ready\\diva", "e:\\layers\\ready\\diva_cache"};
-
-        System.out.println("args[0]=diva grid input dir\nargs[1]=cached diva grid output dir\n\n");
+        logger.info("args[0]=diva grid input dir\nargs[1]=cached diva grid output dir\n\n");
 
         //load up all diva grids in a directory
         ArrayList<Grid> grids = loadGridHeaders(args[0]);
@@ -65,14 +66,14 @@ public class GridCacheBuilder {
                 }
             }
         } catch (IOException e) {
-            LOGGER.error("failed to create or empty tmp dir in: " + outputDir, e);
+            logger.error("failed to create or empty tmp dir in: " + outputDir, e);
         }
         //write large enough groups
         for (int i = 0; i < groups.size(); i++) {
             try {
                 writeGroup(tmpDir.getPath(), groups.get(i));
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
         }
 
@@ -88,7 +89,7 @@ public class GridCacheBuilder {
             try {
                 FileUtils.moveFile(f, new File(f.getPath().replace("/tmp/", "")));
             } catch (IOException e) {
-                LOGGER.error("failed to move new grid cache file: " + f.getPath());
+                logger.error("failed to move new grid cache file: " + f.getPath());
             }
         }
 
@@ -107,7 +108,7 @@ public class GridCacheBuilder {
                     grids.add(g);
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
         }
 
@@ -153,9 +154,9 @@ public class GridCacheBuilder {
             count++;
         }
 
-        System.out.println("writing: " + f.getName());
+        logger.info("writing: " + f.getName());
         for (int i = 0; i < group.size(); i++) {
-            System.out.println("   has: " + group.get(i).filename);
+            logger.info("   has: " + group.get(i).filename);
         }
 
         writeGroupHeader(f, group);
@@ -164,12 +165,25 @@ public class GridCacheBuilder {
     }
 
     private static void writeGroupHeader(File f, ArrayList<Grid> group) throws IOException {
-        FileWriter fw = new FileWriter(f);
-        for (int i = 0; i < group.size(); i++) {
-            fw.write(group.get(i).filename);
-            fw.write("\n");
+        FileWriter fw = null;
+        try {
+            fw = new FileWriter(f);
+            for (int i = 0; i < group.size(); i++) {
+                fw.write(group.get(i).filename);
+                fw.write("\n");
+            }
+            fw.flush();
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (fw != null) {
+                try {
+                    fw.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
-        fw.close();
     }
 
     private static void writeGroupGRD(File file, ArrayList<Grid> group) {
@@ -177,51 +191,68 @@ public class GridCacheBuilder {
         g.writeHeader(file.getPath(), g.xmin, g.ymin, g.xmin + g.xres * g.nrows, g.ymin + g.yres * g.ncols, g.xres, g.yres, g.nrows, g.ncols, g.minval, g.maxval);
     }
 
-    private static void writeGroupGRI(File file, ArrayList<Grid> group) throws FileNotFoundException, IOException {
+    private static void writeGroupGRI(File file, ArrayList<Grid> group) {
         Grid g = group.get(0);
         RandomAccessFile[] raf = new RandomAccessFile[group.size()];
-        RandomAccessFile output = new RandomAccessFile(file, "rw");
+        RandomAccessFile output = null;
 
-        for (int i = 0; i < group.size(); i++) {
-            raf[i] = new RandomAccessFile(group.get(i).filename + ".gri", "r");
-        }
+        try {
+            output = new RandomAccessFile(file, "rw");
 
-        int length = g.ncols * g.nrows;
-        int size = 4;
-        byte[] b = new byte[size * group.size() * g.ncols];
-        float noDataValue = Float.MAX_VALUE * -1;
-
-        byte[] bi = new byte[g.ncols * 8];
-        float[][] rows = new float[group.size()][g.ncols];
-
-        for (int i = 0; i < g.nrows; i++) {
-            //read
-            for (int j = 0; j < raf.length; j++) {
-                nextRowOfFloats(rows[j], group.get(j).datatype, group.get(j).byteorderLSB, g.ncols, raf[j], bi, (float) g.nodatavalue);
+            for (int i = 0; i < group.size(); i++) {
+                raf[i] = new RandomAccessFile(group.get(i).filename + ".gri", "r");
             }
 
-            //write
-            ByteBuffer bb = ByteBuffer.wrap(b);
-            bb.order(ByteOrder.LITTLE_ENDIAN);
+            int length = g.ncols * g.nrows;
+            int size = 4;
+            byte[] b = new byte[size * group.size() * g.ncols];
+            float noDataValue = Float.MAX_VALUE * -1;
 
-            for (int k = 0; k < g.ncols; k++) {
+            byte[] bi = new byte[g.ncols * 8];
+            float[][] rows = new float[group.size()][g.ncols];
+
+            for (int i = 0; i < g.nrows; i++) {
+                //read
                 for (int j = 0; j < raf.length; j++) {
-                    //float f = getNextValue(raf[j], group.get(j));
-                    float f = rows[j][k];
-                    if (Float.isNaN(f)) {
-                        bb.putFloat(noDataValue);
-                    } else {
-                        bb.putFloat(f);
+                    nextRowOfFloats(rows[j], group.get(j).datatype, group.get(j).byteorderLSB, g.ncols, raf[j], bi, (float) g.nodatavalue);
+                }
+
+                //write
+                ByteBuffer bb = ByteBuffer.wrap(b);
+                bb.order(ByteOrder.LITTLE_ENDIAN);
+
+                for (int k = 0; k < g.ncols; k++) {
+                    for (int j = 0; j < raf.length; j++) {
+                        //float f = getNextValue(raf[j], group.get(j));
+                        float f = rows[j][k];
+                        if (Float.isNaN(f)) {
+                            bb.putFloat(noDataValue);
+                        } else {
+                            bb.putFloat(f);
+                        }
+                    }
+                }
+                output.write(b);
+            }
+        } catch (IOException e) {
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (output != null) {
+                try {
+                    output.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
+            for (int i = 0; i < raf.length; i++) {
+                if (raf[i] != null) {
+                    try {
+                        raf[i].close();
+                    } catch (Exception e) {
+                        logger.error(e.getMessage(), e);
                     }
                 }
             }
-            output.write(b);
-        }
-
-        output.close();
-
-        for (int i = 0; i < raf.length; i++) {
-            raf[i].close();
         }
     }
 
@@ -361,7 +392,7 @@ public class GridCacheBuilder {
                 row[i] = (float) bb.getDouble();
             }
         } else {
-            System.out.println("UNKNOWN TYPE: " + datatype);
+            logger.info("UNKNOWN TYPE: " + datatype);
         }
 
         for (i = 0; i < length; i++) {

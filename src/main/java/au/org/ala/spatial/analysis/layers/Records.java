@@ -3,6 +3,7 @@ package au.org.ala.spatial.analysis.layers;
 import au.com.bytecode.opencsv.CSVReader;
 import au.org.ala.layers.intersect.SimpleRegion;
 import org.apache.commons.io.FileUtils;
+import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.net.URL;
@@ -17,6 +18,8 @@ import java.util.zip.GZIPInputStream;
  * @author Adam
  */
 public class Records {
+
+    private static final Logger logger = Logger.getLogger(Records.class);
 
     ArrayList<Double> points;
     ArrayList<Integer> lsidIdx;
@@ -51,7 +54,6 @@ public class Records {
         int start = 0;
 
         BufferedReader br = new BufferedReader(new FileReader(filename));
-        //CSVReader csv = new CSVReader(new FileReader(filename));
 
         String[] line;
         String rawline;
@@ -61,7 +63,6 @@ public class Records {
         String lat, lng, sp;
         int p1, p2, p3;
         line = new String[4];
-        //while((line = csv.readNext()) != null) {
         while ((rawline = br.readLine()) != null) {
             currentCount++;
 
@@ -77,7 +78,7 @@ public class Records {
             line[3] = rawline.substring(p3 + 1, rawline.length());
 
             if (currentCount % 100000 == 0) {
-                System.out.print("\rreading row: " + currentCount);
+                logger.info("reading row: " + currentCount);
             }
 
             String facetName = "names_and_lsid";
@@ -97,8 +98,8 @@ public class Records {
                         header[3] = i;
                     }
                 }
-                System.out.println("line: " + line[0] + "," + line[1] + "," + line[2] + "," + line[3]);
-                System.out.println("header: " + header[0] + "," + header[1] + "," + header[2] + "," + header[3]);
+                logger.info("line: " + line[0] + "," + line[1] + "," + line[2] + "," + (line.length > 3 ? line[3] : "null"));
+                logger.info("header: " + header[0] + "," + header[1] + "," + header[2] + "," + header[3]);
                 boolean notZero = header[1] == 0 || header[2] == 0 || (header[3] == 0 && line.length > 3); //'year' may be absent
                 boolean notOne = line.length < 1 || header[1] == 1 || header[2] == 1 || header[3] == 1;
                 boolean notTwo = line.length < 2 || header[1] == 2 || header[2] == 2 || header[3] == 2;
@@ -107,7 +108,7 @@ public class Records {
                 if (!notOne) header[0] = 1;
                 if (!notTwo) header[0] = 2;
                 if (!notThree) header[0] = 3;
-                System.out.println("header: " + header[0] + "," + header[1] + "," + header[2] + "," + header[3]);
+                logger.info("header: " + header[0] + "," + header[1] + "," + header[2] + "," + header[3]);
             } else {
                 if (line.length >= 3) {
                     try {
@@ -128,13 +129,7 @@ public class Records {
             }
             row++;
         }
-        if (start == 0) {
-            start = row - 1; //offset for header
-        } else {
-            start = row;
-        }
 
-        //csv.close();
         br.close();
 
         //make lsid list
@@ -143,7 +138,7 @@ public class Records {
             lsids[e.getValue()] = e.getKey();
         }
 
-        System.out.println("\nGot " + getRecordsSize() + " records of " + getSpeciesSize() + " species");
+        logger.info("Got " + getRecordsSize() + " records of " + getSpeciesSize() + " species");
     }
 
     public Records(String filename, SimpleRegion region) throws IOException {
@@ -157,7 +152,6 @@ public class Records {
         int start = 0;
 
         BufferedReader br = new BufferedReader(new FileReader(filename));
-        //CSVReader csv = new CSVReader(new FileReader(filename));
 
         String[] line;
         String rawline;
@@ -167,7 +161,6 @@ public class Records {
         String lat, lng, sp;
         int p1, p2, p3;
         line = new String[4];
-        //while((line = csv.readNext()) != null) {
         while ((rawline = br.readLine()) != null) {
             currentCount++;
 
@@ -183,7 +176,7 @@ public class Records {
             line[3] = rawline.substring(p3 + 1, rawline.length());
 
             if (currentCount % 100000 == 0) {
-                System.out.print("\rreading row: " + currentCount);
+                logger.info("reading row: " + currentCount);
             }
 
             String facetName = "names_and_lsid";
@@ -203,8 +196,8 @@ public class Records {
                         header[3] = i;
                     }
                 }
-                System.out.println("line: " + line[0] + "," + line[1] + "," + line[2] + "," + line[3]);
-                System.out.println("header: " + header[0] + "," + header[1] + "," + header[2] + "," + header[3]);
+                logger.info("line: " + line[0] + "," + line[1] + "," + line[2] + "," + line[3]);
+                logger.info("header: " + header[0] + "," + header[1] + "," + header[2] + "," + header[3]);
                 boolean notZero = header[1] == 0 || header[2] == 0 || (header[3] == 0 && line.length > 3); //'year' may be absent
                 boolean notOne = line.length < 1 || header[1] == 1 || header[2] == 1 || header[3] == 1;
                 boolean notTwo = line.length < 2 || header[1] == 2 || header[2] == 2 || header[3] == 2;
@@ -213,7 +206,7 @@ public class Records {
                 if (!notOne) header[0] = 1;
                 if (!notTwo) header[0] = 2;
                 if (!notThree) header[0] = 3;
-                System.out.println("header: " + header[0] + "," + header[1] + "," + header[2] + "," + header[3]);
+                logger.info("header: " + header[0] + "," + header[1] + "," + header[2] + "," + header[3]);
             } else {
                 if (line.length >= 3) {
                     try {
@@ -237,13 +230,7 @@ public class Records {
             }
             row++;
         }
-        if (start == 0) {
-            start = row - 1; //offset for header
-        } else {
-            start = row;
-        }
 
-        //csv.close();
         br.close();
 
         //make lsid list
@@ -252,21 +239,21 @@ public class Records {
             lsids[e.getValue()] = e.getKey();
         }
 
-        System.out.println("\nGot " + getRecordsSize() + " records of " + getSpeciesSize() + " species");
+        logger.info("\nGot " + getRecordsSize() + " records of " + getSpeciesSize() + " species");
     }
 
     static InputStream getUrlStream(String url) throws IOException {
-        System.out.print("getting : " + url + " ... ");
+        logger.debug("getting : " + url + " ... ");
         long start = System.currentTimeMillis();
         URLConnection c = new URL(url).openConnection();
         InputStream is = c.getInputStream();
-        System.out.print((System.currentTimeMillis() - start) + "ms\n");
+        logger.debug((System.currentTimeMillis() - start) + "ms");
         return is;
     }
 
     public static void main(String[] args) {
-        System.out.println("args[0] = path to save the records file");
-        System.out.println("args[1] = biocache service URL");
+        logger.info("args[0] = path to save the records file");
+        logger.info("args[1] = biocache service URL");
 
         if (args.length > 0) {
             Records.download(args[0], args[1]);
@@ -274,6 +261,7 @@ public class Records {
     }
 
     public static void download(String dir, String biocacheServiceUrl) {
+        BufferedOutputStream bos = null;
         try {
             //split by longitude
             for (int i = -180; i < 180; i++) {
@@ -289,23 +277,42 @@ public class Records {
             }
 
             //join
-            BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(dir));
+            bos = new BufferedOutputStream(new FileOutputStream(dir));
             for (int i = -180; i < 180; i++) {
-                BufferedReader br = new BufferedReader(new FileReader(dir + "." + i));
+                BufferedReader br = null;
+                try {
+                    br = new BufferedReader(new FileReader(dir + "." + i));
 
-                String line;
-                while ((line = br.readLine()) != null) {
-                    bos.write(line.getBytes());
-                    bos.write("\n".getBytes());
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        bos.write(line.getBytes());
+                        bos.write("\n".getBytes());
+                    }
+
+                    FileUtils.deleteQuietly(new File(dir + "." + i));
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                } finally {
+                    if (br != null) {
+                        try {
+                            br.close();
+                        } catch (Exception e) {
+                            logger.error(e.getMessage(), e);
+                        }
+                    }
                 }
-
-                FileUtils.deleteQuietly(new File(dir + "." + i));
-
-                br.close();
             }
-            bos.close();
+            bos.flush();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (bos != null) {
+                try {
+                    bos.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 
@@ -348,8 +355,15 @@ public class Records {
                     is = getUrlStream(url);
                     csv = new CSVReader(new InputStreamReader(new GZIPInputStream(is)));
                 } catch (Exception e) {
-                    System.out.println("failed try " + tryCount + " of " + maxTrys + ": " + url);
-                    e.printStackTrace();
+                    logger.error("failed try " + tryCount + " of " + maxTrys + ": " + url, e);
+                } finally {
+                    if (is != null) {
+                        try {
+                            is.close();
+                        } catch (Exception e) {
+                            logger.error(e.getMessage(), e);
+                        }
+                    }
                 }
             }
 
@@ -388,7 +402,7 @@ public class Records {
                             header[3] = i;
                         }
                     }
-                    System.out.println("header info:" + header[0] + "," + header[1] + "," + header[2] + "," + header[3]);
+                    logger.info("header info:" + header[0] + "," + header[1] + "," + header[2] + "," + header[3]);
                 } else {
                     if (line.length >= 3) {
                         try {
@@ -443,7 +457,7 @@ public class Records {
             lsids[e.getValue()] = e.getKey();
         }
 
-        System.out.println("Got " + getRecordsSize() + " records of " + getSpeciesSize() + " species");
+        logger.info("Got " + getRecordsSize() + " records of " + getSpeciesSize() + " species");
     }
 
     public String getSpecies(int pos) {

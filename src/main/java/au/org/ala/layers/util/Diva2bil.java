@@ -1,20 +1,21 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.util;
 
 import au.org.ala.layers.intersect.IniReader;
+import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.nio.ByteBuffer;
@@ -22,10 +23,12 @@ import java.nio.ByteOrder;
 
 public class Diva2bil {
 
+    private static final Logger logger = Logger.getLogger(Diva2bil.class);
+
     static public void main(String[] args) {
         if (args.length < 2) {
-            System.out.println("diva to hdr bil.\n\n");
-            System.out.println("args[0] = diva grid (without .grd or .gri)\n"
+            logger.info("diva to hdr bil.\n\n");
+            logger.info("args[0] = diva grid (without .grd or .gri)\n"
                     + "args[1] = bil (.bil and .hdr appended)\n");
             return;
         }
@@ -35,6 +38,10 @@ public class Diva2bil {
 
     static public boolean diva2bil(String divaFilename, String bilFilename) {
         boolean ret = true;
+
+        FileInputStream fis = null;
+        FileOutputStream fos = null;
+        FileWriter fw = null;
 
         try {
             File dataFile = new File(divaFilename + ".gri");
@@ -54,7 +61,7 @@ public class Diva2bil {
             String type = getType(ir.getStringValue("Data", "DataType"));
             int nbytes = getByteCount(type);
 
-            FileWriter fw = new FileWriter(bilFilename + ".hdr");
+            fw = new FileWriter(bilFilename + ".hdr");
             fw.append("BYTEORDER      I\n");
             fw.append("LAYOUT         BIL\n");
             fw.append("NROWS      " + nrows + "\n");
@@ -69,25 +76,44 @@ public class Diva2bil {
             fw.append("XDIM      " + xdiv + "\n");
             fw.append("YDIM      " + ydiv + "\n");
             fw.append("NODATA      " + nodatavalue + "\n");
-
-            fw.close();
-
+            fw.flush();
 
             //copy gri to bil
-            FileInputStream fis = new FileInputStream(dataFile);
-            FileOutputStream fos = new FileOutputStream(bilFilename + ".bil");
+            fis = new FileInputStream(dataFile);
+            fos = new FileOutputStream(bilFilename + ".bil");
             byte[] buf = new byte[1024 * 1024];
             int len;
             while ((len = fis.read(buf)) > 0) {
                 fos.write(buf, 0, len);
             }
-            fis.close();
-            fos.close();
+            fos.flush();
 
-            System.out.println("finished\n");
+            logger.info("finished");
         } catch (Exception e) {
             ret = false;
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
+            if (fos != null) {
+                try {
+                    fos.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
+            if (fw != null) {
+                try {
+                    fw.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
         return ret;
     }
@@ -146,7 +172,7 @@ public class Diva2bil {
         } else if (datatype.equals("REAL")) {
             datatype = "FLOAT";
         } else {
-            System.out.println("GRID unknown type: " + datatype);
+            logger.info("GRID unknown type: " + datatype);
             datatype = "UNKNOWN";
         }
 
@@ -179,12 +205,12 @@ public class Diva2bil {
         double[] minmax = new double[2];
         minmax[0] = Double.NaN;
         minmax[1] = Double.NaN;
+        RandomAccessFile raf = null;
         try {
-            RandomAccessFile raf = new RandomAccessFile(bilFile, "r");
+            raf = new RandomAccessFile(bilFile, "r");
             byte[] b = new byte[(int) raf.length()];
             raf.read(b);
             ByteBuffer bb = ByteBuffer.wrap(b);
-            raf.close();
 
             if (byteOrder == null || byteOrder.equals("m")) {
                 bb.order(ByteOrder.BIG_ENDIAN);
@@ -253,10 +279,10 @@ public class Diva2bil {
                     updateMinMax(minmax, bb.getDouble(), missingValue);
                 }
             } else {
-                System.out.println("UNKNOWN TYPE: " + datatype);
+                logger.error("UNKNOWN TYPE: " + datatype);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
 
         return minmax;

@@ -1,21 +1,22 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.grid;
 
 import au.org.ala.layers.intersect.Grid;
 import com.vividsolutions.jts.geom.*;
+import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -26,6 +27,8 @@ import java.util.Map;
  * @author Adam
  */
 public class Envelope {
+
+    private static final Logger logger = Logger.getLogger(Envelope.class);
 
     /**
      * Get a grid envelope as WKT.
@@ -75,7 +78,7 @@ public class Envelope {
                         String s = geomIntersect.getGeometryN(i).toText().replace(", ", ",");
                         sb.append(s.substring(14, s.length() - 1));
                     } else if (geomIntersect.getGeometryN(i) instanceof GeometryCollection) {
-                        System.out.println("GridCacheReader.getGridEnvelopeAsWkt not processed: GeometryCollection inside of GeometryCollection");
+                        logger.debug("GridCacheReader.getGridEnvelopeAsWkt not processed: GeometryCollection inside of GeometryCollection");
                     }
                 }
                 sb.append(")");
@@ -126,7 +129,7 @@ public class Envelope {
                             polygons.add((Polygon) mp.getGeometryN(j));
                         }
                     } else if (geomIntersect.getGeometryN(i) instanceof GeometryCollection) {
-                        System.out.println("GridCacheReader.getGridEnvelopeAsMultiPolygon not processed: GeometryCollection inside of GeometryCollection");
+                        logger.debug("GridCacheReader.getGridEnvelopeAsMultiPolygon not processed: GeometryCollection inside of GeometryCollection");
                     }
                 }
             }
@@ -185,7 +188,7 @@ public class Envelope {
                         String s = geomIntersect.getGeometryN(i).toText().replace(", ", ",");
                         os.write(s.substring(14, s.length() - 1).getBytes());
                     } else if (geomIntersect.getGeometryN(i) instanceof GeometryCollection) {
-                        System.out.println("GridCacheReader.getGridEnvelopeAsWkt not processed: GeometryCollection inside of GeometryCollection");
+                        logger.debug("GridCacheReader.getGridEnvelopeAsWkt not processed: GeometryCollection inside of GeometryCollection");
                     }
                 }
                 os.write(")".getBytes());

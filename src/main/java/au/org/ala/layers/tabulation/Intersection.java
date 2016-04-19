@@ -6,6 +6,7 @@ import com.vividsolutions.jts.geom.MultiPolygon;
 import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.io.WKTReader;
 import org.apache.commons.io.FileUtils;
+import org.apache.log4j.Logger;
 import org.geotools.data.*;
 import org.geotools.data.shapefile.ShapefileDataStore;
 import org.geotools.data.shapefile.ShapefileDataStoreFactory;
@@ -35,10 +36,12 @@ import java.util.zip.ZipInputStream;
  */
 public class Intersection {
 
+    private static final Logger logger = Logger.getLogger(Intersection.class);
+
     private static LinkedBlockingQueue<String> lbqWriter = new LinkedBlockingQueue<String>();
 
     public static void main(String[] args) {
-        System.out.println("produces a shapefile with the intersection.\r\n" +
+        logger.info("produces a shapefile with the intersection.\r\n" +
                 "usage: shapefile1 shapefile2 outputShapefile");
 
 
@@ -48,8 +51,10 @@ public class Intersection {
     }
 
     static void intersectionZipToShapefile(File intersectionZip, File shapeFile) {
+        ZipInputStream zis = null;
+        ShapefileDataStore newDataStore = null;
         try {
-            ZipInputStream zis = new ZipInputStream(new FileInputStream(intersectionZip));
+            zis = new ZipInputStream(new FileInputStream(intersectionZip));
             ZipEntry ze = zis.getNextEntry();
 
             InputStreamReader isr = new InputStreamReader(zis);
@@ -89,7 +94,7 @@ public class Intersection {
             params.put("url", shapeFile.toURI().toURL());
             params.put("create spatial index", Boolean.TRUE);
 
-            ShapefileDataStore newDataStore = (ShapefileDataStore) dataStoreFactory.createNewDataStore(params);
+            newDataStore = (ShapefileDataStore) dataStoreFactory.createNewDataStore(params);
             newDataStore.createSchema(type);
 
             newDataStore.forceSchemaCRS(DefaultGeographicCRS.WGS84);
@@ -116,10 +121,23 @@ public class Intersection {
                     transaction.close();
                 }
             }
-
-            zis.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (zis != null) {
+                try {
+                    zis.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
+            if (newDataStore != null) {
+                try {
+                    newDataStore.dispose();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 
@@ -179,7 +197,7 @@ public class Intersection {
      * @param filenames2
      */
     public static void intersectShapefiles(String filename1, List filenames2, String outputDir) {
-        System.out.println("intersectShapefiles START");
+        logger.info("intersectShapefiles START");
         DataStore dataStore1 = null;
         DataStore dataStore2 = null;
         FeatureIterator iterator1 = null;
@@ -200,12 +218,11 @@ public class Intersection {
 
             iterator1 = source1.getFeatures().features();
 
-            System.out.println(filename1 + ": shape count=" + source1.getCount(Query.ALL));
+            logger.info(filename1 + ": shape count=" + source1.getCount(Query.ALL));
 
             int count1 = 0;
 
             List geoms1 = new ArrayList();
-            // List pgeoms1 = new ArrayList();
             List ids1 = new ArrayList();
             while (iterator1.hasNext()) {
                 count1++;
@@ -225,11 +242,10 @@ public class Intersection {
                     try {
                         if (glist[n].getArea() > 0) {
                             geoms1.add(glist[n]);
-                            //pgeoms1.add(PreparedGeometryFactory.prepare(glist[n]));
                             ids1.add(feature1.getID());
                         }
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        logger.error(e.getMessage(), e);
                     }
                 }
             }
@@ -246,7 +262,7 @@ public class Intersection {
                     dataStore2 = DataStoreFinder.getDataStore(map2);
                     String typeName2 = dataStore2.getTypeNames()[0];
                     source2 = dataStore2.getFeatureSource(typeName2);
-                    System.out.println((String) filenames2.get(h) + ": shape count=" + source2.getCount(Query.ALL));
+                    logger.info((String) filenames2.get(h) + ": shape count=" + source2.getCount(Query.ALL));
 
                     //fetch all feature 2 bounding boxes
                     iterator2 = source2.getFeatures().features();
@@ -270,16 +286,15 @@ public class Intersection {
 
                             i += 4;
                         } catch (Exception e) {
-                            e.printStackTrace(System.out);
+                            logger.error(e.getMessage(), e);
                         }
                     }
 
 
-                    System.out.println("bounding box compare");
+                    logger.info("bounding box compare");
                     //compare to all in (2)
                     for (int n = 0; n < geoms1.size(); n++) {
                         Geometry geom1 = (Geometry) geoms1.get(n);
-                        //PreparedGeometry pg1 = PreparedGeometryFactory.prepare(geom1);
                         Envelope e = geom1.getEnvelopeInternal();
 
                         for (int j = 0; j < g2.length; j++) {
@@ -294,21 +309,19 @@ public class Intersection {
                                 newtask[2] = null;
                                 newtask[3] = ids1.get(n);
                                 newtask[4] = id2[j];
-                                //newtask[5] = pgeoms1.get(n);
-                                //newtask[6] = pg2[j];
 
                                 lbq.put(newtask);
                             }
                         }
                     }
 
-                } catch (Exception err) {
-                    err.printStackTrace();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
                 } finally {
                     if (iterator2 != null) iterator2.close();
                     if (dataStore2 != null) dataStore2.dispose();
                 }
-                System.out.println("comparisons required: " + lbq.size());
+                logger.info("comparisons required: " + lbq.size());
 
                 //wait until finished
                 final CountDownLatch cdl = new CountDownLatch(lbq.size());
@@ -333,7 +346,7 @@ public class Intersection {
 
                                     Geometry geom1 = (Geometry) ((Geometry) os[0]).clone();
                                     Geometry g2 = (Geometry) ((Geometry) os[1]).clone();
-                                    
+
                                     String id1 = (String) os[3];
                                     String id2 = (String) os[4];
 
@@ -353,7 +366,7 @@ public class Intersection {
                             } catch (InterruptedException e) {
 
                             } catch (Exception e) {
-                                e.printStackTrace();
+                                logger.error(e.getMessage(), e);
                                 cdl.countDown();
                             }
                         }
@@ -364,40 +377,69 @@ public class Intersection {
 
                 cdl.await();
 
-                BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(outf));
+                BufferedOutputStream bos = null;
 
-                for (int j = 0; j < threads.length; j++) {
-                    threads[j].interrupt();
-                    outputWriters.get(j).flush();
-                    outputWriters.get(j).close();
+                try {
+                    bos = new BufferedOutputStream(new FileOutputStream(outf));
 
-                    File f = new File(outf.getPath() + "." + j);
-                    BufferedInputStream bis = new BufferedInputStream(new FileInputStream(f));
-                    byte[] bytes = new byte[1024];
-                    int len = 0;
-                    while ((len = bis.read(bytes)) > 0) {
-                        bos.write(bytes, 0, len);
+                    for (int j = 0; j < threads.length; j++) {
+                        threads[j].interrupt();
+
+                        try {
+                            outputWriters.get(j).flush();
+                            outputWriters.get(j).close();
+                        } catch (Exception e) {
+                            logger.error(e.getMessage(), e);
+                        }
+
+                        File f = new File(outf.getPath() + "." + j);
+                        BufferedInputStream bis = null;
+                        try {
+                            bis = new BufferedInputStream(new FileInputStream(f));
+                            byte[] bytes = new byte[1024];
+                            int len = 0;
+                            while ((len = bis.read(bytes)) > 0) {
+                                bos.write(bytes, 0, len);
+                            }
+                        } catch (Exception e) {
+                            logger.error(e.getMessage(), e);
+                        } finally {
+                            if (bis != null) {
+                                try {
+                                    bis.close();
+                                } catch (Exception e) {
+                                    logger.error(e.getMessage(), e);
+                                }
+                            }
+                        }
+                        f.delete();
                     }
-                    bis.close();
-                    f.delete();
+
+                    bos.flush();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                } finally {
+                    if (bos != null) {
+                        try {
+                            bos.close();
+                        } catch (Exception e) {
+                            logger.error(e.getMessage(), e);
+                        }
+                    }
                 }
 
-
-                bos.flush();
-                bos.close();
-
-                System.out.println("total time: " + outf.getName() + " = " + (System.currentTimeMillis() - startTime) + "ms");
+                logger.info("total time: " + outf.getName() + " = " + (System.currentTimeMillis() - startTime) + "ms");
                 //zip
                 try {
                     ZipUtil.zip(outZip.getPath(), new String[]{outf.getPath()});
                     FileUtils.deleteQuietly(outf);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    logger.error(e.getMessage(), e);
                 }
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         } finally {
             if (iterator1 != null) iterator1.close();
             if (dataStore1 != null) dataStore1.dispose();

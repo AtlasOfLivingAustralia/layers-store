@@ -1,16 +1,16 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.dao;
 
@@ -56,7 +56,6 @@ import java.sql.SQLException;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipInputStream;
 
 /**
@@ -106,15 +105,6 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
      * log4j logger
      */
     private static final Logger logger = Logger.getLogger(ObjectDAOImpl.class);
-    private SimpleJdbcTemplate jdbcTemplate;
-    @Resource(name = "layerIntersectDao")
-    private LayerIntersectDAO layerIntersectDao;
-    private ApplicationContext applicationContext;
-
-    @Resource(name = "dataSource")
-    public void setDataSource(DataSource dataSource) {
-        this.jdbcTemplate = new SimpleJdbcTemplate(dataSource);
-    }
 
     static {
         String polygonSld = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><StyledLayerDescriptor xmlns=\"http://www.opengis.net/sld\">" + "<NamedLayer><Name>ALA:" + SUB_LAYERNAME + "</Name>"
@@ -143,9 +133,18 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
 
     }
 
+    private SimpleJdbcTemplate jdbcTemplate;
+    @Resource(name = "layerIntersectDao")
+    private LayerIntersectDAO layerIntersectDao;
+    private ApplicationContext applicationContext;
+
+    @Resource(name = "dataSource")
+    public void setDataSource(DataSource dataSource) {
+        this.jdbcTemplate = new SimpleJdbcTemplate(dataSource);
+    }
+
     @Override
     public List<Objects> getObjects() {
-        // return hibernateTemplate.find("from Objects");
         logger.info("Getting a list of all objects");
         String sql = "select o.pid as pid, o.id as id, o.name as name, o.desc as description, o.fid as fid, " +
                 "f.name as fieldname from objects o, fields f where o.fid = f.id";
@@ -161,10 +160,10 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
 
     public void writeObjectsToCSV(OutputStream output, String fid) throws Exception {
         String sql = MessageFormat.format("COPY (select o.pid as pid, o.id as id, o.name as name, " +
-                    "o.desc as description, " +
-                    "ST_AsText(ST_Centroid(o.the_geom)) as centroid, " +
-                    "GeometryType(o.the_geom) as featureType from objects o " +
-                    "where o.fid = ''{0}'') TO STDOUT WITH CSV HEADER", fid);
+                "o.desc as description, " +
+                "ST_AsText(ST_Centroid(o.the_geom)) as centroid, " +
+                "GeometryType(o.the_geom) as featureType from objects o " +
+                "where o.fid = ''{0}'') TO STDOUT WITH CSV HEADER", fid);
 
         DataSource ds = (DataSource) applicationContext.getBean("dataSource");
         Connection conn = DataSourceUtils.getConnection(ds);
@@ -231,8 +230,9 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
                             break;
                         }
                     } else { // polygon pid
+                        RandomAccessFile raf = null;
                         try {
-                            RandomAccessFile raf = new RandomAccessFile(file, "r");
+                            raf = new RandomAccessFile(file, "r");
                             long itemSize = (4 + 4 + 4 * 4 + 4);
                             long len = raf.length() / itemSize; // group
 
@@ -289,10 +289,16 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
                                     }
                                 }
                             }
-                            raf.close();
-
                         } catch (Exception e) {
                             logger.error(e.getMessage(), e);
+                        } finally {
+                            if (raf != null) {
+                                try {
+                                    raf.close();
+                                } catch (Exception e) {
+                                    logger.error(e.getMessage(), e);
+                                }
+                            }
                         }
 
                         if (pageSize != -1 && pos >= start + pageSize) {
@@ -373,14 +379,27 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
 
                                 File file = new File(f.getFilePath() + File.separator + s[1] + "." + geomtype + ".zip");
                                 if ((f.getType().equals("a") || s.length == 2) && file.exists()) {
-                                    ZipInputStream zis = new ZipInputStream(new FileInputStream(file));
-                                    zis.getNextEntry();
-                                    byte[] buffer = new byte[1024];
-                                    int size;
-                                    while ((size = zis.read(buffer)) > 0) {
-                                        os.write(buffer, 0, size);
+                                    ZipInputStream zis = null;
+                                    try {
+                                        zis = new ZipInputStream(new FileInputStream(file));
+
+                                        zis.getNextEntry();
+                                        byte[] buffer = new byte[1024];
+                                        int size;
+                                        while ((size = zis.read(buffer)) > 0) {
+                                            os.write(buffer, 0, size);
+                                        }
+                                    } catch (Exception e) {
+                                        logger.error(e.getMessage(), e);
+                                    } finally {
+                                        if (zis != null) {
+                                            try {
+                                                zis.close();
+                                            } catch (Exception e) {
+                                                logger.error(e.getMessage(), e);
+                                            }
+                                        }
                                     }
-                                    zis.close();
                                 } else { // polygon
                                     BufferedInputStream bis = null;
                                     InputStreamReader isr = null;
@@ -470,8 +489,6 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
 
     @Override
     public Objects getObjectByPid(String pid) {
-        // List<Objects> l =
-        // hibernateTemplate.find("from Objects where pid = ?", pid);
         logger.info("Getting object info for pid = " + pid);
         String sql = "select o.pid, o.id, o.name, o.desc as description, o.fid as fid, f.name as fieldname, " +
                 "o.bbox, o.area_km from objects o, fields f where o.pid = ? and o.fid = f.id";
@@ -926,7 +943,7 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
         return jdbcTemplate.queryForInt(sql, objectPid);
     }
 
-    public void setApplicationContext(ApplicationContext applicationContext)  throws BeansException {
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         this.applicationContext = applicationContext;
     }
 }

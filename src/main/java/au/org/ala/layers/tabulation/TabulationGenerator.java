@@ -1,16 +1,16 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.tabulation;
 
@@ -20,7 +20,6 @@ import au.org.ala.layers.dao.LayerDAO;
 import au.org.ala.layers.dao.LayerIntersectDAO;
 import au.org.ala.layers.dao.ObjectDAO;
 import au.org.ala.layers.dto.*;
-import au.org.ala.layers.dto.Objects;
 import au.org.ala.layers.intersect.Grid;
 import au.org.ala.layers.intersect.SimpleRegion;
 import au.org.ala.layers.intersect.SimpleShapeFile;
@@ -51,7 +50,7 @@ import java.util.zip.ZipInputStream;
  */
 public class TabulationGenerator {
 
-    private static final Logger LOGGER = Logger.getLogger(TabulationGenerator.class);
+    private static final Logger logger = Logger.getLogger(TabulationGenerator.class);
     static int CONCURRENT_THREADS = 6;
     static String db_url = "jdbc:postgresql://localhost:5432/layersdb";
     static String db_usr = "postgres";
@@ -84,7 +83,7 @@ public class TabulationGenerator {
                 closed = connection.isClosed();
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
 
         if (connection == null || closed) {
@@ -95,8 +94,7 @@ public class TabulationGenerator {
                 conn = DriverManager.getConnection(url, db_usr, db_pwd);
 
             } catch (Exception e) {
-                System.out.println("Unable to create Connection");
-                e.printStackTrace(System.out);
+                logger.error("Unable to create Connection", e);
             }
             connection = conn;
         }
@@ -105,7 +103,7 @@ public class TabulationGenerator {
     }
 
     static public void main(String[] args) throws IOException {
-        System.out.println("args[0] = threadcount," + "\nargs[1] = db connection string," +
+        logger.info("args[0] = threadcount," + "\nargs[1] = db connection string," +
                 "\n args[2] = db username," + "\n args[3] = password,"
                 + "\n args[4] = (optional) specify one step to run, " +
                 "'1' pair objects, '3' delete invalid objects, '4' area, '5' occurrences, '6' grid x grid comparisons"
@@ -119,7 +117,7 @@ public class TabulationGenerator {
         }
 
         if (args.length < 5) {
-            System.out.println("all");
+            logger.info("all");
 
             updatePairObjects();
 
@@ -127,25 +125,25 @@ public class TabulationGenerator {
 
             long start = System.currentTimeMillis();
             while (updateArea() > 0) {
-                System.out.println("time since start= " + (System.currentTimeMillis() - start) + "ms");
+                logger.info("time since start= " + (System.currentTimeMillis() - start) + "ms");
             }
         } else if (args[4].equals("1")) {
-            System.out.println("1");
+            logger.info("1");
             updatePairObjects();
         } else if (args[4].equals("2")) {
-            System.out.println("2");
+            logger.info("2");
             // updateSingleObjects();
         } else if (args[4].equals("3")) {
-            System.out.println("3");
+            logger.info("3");
             deleteInvalidObjects();
         } else if (args[4].equals("4")) {
-            System.out.println("4");
+            logger.info("4");
             long start = System.currentTimeMillis();
             while (updateArea() > 0) {
-                System.out.println("time since start= " + (System.currentTimeMillis() - start) + "ms");
+                logger.info("time since start= " + (System.currentTimeMillis() - start) + "ms");
             }
         } else if (args[4].equals("5")) {
-            System.out.println("5");
+            logger.info("5");
             // some init
             FieldDAO fieldDao = Client.getFieldDao();
             LayerDAO layerDao = Client.getLayerDao();
@@ -153,22 +151,22 @@ public class TabulationGenerator {
             LayerIntersectDAO layerIntersectDao = Client.getLayerIntersectDao();
 
             // test fieldDao
-            System.out.println("TEST: " + fieldDao.getFields());
-            System.out.println("RECORDS FILE: " + args[5]);
+            logger.info("TEST: " + fieldDao.getFields());
+            logger.info("RECORDS FILE: " + args[5]);
 
             File f = new File(args[5]);
             if (f.exists()) {
                 Records records = new Records(f.getAbsolutePath());
                 // while (updateOccurrencesSpecies(records) > 0) {
-                // System.out.println("time since start= " +
+                // logger.info("time since start= " +
                 // (System.currentTimeMillis() - start) + "ms");
                 // }
                 updateOccurrencesSpecies2(records, CONCURRENT_THREADS, null);
             } else {
-                System.out.println("Please provide a valid path to the species occurrence file");
+                logger.info("Please provide a valid path to the species occurrence file");
             }
         } else if (args[4].equals("6")) {
-            System.out.println("6");
+            logger.info("6");
 
             // some init
             FieldDAO fieldDao = Client.getFieldDao();
@@ -177,15 +175,15 @@ public class TabulationGenerator {
             LayerIntersectDAO layerIntersectDao = Client.getLayerIntersectDao();
 
             // test fieldDao
-            System.out.println("TEST: " + fieldDao.getFields());
-            System.out.println("RECORDS FILE: " + args[5]);
+            logger.info("TEST: " + fieldDao.getFields());
+            logger.info("RECORDS FILE: " + args[5]);
 
             File f = new File(args[5]);
             if (f.exists()) {
                 Records records = new Records(f.getAbsolutePath());
                 updatePairObjectsGridToGrid(records);
             } else {
-                System.out.println("Please provide a valid path to the species occurrence file");
+                logger.info("Please provide a valid path to the species occurrence file");
             }
         }
 
@@ -193,7 +191,7 @@ public class TabulationGenerator {
             try {
                 connection.close();
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
         }
     }
@@ -215,14 +213,14 @@ public class TabulationGenerator {
             try {
                 recordsOne = new Records(f.getAbsolutePath());
             } catch (IOException e) {
-                LOGGER.error("failed to open records file: " + recordsFilePath, e);
+                logger.error("failed to open records file: " + recordsFilePath, e);
             }
 
             updateOccurrencesSpecies2(recordsOne, CONCURRENT_THREADS, null);
 
             updatePairObjectsGridToGrid(recordsOne);
         } else {
-            System.out.println("Please provide a valid path to the species occurrence file");
+            logger.info("Please provide a valid path to the species occurrence file");
         }
     }
 
@@ -241,7 +239,7 @@ public class TabulationGenerator {
                 rs1 = s1.executeQuery(sql);
             }
         } catch (Exception e) {
-            LOGGER.error("error waiting for running tabulations to finish");
+            logger.error("error waiting for running tabulations to finish");
         }
     }
 
@@ -284,7 +282,7 @@ public class TabulationGenerator {
                 //domain test
                 if (isSameDomain(parseDomain(rs1.getString("domain1")), parseDomain(rs1.getString("domain2")))) {
                     //if (f1.exists() && f2.exists() && f1.length() < 50 * 1024 * 1024 && f2.length() < 50 * 1024 * 1024) {
-                    System.out.println("will do tabulation on: " + rs1.getString("fid1") + ", " + rs1.getString("fid2"));
+                    logger.info("will do tabulation on: " + rs1.getString("fid1") + ", " + rs1.getString("fid2"));
                     data.add(rs1.getString("fid1") + "," + rs1.getString("fid2"));
                     // } else {
                     //for gridToGrid
@@ -294,7 +292,7 @@ public class TabulationGenerator {
             rs1.close();
             s1.close();
 
-            System.out.println("next " + data.size());
+            logger.info("next " + data.size());
 
             int size = data.size();
 
@@ -308,8 +306,8 @@ public class TabulationGenerator {
                 threads[j] = new DistributionThread(data);
                 threads[j].start();
             }
-        } catch (Exception ex) {
-            ex.printStackTrace();
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
         }
     }
 
@@ -363,136 +361,148 @@ public class TabulationGenerator {
                     if (f1.exists() && f2.exists() && f1.length() < 50 * 1024 * 1024 && f2.length() < 50 * 1024 * 1024) {
                         // for shape comparisons
                     } else {
-                        System.out.println("gridToGrid: " + rs1.getString("fid1") + ", " + rs1.getString("fid2"));
+                        logger.info("gridToGrid: " + rs1.getString("fid1") + ", " + rs1.getString("fid2"));
                         // for gridToGrid
                         sql = gridToGrid(rs1.getString("fid1"), rs1.getString("fid2"), records);
                         s2.execute(sql);
                     }
                 }
             }
-        } catch (Exception ex) {
-            ex.printStackTrace();
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
         }
     }
 
-    public static String gridToGrid(String fieldId1, String fieldId2, Records records) throws IOException {
-        FileWriter fw = new FileWriter(fieldId1 + "_" + fieldId2 + ".sql");
-
-        List<Double> resolutions = Client.getLayerIntersectDao().getConfig().getAnalysisResolutions();
-        Double resolution = resolutions.get(0);
-
-        // check if resolution needs changing
-        resolution = Double.parseDouble(confirmResolution(new String[]{fieldId1, fieldId2}, String.valueOf(resolution)));
-        System.out.println("RESOLUTION: " + resolution);
-
-        // get extents for all layers
-        double[][] field1Extents = getLayerExtents(String.valueOf(resolution), fieldId1);
-        System.out.println("Extents for " + fieldId1 + ": " + field1Extents);
-
-        double[][] field2Extents = getLayerExtents(String.valueOf(resolution), fieldId2);
-        System.out.println("Extents for " + fieldId2 + ": " + field2Extents);
-
-        double[][] extents = internalExtents(field1Extents, field2Extents);
-        System.out.println("Internal extents: " + extents);
-        if (!isValidExtents(extents)) {
-            System.out.println("Warning, no overlap between grids: " + fieldId1 + " and " + fieldId2);
-            return null;
-        }
-
-        // get mask and adjust extents for filter
-        int width = 0, height = 0;
-        System.out.println("resolution: " + resolution);
-        height = (int) Math.ceil((extents[1][1] - extents[0][1]) / resolution);
-        width = (int) Math.ceil((extents[1][0] - extents[0][0]) / resolution);
-
-        // prep grid files
-        String pth1 = getLayerPath("" + resolution, fieldId1);
-        String pth2 = getLayerPath("" + resolution, fieldId2);
-        System.out.println("PATH 1: " + pth1);
-        System.out.println("PATH 2: " + pth2);
-        Grid grid1 = new Grid(pth1);
-        Grid grid2 = new Grid(pth2);
-        Properties p1 = new Properties();
-        p1.load(new FileReader(pth1 + ".txt"));
-        Properties p2 = new Properties();
-        p2.load(new FileReader(pth2 + ".txt"));
-
-        // pids
-        List<Objects> objects1 = Client.getObjectDao().getObjectsById(fieldId1);
-        List<Objects> objects2 = Client.getObjectDao().getObjectsById(fieldId2);
-
-        // get pids for properties entries
-        for (Entry<Object, Object> entry : p1.entrySet()) {
-            for (Objects o : objects1) {
-                if ((o.getId() == null && entry.getValue() == null) || (o.getId() != null && entry.getValue() != null && o.getId().equalsIgnoreCase(((String) entry.getValue())))) {
-                    entry.setValue(o.getPid());
-                    break;
-                }
-            }
-        }
-        for (Entry<Object, Object> entry : p2.entrySet()) {
-            for (Objects o : objects2) {
-                if ((o.getId() == null && entry.getValue() == null) || (o.getId() != null && entry.getValue() != null && o.getId().equalsIgnoreCase(((String) entry.getValue())))) {
-                    entry.setValue(o.getPid());
-                    break;
-                }
-            }
-        }
-
-        HashMap<String, Pair> map = new HashMap<String, Pair>();
-
-        // sample on species
-        if (records != null) {
-            for (int i = 0; i < records.getRecordsSize(); i++) {
-                // get v1 & v2
-                int v1 = (int) grid1.getValues3(new double[][]{{records.getLongitude(i), records.getLatitude(i)}}, 1024 * 1024)[0];
-                int v2 = (int) grid2.getValues3(new double[][]{{records.getLongitude(i), records.getLatitude(i)}}, 1024 * 1024)[0];
-                String key = v1 + " " + v2;
-                Pair p = map.get(key);
-                if (p == null) {
-                    p = new Pair(key);
-                    map.put(key, p);
-                }
-                p.species.set(records.getSpeciesNumber(i));
-                p.occurrences++;
-            }
-        }
-
-        // build intersections by category pairs
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                // area
-                int v1 = (int) grid1.getValues3(new double[][]{{extents[0][0] + resolution * i, extents[0][1] + resolution * j}}, 40960)[0];
-                int v2 = (int) grid2.getValues3(new double[][]{{extents[0][0] + resolution * i, extents[0][1] + resolution * j}}, 40960)[0];
-                String key = v1 + " " + v2;
-                Pair p = map.get(key);
-                if (p == null) {
-                    p = new Pair(key);
-                    map.put(key, p);
-                }
-                p.area += SpatialUtil.cellArea(resolution, extents[0][1] + resolution * j) * 1000000; // convert
-                // sqkm
-                // to
-                // sqm
-            }
-        }
-
-        // sql statements to put pairs into tabulation
+    public static String gridToGrid(String fieldId1, String fieldId2, Records records) {
+        FileWriter fw = null;
         StringBuilder sb = new StringBuilder();
-        for (Entry<String, Pair> p : map.entrySet()) {
-            if (p1.get(p.getValue().v1) != null && p2.get(p.getValue().v2) != null) {
-                String sql = "INSERT INTO tabulation (fid1, fid2, pid1, pid2, area, occurrences, species) VALUES " + "('" + fieldId1 + "','" + fieldId2 + "'," + "'" + p1.get(p.getValue().v1) + "','"
-                        + p2.get(p.getValue().v2) + "'," + p.getValue().area + "," + p.getValue().occurrences + "," + p.getValue().species.cardinality() + ");";
 
-                sb.append(sql);
+        try {
+            fw = new FileWriter(fieldId1 + "_" + fieldId2 + ".sql");
 
-                fw.write(sql);
-                fw.write("\n");
-                fw.flush();
+            List<Double> resolutions = Client.getLayerIntersectDao().getConfig().getAnalysisResolutions();
+            Double resolution = resolutions.get(0);
+
+            // check if resolution needs changing
+            resolution = Double.parseDouble(confirmResolution(new String[]{fieldId1, fieldId2}, String.valueOf(resolution)));
+            logger.info("RESOLUTION: " + resolution);
+
+            // get extents for all layers
+            double[][] field1Extents = getLayerExtents(String.valueOf(resolution), fieldId1);
+            logger.info("Extents for " + fieldId1 + ": " + field1Extents);
+
+            double[][] field2Extents = getLayerExtents(String.valueOf(resolution), fieldId2);
+            logger.info("Extents for " + fieldId2 + ": " + field2Extents);
+
+            double[][] extents = internalExtents(field1Extents, field2Extents);
+            logger.info("Internal extents: " + extents);
+            if (!isValidExtents(extents)) {
+                logger.info("Warning, no overlap between grids: " + fieldId1 + " and " + fieldId2);
+                return null;
+            }
+
+            // get mask and adjust extents for filter
+            int width = 0, height = 0;
+            logger.info("resolution: " + resolution);
+            height = (int) Math.ceil((extents[1][1] - extents[0][1]) / resolution);
+            width = (int) Math.ceil((extents[1][0] - extents[0][0]) / resolution);
+
+            // prep grid files
+            String pth1 = getLayerPath("" + resolution, fieldId1);
+            String pth2 = getLayerPath("" + resolution, fieldId2);
+            logger.info("PATH 1: " + pth1);
+            logger.info("PATH 2: " + pth2);
+            Grid grid1 = new Grid(pth1);
+            Grid grid2 = new Grid(pth2);
+            Properties p1 = new Properties();
+            p1.load(new FileReader(pth1 + ".txt"));
+            Properties p2 = new Properties();
+            p2.load(new FileReader(pth2 + ".txt"));
+
+            // pids
+            List<Objects> objects1 = Client.getObjectDao().getObjectsById(fieldId1);
+            List<Objects> objects2 = Client.getObjectDao().getObjectsById(fieldId2);
+
+            // get pids for properties entries
+            for (Entry<Object, Object> entry : p1.entrySet()) {
+                for (Objects o : objects1) {
+                    if ((o.getId() == null && entry.getValue() == null) || (o.getId() != null && entry.getValue() != null && o.getId().equalsIgnoreCase(((String) entry.getValue())))) {
+                        entry.setValue(o.getPid());
+                        break;
+                    }
+                }
+            }
+            for (Entry<Object, Object> entry : p2.entrySet()) {
+                for (Objects o : objects2) {
+                    if ((o.getId() == null && entry.getValue() == null) || (o.getId() != null && entry.getValue() != null && o.getId().equalsIgnoreCase(((String) entry.getValue())))) {
+                        entry.setValue(o.getPid());
+                        break;
+                    }
+                }
+            }
+
+            HashMap<String, Pair> map = new HashMap<String, Pair>();
+
+            // sample on species
+            if (records != null) {
+                for (int i = 0; i < records.getRecordsSize(); i++) {
+                    // get v1 & v2
+                    int v1 = (int) grid1.getValues3(new double[][]{{records.getLongitude(i), records.getLatitude(i)}}, 1024 * 1024)[0];
+                    int v2 = (int) grid2.getValues3(new double[][]{{records.getLongitude(i), records.getLatitude(i)}}, 1024 * 1024)[0];
+                    String key = v1 + " " + v2;
+                    Pair p = map.get(key);
+                    if (p == null) {
+                        p = new Pair(key);
+                        map.put(key, p);
+                    }
+                    p.species.set(records.getSpeciesNumber(i));
+                    p.occurrences++;
+                }
+            }
+
+            // build intersections by category pairs
+            for (int i = 0; i < width; i++) {
+                for (int j = 0; j < height; j++) {
+                    // area
+                    int v1 = (int) grid1.getValues3(new double[][]{{extents[0][0] + resolution * i, extents[0][1] + resolution * j}}, 40960)[0];
+                    int v2 = (int) grid2.getValues3(new double[][]{{extents[0][0] + resolution * i, extents[0][1] + resolution * j}}, 40960)[0];
+                    String key = v1 + " " + v2;
+                    Pair p = map.get(key);
+                    if (p == null) {
+                        p = new Pair(key);
+                        map.put(key, p);
+                    }
+                    p.area += SpatialUtil.cellArea(resolution, extents[0][1] + resolution * j) * 1000000; // convert
+                    // sqkm
+                    // to
+                    // sqm
+                }
+            }
+
+            // sql statements to put pairs into tabulation
+            for (Entry<String, Pair> p : map.entrySet()) {
+                if (p1.get(p.getValue().v1) != null && p2.get(p.getValue().v2) != null) {
+                    String sql = "INSERT INTO tabulation (fid1, fid2, pid1, pid2, area, occurrences, species) VALUES " + "('" + fieldId1 + "','" + fieldId2 + "'," + "'" + p1.get(p.getValue().v1) + "','"
+                            + p2.get(p.getValue().v2) + "'," + p.getValue().area + "," + p.getValue().occurrences + "," + p.getValue().species.cardinality() + ");";
+
+                    sb.append(sql);
+
+                    fw.write(sql);
+                    fw.write("\n");
+                    fw.flush();
+                }
+            }
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (fw != null) {
+                try {
+                    fw.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
             }
         }
-
-        fw.close();
 
         return sb.toString();
     }
@@ -549,61 +559,74 @@ public class TabulationGenerator {
         }
 
         //iterate over shpIntersectionFile
-        ZipInputStream zis = new ZipInputStream(new FileInputStream(shpIntersectionFile));
-        ZipEntry ze = zis.getNextEntry();
-        InputStreamReader isr = new InputStreamReader(zis);
-        BufferedReader br = new BufferedReader(isr);
-        String id1;
-        String id2;
-        String wkt;
-        while ((id1 = br.readLine()) != null) {
-            id2 = br.readLine();
-            wkt = br.readLine();
+        ZipInputStream zis = null;
+        try {
+            zis = new ZipInputStream(new FileInputStream(shpIntersectionFile));
+            ZipEntry ze = zis.getNextEntry();
+            InputStreamReader isr = new InputStreamReader(zis);
+            BufferedReader br = new BufferedReader(isr);
+            String id1;
+            String id2;
+            String wkt;
+            while ((id1 = br.readLine()) != null) {
+                id2 = br.readLine();
+                wkt = br.readLine();
 
-            String key = p1.get(id1) + " " + p2.get(id2);
-            Pair p = map.get(key);
-            if (p == null) {
-                p = new Pair(key);
-                map.put(key, p);
+                String key = p1.get(id1) + " " + p2.get(id2);
+                Pair p = map.get(key);
+                if (p == null) {
+                    p = new Pair(key);
+                    map.put(key, p);
+                }
+                p.area += SpatialUtil.calculateArea(wkt);
+
+                WKTReader wktReader = new WKTReader();
+                Geometry geom = wktReader.read(wkt);
+                if (p.geom == null) {
+                    p.geom = geom;
+                } else {
+                    p.geom = p.geom.union(geom);
+                }
             }
-            p.area += SpatialUtil.calculateArea(wkt);
 
-            WKTReader wktReader = new WKTReader();
-            Geometry geom = wktReader.read(wkt);
-            if (p.geom == null) {
-                p.geom = geom;
-            } else {
-                p.geom = p.geom.union(geom);
+            //map (objectId => pid)
+            List<Objects> objects1 = Client.getObjectDao().getObjectsById(fieldId1);
+            List<Objects> objects2 = Client.getObjectDao().getObjectsById(fieldId2);
+            Map<String, String> pids1 = new HashMap<String, String>();
+            Map<String, String> pids2 = new HashMap<String, String>();
+            for (Objects o : objects1) {
+                pids1.put(o.getId(), o.getPid());
             }
-        }
+            for (Objects o : objects2) {
+                pids2.put(o.getId(), o.getPid());
+            }
 
-        //map (objectId => pid)
-        List<Objects> objects1 = Client.getObjectDao().getObjectsById(fieldId1);
-        List<Objects> objects2 = Client.getObjectDao().getObjectsById(fieldId2);
-        Map<String, String> pids1 = new HashMap<String, String>();
-        Map<String, String> pids2 = new HashMap<String, String>();
-        for (Objects o : objects1) {
-            pids1.put(o.getId(), o.getPid());
-        }
-        for (Objects o : objects2) {
-            pids2.put(o.getId(), o.getPid());
-        }
+            // sql statements to put pairs into tabulation
+            StringBuilder sb = new StringBuilder();
+            for (Entry<String, Pair> p : map.entrySet()) {
+                if (p1.get(p.getValue().v1) != null && p2.get(p.getValue().v2) != null) {
+                    String sql = "INSERT INTO tabulation (fid1, fid2, pid1, pid2, the_geom, area, occurrences, species) VALUES " +
+                            "('" + fieldId1 + "','" + fieldId2 + "'," + "'" +
+                            pids1.get(p.getValue().v1) + "','" +
+                            pids2.get(p.getValue().v2) + "'," +
+                            "ST_GEOMFROMTEXT('" + p.getValue().geom.toText() + "', 4326)," +
+                            p.getValue().area + "," +
+                            p.getValue().occurrences + "," +
+                            p.getValue().species.cardinality() + ");";
 
-        // sql statements to put pairs into tabulation
-        StringBuilder sb = new StringBuilder();
-        for (Entry<String, Pair> p : map.entrySet()) {
-            if (p1.get(p.getValue().v1) != null && p2.get(p.getValue().v2) != null) {
-                String sql = "INSERT INTO tabulation (fid1, fid2, pid1, pid2, the_geom, area, occurrences, species) VALUES " +
-                        "('" + fieldId1 + "','" + fieldId2 + "'," + "'" +
-                        pids1.get(p.getValue().v1) + "','" +
-                        pids2.get(p.getValue().v2) + "'," +
-                        "ST_GEOMFROMTEXT('" + p.getValue().geom.toText() + "', 4326)," +
-                        p.getValue().area + "," +
-                        p.getValue().occurrences + "," +
-                        p.getValue().species.cardinality() + ");";
-
-                //sql can get large due to WKT. Execute here.
-                jdbcTemplate.update(sql);
+                    //sql can get large due to WKT. Execute here.
+                    jdbcTemplate.update(sql);
+                }
+            }
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (zis != null) {
+                try {
+                    zis.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
             }
         }
     }
@@ -633,7 +656,7 @@ public class TabulationGenerator {
                 resolution = resolutions.firstEntry().getValue();
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
         return resolution;
     }
@@ -648,16 +671,6 @@ public class TabulationGenerator {
 
         return internalExtents;
     }
-
-//    private static byte[][] getMask(double res, double[][] extents, int w, int h) {
-//        byte[][] mask = new byte[h][w];
-//        for (int i = 0; i < h; i++) {
-//            for (int j = 0; j < w; j++) {
-//                mask[i][j] = 1;
-//            }
-//        }
-//        return mask;
-//    }
 
     static boolean isValidExtents(double[][] e) {
         return e[0][0] < e[1][0] && e[0][1] < e[1][1];
@@ -689,7 +702,7 @@ public class TabulationGenerator {
                 for (File dir : new File(analysisLayerDir).listFiles()) {
                     if (dir.isDirectory()) {
                         try {
-                            System.out.println(dir.getName());
+                            logger.info(dir.getName());
                             resolutionDirs.put(Double.parseDouble(dir.getName()), dir.getName());
                         } catch (Exception e) {
                         }
@@ -714,12 +727,12 @@ public class TabulationGenerator {
             return layerPath;
         } else {
             // look for an analysis layer
-            System.out.println("getLayerPath, not a default layer, checking analysis output for: " + layer);
+            logger.info("getLayerPath, not a default layer, checking analysis output for: " + layer);
             String[] info = Client.getLayerIntersectDao().getConfig().getAnalysisLayerInfo(layer);
             if (info != null) {
                 return info[1];
             } else {
-                System.out.println("getLayerPath, cannot find for: " + layer + ", " + resolution);
+                logger.info("getLayerPath, cannot find for: " + layer + ", " + resolution);
                 return null;
             }
         }
@@ -741,76 +754,15 @@ public class TabulationGenerator {
         return field;
     }
 
-    // private static void updateSingleObjects() {
-    // Connection conn = null;
-    // try {
-    // conn = getConnection();
-    // String allFidPairs =
-    // "SELECT id as fid1 FROM fields f WHERE f.intersect=true";
-    // String existingFidPairs =
-    // "SELECT fid1 FROM tabulation WHERE fid2 = '' GROUP BY fid1";
-    // String newFidPairs = "SELECT a.fid1 FROM (" + allFidPairs +
-    // ") a LEFT JOIN (" + existingFidPairs + ") b "
-    // + "ON a.fid1=b.fid1 WHERE b.fid1 is null group by a.fid1";
-    // String sql = newFidPairs;
-    // Statement s1 = conn.createStatement();
-    // ResultSet rs1 = s1.executeQuery(sql);
-    //
-    // LinkedBlockingQueue<String> data = new LinkedBlockingQueue<String>();
-    // while (rs1.next()) {
-    // data.put(rs1.getString("fid1"));
-    // }
-    //
-    // System.out.println("next " + data.size());
-    //
-    // int size = data.size();
-    //
-    // if (size == 0) {
-    // return;
-    // }
-    //
-    // CountDownLatch cdl = new CountDownLatch(data.size());
-    //
-    // SingleDistributionThread[] threads = new
-    // SingleDistributionThread[CONCURRENT_THREADS];
-    // for (int j = 0; j < CONCURRENT_THREADS; j++) {
-    // threads[j] = new
-    // SingleDistributionThread(getConnection().createStatement(), data, cdl);
-    // threads[j].start();
-    // }
-    //
-    // cdl.await();
-    //
-    // for (int j = 0; j < CONCURRENT_THREADS; j++) {
-    // try {
-    // threads[j].s.getConnection().close();
-    // } catch (Exception e) {
-    // e.printStackTrace();
-    // }
-    // threads[j].interrupt();
-    // }
-    //
-    // } catch (Exception ex) {
-    // ex.printStackTrace();
-    // } finally {
-    // if(conn != null) {
-    // try {
-    // conn.close();
-    // } catch (Exception e) {
-    // e.printStackTrace();
-    // }
-    // }
-    // }
-    // }
     private static int updateArea() {
         Connection conn = null;
         try {
             conn = getConnection();
             String sql = "SELECT pid1, pid2, ST_AsText(the_geom) as wkt FROM tabulation WHERE pid1 is not null AND area is null " + " limit 100";
             if (conn == null) {
-                System.out.println("connection is null");
+                logger.info("connection is null");
             } else {
-                System.out.println("connection is not null");
+                logger.info("connection is not null");
             }
             Statement s1 = conn.createStatement();
             ResultSet rs1 = s1.executeQuery(sql);
@@ -820,7 +772,7 @@ public class TabulationGenerator {
                 data.add(new String[]{rs1.getString("pid1"), rs1.getString("pid2"), rs1.getString("wkt")});
             }
 
-            System.out.println("next " + data.size());
+            logger.info("next " + data.size());
 
             int size = data.size();
 
@@ -836,7 +788,7 @@ public class TabulationGenerator {
 
             return size;
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
 
         return 0;
@@ -886,7 +838,7 @@ public class TabulationGenerator {
                     Layer l = layerDao.getLayerById(Integer.valueOf(f.getSpid()));
                     String filename = layerIntersectDao.getConfig().getLayerFilesPath() + File.separator + l.getPath_orig();
 
-                    System.out.println(filename);
+                    logger.info(filename);
 
                     //shapefile
                     File shp = new File(filename + ".shp");
@@ -929,7 +881,7 @@ public class TabulationGenerator {
                             } else {
                                 tmp = new File(path + "/" + f.getId() + "_sample");
                             }
-                            System.out.println("**** tmp file **** > " + tmp.getPath());
+                            logger.info("**** tmp file **** > " + tmp.getPath());
                             fields.add(f);
                             files.add(tmp);
                             fw = new FileWriter(tmp);
@@ -945,15 +897,15 @@ public class TabulationGenerator {
                                     }
                                 }
                             }
-                            System.out.println("**** OK ***** > " + l.getPath_orig());
+                            logger.debug("**** OK ***** > " + l.getPath_orig());
                         } catch (Exception e) {
-                            System.out.println("problem with sampling: " + l.getPath_orig());
-                            e.printStackTrace();
+                            logger.error("problem with sampling: " + l.getPath_orig(), e);
                         } finally {
                             if (fw != null) {
                                 try {
                                     fw.close();
                                 } catch (Exception e) {
+                                    logger.error(e.getMessage(), e);
                                 }
                             }
                         }
@@ -973,7 +925,7 @@ public class TabulationGenerator {
                                 } else {
                                     tmp = new File(path + "/" + f.getId() + "_sample");
                                 }
-                                System.out.println("**** tmp file **** > " + tmp.getPath());
+                                logger.debug("**** tmp file **** > " + tmp.getPath());
                                 fields.add(f);
                                 files.add(tmp);
                                 fw = new FileWriter(tmp);
@@ -989,23 +941,22 @@ public class TabulationGenerator {
                                         }
                                     }
                                 }
-                                System.out.println("**** OK ***** > " + l.getPath_orig());
+                                logger.debug("**** OK ***** > " + l.getPath_orig());
                             } catch (Exception e) {
-                                System.out.println("problem with sampling: " + l.getPath_orig());
-                                e.printStackTrace();
+                                logger.error("problem with sampling: " + l.getPath_orig(), e);
                             } finally {
                                 if (fw != null) {
                                     try {
                                         fw.close();
                                     } catch (Exception e) {
+                                        logger.error(e.getMessage(), e);
                                     }
                                 }
                             }
                         }
                     }
                 } catch (Exception e) {
-                    System.out.println("problem with sampling: " + f.getId());
-                    e.printStackTrace();
+                    logger.error("problem with sampling: " + f.getId(), e);
                 }
             }
         }
@@ -1022,7 +973,7 @@ public class TabulationGenerator {
                 String[] s1 = loadFile(files.get(i), pts.size());
 
                 String fid1 = files.get(i).getName().split("_")[0];
-                
+
                 for (int j = i + 1; j < fields.size(); j++) {
                     // load file for j
                     String[] s2 = loadFile(files.get(j), pts.size());
@@ -1030,7 +981,7 @@ public class TabulationGenerator {
                     String fid2 = files.get(j).getName().split("_")[0];
 
                     // compare
-                    System.out.println("|" + fid1 + "," + fid2);
+                    logger.info("|" + fid1 + "," + fid2);
                     ArrayList<String> sqlUpdates = compare(records, pointIdx, s1, s2, fid1, fid2);
 
                     // batch
@@ -1041,7 +992,7 @@ public class TabulationGenerator {
 
                     // commit
                     statement.execute(sb.toString());
-                    System.out.println(sb.toString());
+                    logger.debug(sb.toString());
                 }
             }
 
@@ -1051,29 +1002,37 @@ public class TabulationGenerator {
 
             if (path == null) {
                 for (int i = 0; i < files.size(); i++) {
-                    System.out.println("FILE: " + files.get(i).getPath());
+                    logger.info("FILE: " + files.get(i).getPath());
                     files.get(i).delete();
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
         return 0;
     }
 
     static String[] loadFile(File f, int size) {
         String[] s = new String[size];
+        BufferedReader br = null;
         try {
-            BufferedReader br = new BufferedReader(new FileReader(f));
+            br = new BufferedReader(new FileReader(f));
             String line;
             int i = 0;
             while ((line = br.readLine()) != null) {
                 s[i] = line;
                 i++;
             }
-            br.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (br != null) {
+                try {
+                    br.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
 
         return s;
@@ -1086,7 +1045,7 @@ public class TabulationGenerator {
             conn = getConnection();
             conn.createStatement().execute(sql);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
     }
 
@@ -1134,8 +1093,6 @@ public class TabulationGenerator {
             occurrences.put(key, count);
         }
 
-        System.out.print("|" + countNa);
-
         // produce sql update statements
         for (String k : species.keySet()) {
             String[] pids = k.split(" ");
@@ -1169,31 +1126,29 @@ public class TabulationGenerator {
         field1Extents[1][0] = grid1.xmax;
         field1Extents[0][1] = grid1.ymin;
         field1Extents[1][1] = grid1.ymax;
-        System.out.println("Extents for " + fid + ": " + field1Extents);
+        logger.info("Extents for " + fid + ": " + field1Extents);
 
         SimpleRegion sr = SimpleShapeFile.parseWKT(wkt);
         double[][] field2Extents = sr.getBoundingBox();
 
         double[][] extents = internalExtents(field1Extents, field2Extents);
-        System.out.println("Internal extents: " + extents);
+        logger.info("Internal extents: " + extents);
         if (!isValidExtents(extents)) {
-            System.out.println("Warning, no overlap between grids: " + fid);
+            logger.info("Warning, no overlap between grids: " + fid);
             return tabulations;
         }
 
         // get mask and adjust extents for filter
         int width = 0, height = 0;
-        System.out.println("resolution: " + resolution);
+        logger.info("resolution: " + resolution);
         height = (int) Math.ceil((extents[1][1] - extents[0][1]) / resolution);
         width = (int) Math.ceil((extents[1][0] - extents[0][0]) / resolution);
 
-
-        //grid1.getGrid();
         Properties p1 = new Properties();
         try {
             p1.load(new FileReader(f.getFilePath() + ".txt"));
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
 
         HashMap<String, Pair> map = new HashMap<String, Pair>();
@@ -1239,6 +1194,8 @@ public class TabulationGenerator {
 
 class DistributionThread extends Thread {
 
+    private static final Logger logger = Logger.getLogger(DistributionThread.class);
+
     ConcurrentLinkedQueue<String> queue;
     CountDownLatch cdl;
 
@@ -1263,53 +1220,25 @@ class DistributionThread extends Thread {
                         + "ST_Intersects(ST_ENVELOPE(o1.the_geom), ST_ENVELOPE(o2.the_geom));";
                 //fetch
 
-                System.out.println("start: " + fid1 + "," + fid2);
+                logger.info("start: " + fid1 + "," + fid2);
                 long start = System.currentTimeMillis();
                 PreparedStatement ps = TabulationGenerator.getConnection().prepareStatement(sql);
                 int update = ps.executeUpdate();
                 long end = System.currentTimeMillis();
-                System.out.println("processed: " + fid1 + "," + fid2 + " in " + (end - start) / 1000 + "s (" + update + ") rows");
-                System.out.println(sql);
+                logger.info("processed: " + fid1 + "," + fid2 + " in " + (end - start) / 1000 + "s (" + update + ") rows");
+                logger.info(sql);
                 ps.close();
 
             }
-        } catch (Exception ex) {
-            ex.printStackTrace();
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
         }
     }
 }
 
-//class SingleDistributionThread extends Thread {
-//
-//    Statement s;
-//    LinkedBlockingQueue<String> lbq;
-//    CountDownLatch cdl;
-//
-//    public SingleDistributionThread(Statement s, LinkedBlockingQueue<String> lbq, CountDownLatch cdl) {
-//        this.s = s;
-//        this.lbq = lbq;
-//        this.cdl = cdl;
-//    }
-//
-//    @Override
-//    public void run() {
-//        while (true) {
-//            try {
-//                String fid = lbq.take();
-//
-//                String single_column_sql = "INSERT INTO tabulation (fid1, pid1, fid2, pid2, the_geom) " + "SELECT fid, pid, '', '', the_geom FROM objects WHERE fid='" + fid + "'";
-//
-//                s.executeUpdate(single_column_sql);
-//
-//            } catch (Exception ex) {
-//                ex.printStackTrace();
-//            }
-//            cdl.countDown();
-//        }
-//    }
-//}
-
 class AreaThread extends Thread {
+
+    private static final Logger logger = Logger.getLogger(AreaThread.class);
 
     Statement s;
     ConcurrentLinkedQueue<String[]> queue;
@@ -1332,101 +1261,10 @@ class AreaThread extends Thread {
             }
             s.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
     }
 }
-
-/*
- * class OccurrencesSpeciesThread extends Thread {
- * 
- * Statement s; LinkedBlockingQueue<String[]> lbq; CountDownLatch cdl;
- * 
- * public OccurrencesSpeciesThread(LinkedBlockingQueue<String[]> lbq,
- * CountDownLatch cdl, Statement s) { this.s = s; this.cdl = cdl; this.lbq =
- * lbq; }
- * 
- * @Override public void run() { try { while (true) {
- * 
- * try { String[] data = lbq.take(); Records records = new
- * Records("/Users/fan03c/biochache_records/biochache_records.csv", data[2]);
- * int occurrences = records.getRecordsSize(); int species =
- * records.getSpeciesSize();
- * 
- * String sqlUpdate = "UPDATE tabulation SET occurrences = " + occurrences +
- * ", species = " + species + " WHERE pid1='" + data[0] + "' AND pid2='" +
- * data[1] + "';";
- * 
- * int update = s.executeUpdate(sqlUpdate);
- * 
- * } catch (InterruptedException e) { break; } catch (Exception e) {
- * e.printStackTrace(); } cdl.countDown(); } } catch (Exception e) {
- * e.printStackTrace(); } } }
- */
-
-//class OccurrencesSpeciesThread extends Thread {
-//
-//    Statement s;
-//    LinkedBlockingQueue<String[]> lbq;
-//    CountDownLatch cdl;
-//    Records r;
-//
-//    public OccurrencesSpeciesThread(LinkedBlockingQueue<String[]> lbq, CountDownLatch cdl, Statement s, Records r) {
-//        this.s = s;
-//        this.cdl = cdl;
-//        this.lbq = lbq;
-//        this.r = r;
-//    }
-//
-//    @Override
-//    public void run() {
-//        try {
-//            while (true) {
-//
-//                try {
-//                    String[] data = lbq.take();
-//
-//                    SimpleRegion areaWorking = SimpleShapeFile.parseWKT(data[2]);
-//                    int recordsLength = r.getRecordsSize();
-//                    int occurrences = 0;
-//
-//                    /*
-//                     * ArrayList<String> speciesName = new ArrayList<String>();
-//                     * for (int i = 0;i < recordsLength;i++){ double longitude =
-//                     * r.getLongitude(i); double latitude = r.getLatitude(i); if
-//                     * (areaWorking.isWithin(longitude, latitude)){
-//                     * occurrences++; if
-//                     * (speciesName.contains(r.getSpecies(i))==false){
-//                     * speciesName.add(r.getSpecies(i)); } } } int species =
-//                     * speciesName.size();
-//                     */
-//                    BitSet speciesSet = new BitSet(r.getSpeciesSize());
-//                    for (int i = 0; i < recordsLength; i++) {
-//                        double longitude = r.getLongitude(i);
-//                        double latitude = r.getLatitude(i);
-//                        if (areaWorking.isWithin(longitude, latitude)) {
-//                            occurrences++;
-//                            speciesSet.set(r.getSpeciesNumber(i));
-//                        }
-//                    }
-//                    int species = speciesSet.cardinality();
-//
-//                    String sqlUpdate = "UPDATE tabulation SET occurrences = " + occurrences + ", species = " + species + " WHERE pid1='" + data[0] + "' AND pid2='" + data[1] + "';";
-//
-//                    int update = s.executeUpdate(sqlUpdate);
-//
-//                } catch (InterruptedException e) {
-//                    break;
-//                } catch (Exception e) {
-//                    e.printStackTrace();
-//                }
-//                cdl.countDown();
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//    }
-//}
 
 class Pair {
 

@@ -5,6 +5,7 @@
 package au.org.ala.layers.legend;
 
 import au.org.ala.layers.intersect.Grid;
+import org.apache.log4j.Logger;
 import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
@@ -41,6 +42,7 @@ public abstract class Legend implements Serializable {
      */
     final public static int[] colours = {0x00002DD0, 0x00005BA2, 0x00008C73, 0x0000B944, 0x0000E716, 0x00A0FF00, 0x00FFFF00, 0x00FFC814, 0x00FFA000, 0x00FF5B00, 0x00FF0000};
     final static String LEGEND_KEY = "/legend_key.png";
+    private static final Logger logger = Logger.getLogger(Legend.class);
     /*
          * for determining the records that are equal to the maximum value
          */
@@ -295,7 +297,7 @@ public abstract class Legend implements Serializable {
                     cutoffMins[cutoffPos] = d[i];
                 }
                 if (d[i] > cutoffs[cutoffPos]) {
-                    System.out.println("WARNING: cutoff position " + cutoffs[cutoffPos] + " is < max value " + d[i]);
+                    logger.info("WARNING: cutoff position " + cutoffs[cutoffPos] + " is < max value " + d[i]);
                 }
             }
             grpSizes[cutoffPos]++;
@@ -347,7 +349,7 @@ public abstract class Legend implements Serializable {
         try {
             //adjust size
             while (scaleDownBy > 1 && (d.length / width / scaleDownBy < 50 || width / scaleDownBy < 50)) {
-                System.out.println("adjusting image size; points:" + d.length
+                logger.info("adjusting image size; points:" + d.length
                         + ", width: " + width / scaleDownBy + ", height: " + d.length / width / scaleDownBy);
 
                 scaleDownBy--;
@@ -393,7 +395,7 @@ public abstract class Legend implements Serializable {
             ImageIO.write(image, extension, new File(filename));
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
     }
 
@@ -463,7 +465,6 @@ public abstract class Legend implements Serializable {
      */
     public String getCutoffs() {
         StringBuffer sb = new StringBuffer();
-        //System.out.println(getTypeName());
         for (int i = 0; i < cutoffs.length; i++) {
             if (groupSizes != null && groupSizesArea != null) {
                 sb.append(String.valueOf(cutoffs[i])).append("\t").append(String.valueOf(groupSizes[i])).append("\t").append(String.valueOf(groupSizesArea[i])).append("\n");
@@ -484,12 +485,21 @@ public abstract class Legend implements Serializable {
      * @param filename
      */
     void exportLegend(String filename) {
+        FileWriter fw = null;
         try {
-            FileWriter fw = new FileWriter(filename);
+            fw = new FileWriter(filename);
             fw.append(getCutoffs());
-            fw.close();
+            fw.flush();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (fw != null) {
+                try {
+                    fw.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
 
     }
@@ -575,12 +585,21 @@ public abstract class Legend implements Serializable {
 
         sb.append(footer);
 
+        FileWriter fw = null;
         try {
-            FileWriter fw = new FileWriter(outputfilename);
+            fw = new FileWriter(outputfilename);
             fw.append(sb.toString());
-            fw.close();
+            fw.flush();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (fw != null) {
+                try {
+                    fw.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
 
     }
@@ -593,7 +612,7 @@ public abstract class Legend implements Serializable {
     public void generateLegend(String filename) {
         try {
             String path = Legend.class.getResource(LEGEND_KEY).getFile();
-            System.out.println("generating legend using key: " + path + " and producing output at " + filename);
+            logger.info("generating legend using key: " + path + " and producing output at " + filename);
             BufferedImage legendImage = ImageIO.read(new File(path));
             File ciOut = new File(filename);
             Graphics cg = legendImage.getGraphics();
@@ -621,8 +640,7 @@ public abstract class Legend implements Serializable {
 
             ImageIO.write(legendImage, "png", ciOut);
         } catch (Exception e) {
-            System.out.println("Unable to write legendImage:");
-            e.printStackTrace(System.out);
+            logger.error("Unable to write legendImage:", e);
         }
 
     }

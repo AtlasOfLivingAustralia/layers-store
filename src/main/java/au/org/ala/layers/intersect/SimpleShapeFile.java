@@ -1,18 +1,20 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.intersect;
+
+import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.nio.ByteBuffer;
@@ -39,6 +41,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class SimpleShapeFile extends Object implements Serializable {
 
     static final long serialVersionUID = -9046250209453575076L;
+    private static final Logger logger = Logger.getLogger(SimpleShapeFile.class);
     /**
      * .shp file header contents
      */
@@ -158,14 +161,22 @@ public class SimpleShapeFile extends Object implements Serializable {
      */
     static public ComplexRegion loadShapeInRegion(String filename, int idx) {
         ComplexRegion cr = null;
+        FileInputStream fis = null;
         try {
-            FileInputStream fis = new FileInputStream(filename + "_" + idx);
+            fis = new FileInputStream(filename + "_" + idx);
             BufferedInputStream bis = new BufferedInputStream(fis);
             ObjectInputStream ois = new ObjectInputStream(bis);
             cr = (ComplexRegion) ois.readObject();
-            ois.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
         return cr;
     }
@@ -271,9 +282,11 @@ public class SimpleShapeFile extends Object implements Serializable {
      * @return true when successful
      */
     public boolean loadRegion(String filename) {
+        boolean result = false;
         if (new File(filename).exists()) {
+            FileInputStream fis = null;
             try {
-                FileInputStream fis = new FileInputStream(filename);
+                fis = new FileInputStream(filename);
                 BufferedInputStream bis = new BufferedInputStream(fis);
                 ObjectInputStream ois = new ObjectInputStream(bis);
                 shapesreference = (ShapesReference) ois.readObject();
@@ -281,13 +294,21 @@ public class SimpleShapeFile extends Object implements Serializable {
                 singleLookup = (String[]) ois.readObject();
 
                 singleColumn = (short[]) ois.readObject();
-                ois.close();
-                return true;
+
+                result = true;
             } catch (Exception e) {
-                //e.printStackTrace();
+                logger.error(e.getMessage(), e);
+            } finally {
+                if (fis != null) {
+                    try {
+                        fis.close();
+                    } catch (Exception e) {
+                        logger.error(e.getMessage(), e);
+                    }
+                }
             }
         }
-        return false;
+        return result;
     }
 
     /**
@@ -428,7 +449,7 @@ public class SimpleShapeFile extends Object implements Serializable {
         try {
             cdl.await();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
 
         //end threads
@@ -517,7 +538,7 @@ public class SimpleShapeFile extends Object implements Serializable {
 class ShapeHeader extends Object implements Serializable {
 
     static final long serialVersionUID = 1219127870707511387L;
-
+    private static final Logger logger = Logger.getLogger(ShapeHeader.class);
     /* from .shp file header specification */
     int filecode;
     int filelength;
@@ -537,8 +558,9 @@ class ShapeHeader extends Object implements Serializable {
      * @param fileprefix
      */
     public ShapeHeader(String fileprefix) {
+        FileInputStream fis = null;
         try {
-            FileInputStream fis = new FileInputStream(fileprefix + ".shp");
+            fis = new FileInputStream(fileprefix + ".shp");
             FileChannel fc = fis.getChannel();
             ByteBuffer buffer = ByteBuffer.allocate(1024);        //header will be smaller
 
@@ -562,12 +584,17 @@ class ShapeHeader extends Object implements Serializable {
                 boundingbox[i] = buffer.getDouble();
             }
 
-            fis.close();
-
             isvalid = true;
         } catch (Exception e) {
-            System.out.println("loading header error: " + fileprefix + ": " + e.toString());
-            e.printStackTrace();
+            logger.error("loading header error: " + fileprefix + ": " + e.toString(), e);
+        } finally {
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 
@@ -648,6 +675,7 @@ class ShapeHeader extends Object implements Serializable {
 class ShapeRecords extends Object implements Serializable {
 
     static final long serialVersionUID = -8141403235810528840L;
+    private static final Logger logger = Logger.getLogger(ShapeRecords.class);
     /**
      * true if constructor was successful
      */
@@ -666,8 +694,9 @@ class ShapeRecords extends Object implements Serializable {
      */
     public ShapeRecords(String fileprefix, int shapetype) {
         isvalid = false;
+        FileInputStream fis = null;
         try {
-            FileInputStream fis = new FileInputStream(fileprefix + ".shp");
+            fis = new FileInputStream(fileprefix + ".shp");
             FileChannel fc = fis.getChannel();
             ByteBuffer buffer = ByteBuffer.allocate((int) fc.size() - 100);
 
@@ -702,12 +731,17 @@ class ShapeRecords extends Object implements Serializable {
                 }
             }
 
-            fis.close();
-
             isvalid = true;
         } catch (Exception e) {
-            System.out.println("loading shape records error: " + fileprefix + ": " + e.toString());
-            e.printStackTrace();
+            logger.error("loading shape records error: " + fileprefix + ": " + e.toString(), e);
+        } finally {
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 
@@ -746,6 +780,7 @@ class ShapeRecords extends Object implements Serializable {
 class ShapeRecord extends Object implements Serializable {
 
     static final long serialVersionUID = -4426292545633280160L;
+    private static final Logger logger = Logger.getLogger(ShapeRecord.class);
     int recordnumber;
     int contentlength;
     Shape shape;
@@ -768,7 +803,7 @@ class ShapeRecord extends Object implements Serializable {
                 shape = new PolygonZ(bb, contentlength);
                 break;
             default:
-                System.out.println("unknown shape type: " + shapetype);
+                logger.info("unknown shape type: " + shapetype);
         }
     }
 
@@ -1265,6 +1300,7 @@ class DBF extends Object implements Serializable {
 class DBFHeader extends Object implements Serializable {
 
     static final long serialVersionUID = -1807390252140128281L;
+    private static final Logger logger = Logger.getLogger(DBFHeader.class);
     /**
      * .dbf header fields (partial)
      */
@@ -1290,11 +1326,12 @@ class DBFHeader extends Object implements Serializable {
     public DBFHeader(String filename) {
 
         isvalid = false;
+        FileInputStream fis = null;
         try {
             int i;
 
             /* load whole file */
-            FileInputStream fis = new FileInputStream(filename);
+            fis = new FileInputStream(filename);
             FileChannel fc = fis.getChannel();
             ByteBuffer buffer = ByteBuffer.allocate((int) fc.size());
             fc.read(buffer);
@@ -1326,12 +1363,17 @@ class DBFHeader extends Object implements Serializable {
             }
             /* don't care dbc, skip */
 
-            fis.close();
-
             isvalid = true;
         } catch (Exception e) {
-            System.out.println("loading dbfheader error: " + filename + ": " + e.toString());
-            e.printStackTrace();
+            logger.error("loading dbfheader error: " + filename + ": " + e.toString(), e);
+        } finally {
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 
@@ -1442,6 +1484,7 @@ class DBFHeader extends Object implements Serializable {
 class DBFField extends Object implements Serializable {
 
     static final long serialVersionUID = 6130879839715559815L;
+    private static final Logger logger = Logger.getLogger(DBFField.class);
     /*
      * .dbf Field records (partial)
      */
@@ -1473,8 +1516,7 @@ class DBFField extends Object implements Serializable {
         try {
             name = (new String(ba, "US-ASCII")).trim().toUpperCase();
         } catch (Exception e) {
-            System.out.println(e.toString());
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
 
         byte[] ba2 = new byte[1];
@@ -1482,8 +1524,7 @@ class DBFField extends Object implements Serializable {
         try {
             type = (new String(ba2, "US-ASCII")).charAt(0);
         } catch (Exception e) {
-            System.out.println(e.toString());
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
 
         displacement = (0xFF & buffer.get()) + 256 * ((0xFF & buffer.get())
@@ -1553,6 +1594,7 @@ class DBFField extends Object implements Serializable {
 class DBFRecords extends Object implements Serializable {
 
     static final long serialVersionUID = -2450196133919654852L;
+    private static final Logger logger = Logger.getLogger(DBFRecords.class);
     /**
      * list of DBFRecord
      */
@@ -1572,10 +1614,11 @@ class DBFRecords extends Object implements Serializable {
         records = new ArrayList();
         isvalid = false;
 
+        FileInputStream fis = null;
         try {
             /* load all records */
-            System.out.println("start reading shapefile: " + filename);
-            FileInputStream fis = new FileInputStream(filename);
+            logger.info("start reading shapefile: " + filename);
+            fis = new FileInputStream(filename);
             FileChannel fc = fis.getChannel();
             ByteBuffer buffer = ByteBuffer.allocate((int) fc.size() - header.getRecordsOffset());
             fc.read(buffer, header.getRecordsOffset());
@@ -1591,12 +1634,17 @@ class DBFRecords extends Object implements Serializable {
                 i++;
             }
 
-            fis.close();
-
             isvalid = true;
         } catch (Exception e) {
-            System.out.println("loading records error: " + filename + ": " + e.toString());
-            e.printStackTrace();
+            logger.error("loading records error: " + filename + ": " + e.toString(), e);
+        } finally {
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 
@@ -1605,10 +1653,11 @@ class DBFRecords extends Object implements Serializable {
         records = new ArrayList();
         isvalid = false;
 
-        System.out.println("reading shapefile: " + filename);
+        logger.info("reading shapefile: " + filename);
+        FileInputStream fis = null;
         try {
             /* load all records */
-            FileInputStream fis = new FileInputStream(filename);
+            fis = new FileInputStream(filename);
             FileChannel fc = fis.getChannel();
             ByteBuffer buffer = ByteBuffer.allocate((int) fc.size() - header.getRecordsOffset());
             fc.read(buffer, header.getRecordsOffset());
@@ -1624,12 +1673,17 @@ class DBFRecords extends Object implements Serializable {
                 i++;
             }
 
-            fis.close();
-
             isvalid = true;
         } catch (Exception e) {
-            System.out.println("loading records error: " + filename + ": " + e.toString());
-            e.printStackTrace();
+            logger.error("loading records error: " + filename + ": " + e.toString(), e);
+        } finally {
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 
@@ -1929,6 +1983,8 @@ class ShapesReference extends Object implements Serializable {
 
 class IntersectionThread implements Runnable {
 
+    private static final Logger logger = Logger.getLogger(IntersectionThread.class);
+
     Thread t;
     ShapesReference shapesreference;
     PointPos[] points;
@@ -1964,7 +2020,7 @@ class IntersectionThread implements Runnable {
             while (true) {
                 start = lbq.take();
 
-                //System.out.println("A*: " + start.intValue());
+                //logger.info("A*: " + start.intValue());
 
                 int end = start.intValue() + step;
                 if (end > target.length) {
@@ -1985,7 +2041,7 @@ class IntersectionThread implements Runnable {
             }
         } catch (InterruptedException ie) {
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
     }
 

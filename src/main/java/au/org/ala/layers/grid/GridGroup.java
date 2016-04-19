@@ -1,20 +1,21 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.grid;
 
 import au.org.ala.layers.intersect.IniReader;
+import org.apache.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -29,6 +30,8 @@ import java.util.HashMap;
  * @author Adam
  */
 public class GridGroup {
+
+    private static final Logger logger = Logger.getLogger(GridGroup.class);
 
     public Boolean byteorderLSB;
     public int ncols, nrows;
@@ -154,57 +157,29 @@ public class GridGroup {
         }
     }
 
-    //    /**
-//     * buffering on top of RandomAccessFile
-//     *
-//     * @param afile
-//     * @param buffer
-//     * @param fileOffset
-//     * @param bufferPos
-//     * @param seekTo
-//     * @return
-//     */
-//    private void getBytes(RandomAccessFile raf, byte[] buffer, Long bufferOffset, long seekTo, byte[] dest) throws IOException {
-//        long relativePos = seekTo - bufferOffset;
-//        if (relativePos < 0) {
-//            raf.seek(seekTo);
-//            bufferOffset = seekTo;
-//            raf.read(buffer);
-//            for (int i = 0; i < dest.length; i++) {
-//                dest[i] = buffer[i];
-//            }
-//        } else if (relativePos >= 0 && relativePos < buffer.length) {
-//            for (int i = 0; i < dest.length; i++) {
-//                dest[i] = buffer[i + (int) relativePos];
-//            }
-//        } else if (relativePos - buffer.length < buffer.length) {
-//            bufferOffset += buffer.length;
-//            raf.read(buffer);
-//            int offset = (int) (relativePos - buffer.length);
-//            for (int i = 0; i < dest.length; i++) {
-//                dest[i] = buffer[i + offset];
-//            }
-//        } else {
-//            raf.seek(seekTo);
-//            bufferOffset = seekTo;
-//            raf.read(buffer);
-//            for (int i = 0; i < dest.length; i++) {
-//                dest[i] = buffer[i];
-//            }
-//        }
-//    }
     private void readHeader(String fname) throws IOException {
         names = new ArrayList<String>();
         files = new ArrayList<String>();
 
-        BufferedReader br = new BufferedReader(new FileReader(fname));
-        String line;
-        while ((line = br.readLine()) != null) {
-            names.add(line);
-            files.add(line);
+        BufferedReader br = null;
+        try {
+            br = new BufferedReader(new FileReader(fname));
+            String line;
+            while ((line = br.readLine()) != null) {
+                names.add(line);
+                files.add(line);
+            }
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (br != null) {
+                try {
+                    br.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
-
-        br.close();
 
         cellSize = names.size();
         cell = new float[cellSize];

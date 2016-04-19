@@ -197,12 +197,6 @@ public class Facet implements Serializable {
             } else {
                 //range
                 String[] n = v.toUpperCase().substring(1, v.length() - 1).split(" TO ");
-                /*
-                 * double[] d = {n[0].equals("*") ? Double.NEGATIVE_INFINITY : Double.parseDouble(n[0]),
-                n[1].equals("*") ? Double.POSITIVE_INFINITY : Double.parseDouble(n[1])};
-                facets[i] = new Facet(f, d[0], d[1], invert != (offset == 0));
-                 *
-                 */
                 facets[i] = new Facet(f, n[0], n[1], invert != (offset == 0));
             }
         }

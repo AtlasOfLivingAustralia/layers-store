@@ -40,8 +40,9 @@ public class Occurrences {
         if (isUserData) {
             String url = server + "/userdata/sample?q=" + q + "&fl=" + fields;
             logger.info("getting occurrences from : " + url);
+            InputStream is = null;
             try {
-                InputStream is = getUrlStream(url);
+                is = getUrlStream(url);
                 ZipInputStream zis = new ZipInputStream(is);
                 ZipEntry ze = zis.getNextEntry();
 
@@ -54,11 +55,17 @@ public class Occurrences {
 
                 String csv = IOUtils.toString(bab.toByteArray(), "UTF-8");
 
-                is.close();
-
                 output.append(csv);
             } catch (Exception e) {
                 logger.error("failed to get userdata as csv for url: " + url, e);
+            } finally {
+                if (is != null) {
+                    try {
+                        is.close();
+                    } catch (Exception e) {
+                        logger.error(e.getMessage(), e);
+                    }
+                }
             }
 
         } else {
@@ -76,6 +83,14 @@ public class Occurrences {
                         csv = IOUtils.toString(new GZIPInputStream(is));
                     } catch (Exception e) {
                         logger.warn("failed try " + tryCount + " of " + maxTrys + ": " + url, e);
+                    } finally {
+                        if (is != null) {
+                            try {
+                                is.close();
+                            } catch (Exception e) {
+                                logger.error(e.getMessage(), e);
+                            }
+                        }
                     }
                 }
 
@@ -101,11 +116,11 @@ public class Occurrences {
     }
 
     static InputStream getUrlStream(String url) throws IOException {
-        System.out.print("getting : " + url + " ... ");
+        logger.debug("getting : " + url + " ... ");
         long start = System.currentTimeMillis();
         URLConnection c = new URL(url).openConnection();
         InputStream is = c.getInputStream();
-        System.out.print((System.currentTimeMillis() - start) + "ms\n");
+        logger.debug((System.currentTimeMillis() - start) + "ms");
         return is;
     }
 }

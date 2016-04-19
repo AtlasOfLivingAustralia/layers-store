@@ -1,11 +1,11 @@
 /**
  * ************************************************************************
  * Copyright (C) 2010 Atlas of Living Australia All Rights Reserved.
- *
+ * <p>
  * The contents of this file are subject to the Mozilla Public License Version
  * 1.1 (the "License"); you may not use this file except in compliance with the
  * License. You may obtain a copy of the License at http://www.mozilla.org/MPL/
- *
+ * <p>
  * Software distributed under the License is distributed on an "AS IS" basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
  * the specific language governing rights and limitations under the License.
@@ -18,6 +18,7 @@ import au.org.ala.layers.grid.GridCutter;
 import au.org.ala.layers.intersect.Grid;
 import au.org.ala.layers.intersect.IntersectConfig;
 import org.apache.commons.io.FileUtils;
+import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.util.HashMap;
@@ -44,6 +45,158 @@ public class LayerDistanceIndex {
      * Actual file is located in workingdir set in alaspatial.properties.
      */
     final public static String LAYER_DISTANCE_FILE = "layerDistances.properties";
+    private static final Logger logger = Logger.getLogger(LayerDistanceIndex.class);
+
+    /**
+     * Entry to start updating a specific or all missing layer distances.
+     *
+     * @param args
+     * @throws InterruptedException
+     */
+    static public void main(String[] args) throws InterruptedException {
+        logger.info("args[0] = threadcount, e.g. 1");
+        logger.info("or");
+        logger.info("args[0] = threadcount, e.g. 1");
+        logger.info("args[1] = list of layer pairs to rerun, e.g. el813_el814,el813_el815,el814_el815");
+        if (args.length < 1) {
+            args = new String[]{"1"};//, "el1030_el1036","el1030_el775,el1036_el775"};
+        }
+        String[] pairs = null;
+        if (args.length >= 2) {
+            pairs = args[1].replace("_", " ").split(",");
+        }
+        LayerDistanceIndex ldi = new LayerDistanceIndex();
+        ldi.occurrencesUpdate(Integer.parseInt(args[0]), pairs);
+    }
+
+    /**
+     * Get all available inter layer association distances.
+     *
+     * @return Map of all available distances as Map&ltString, Double&gt. The
+     * key String is fieldId1 + " " + fieldId2 where fieldId1 &lt fieldId2.
+     */
+    static public Map<String, Double> loadDistances() {
+        Map<String, Double> map = new ConcurrentHashMap<String, Double>();
+        BufferedReader br = null;
+        try {
+            File file = new File(IntersectConfig.getAlaspatialOutputPath()
+                    + LAYER_DISTANCE_FILE);
+
+            //attempt to create empty file if it does not exist
+            if (!new File(IntersectConfig.getAlaspatialOutputPath()).exists()) {
+                new File(IntersectConfig.getAlaspatialOutputPath()).mkdirs();
+            }
+            if (!file.exists()) {
+                FileUtils.writeStringToFile(file, "");
+            }
+            br = new BufferedReader(new FileReader(file));
+
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.length() > 0) {
+                    String[] keyvalue = line.split("=");
+                    double d = Double.NaN;
+                    try {
+                        d = Double.parseDouble(keyvalue[1]);
+                    } catch (Exception e) {
+                        logger.info("cannot parse value in " + line);
+                    }
+                    map.put(keyvalue[0], d);
+                }
+            }
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (br != null) {
+                try {
+                    br.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
+        }
+
+        return map;
+    }
+
+    /**
+     * Convert a domains string to a list of domains.
+     *
+     * @param domain comma separated domain list as String.
+     * @return array of domains as String [].
+     */
+    static String[] parseDomain(String domain) {
+        if (domain == null || domain.length() == 0) {
+            return null;
+        }
+        String[] domains = domain.split(",");
+        for (int i = 0; i < domains.length; i++) {
+            domains[i] = domains[i].trim();
+        }
+        return domains;
+    }
+
+    /**
+     * Test if two domain arrays contain a common domain.
+     *
+     * @param domain1 list of domains as String []
+     * @param domain2 list of domains as String []
+     * @return true iff the domains overlap.
+     */
+    static boolean isSameDomain(String[] domain1, String[] domain2) {
+        if (domain1 == null || domain2 == null) {
+            return true;
+        }
+
+        for (String s1 : domain1) {
+            for (String s2 : domain2) {
+                if (s1.equalsIgnoreCase(s2)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public static void all() {
+        try {
+            LayerDistanceIndex ldi = new LayerDistanceIndex();
+            ldi.occurrencesUpdate(1, null);
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        }
+    }
+
+    public static void put(Map<String, Double> newDistances) {
+        FileWriter fw = null;
+        try {
+            //create distances file if it does not exist.
+            File layerDistancesFile = new File(IntersectConfig.getAlaspatialOutputPath()
+                    + LAYER_DISTANCE_FILE);
+            if (!layerDistancesFile.exists()) {
+                fw = new FileWriter(layerDistancesFile);
+                fw.close();
+            }
+
+            fw = new FileWriter(layerDistancesFile, true);
+            for (String key : newDistances.keySet()) {
+                fw.write(key + "=" + newDistances.get(key) + "\n");
+            }
+            fw.flush();
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        } finally {
+            if (fw != null) {
+                try {
+                    fw.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
+        }
+
+    }
 
     /**
      * @param threadcount    number of threads to run analysis.
@@ -58,11 +211,20 @@ public class LayerDistanceIndex {
         File layerDistancesFile = new File(IntersectConfig.getAlaspatialOutputPath()
                 + LAYER_DISTANCE_FILE);
         if (!layerDistancesFile.exists()) {
+            FileWriter fw = null;
             try {
-                FileWriter fw = new FileWriter(layerDistancesFile);
-                fw.close();
+                fw = new FileWriter(layerDistancesFile);
+                fw.flush();
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
+            } finally {
+                if (fw != null) {
+                    try {
+                        fw.close();
+                    } catch (Exception e) {
+                        logger.error(e.getMessage(), e);
+                    }
+                }
             }
         }
 
@@ -152,153 +314,12 @@ public class LayerDistanceIndex {
 
         toDiskThread.interrupt();
     }
-
-    /**
-     * Entry to start updating a specific or all missing layer distances.
-     *
-     * @param args
-     * @throws InterruptedException
-     */
-    static public void main(String[] args) throws InterruptedException {
-        System.out.println("args[0] = threadcount, e.g. 1");
-        System.out.println("or");
-        System.out.println("args[0] = threadcount, e.g. 1");
-        System.out.println("args[1] = list of layer pairs to rerun, e.g. el813_el814,el813_el815,el814_el815");
-        if (args.length < 1) {
-            args = new String[]{"1"};//, "el1030_el1036","el1030_el775,el1036_el775"};
-        }
-        String[] pairs = null;
-        if (args.length >= 2) {
-            pairs = args[1].replace("_", " ").split(",");
-        }
-        LayerDistanceIndex ldi = new LayerDistanceIndex();
-        ldi.occurrencesUpdate(Integer.parseInt(args[0]), pairs);
-    }
-
-    /**
-     * Get all available inter layer association distances.
-     *
-     * @return Map of all available distances as Map&ltString, Double&gt. The
-     * key String is fieldId1 + " " + fieldId2 where fieldId1 &lt fieldId2.
-     */
-    static public Map<String, Double> loadDistances() {
-        Map<String, Double> map = new ConcurrentHashMap<String, Double>();
-        BufferedReader br = null;
-        try {
-            File file = new File(IntersectConfig.getAlaspatialOutputPath()
-                    + LAYER_DISTANCE_FILE);
-
-            //attempt to create empty file if it does not exist
-            if (!new File(IntersectConfig.getAlaspatialOutputPath()).exists()) {
-                new File(IntersectConfig.getAlaspatialOutputPath()).mkdirs();
-            }
-            if (!file.exists()) {
-                FileUtils.writeStringToFile(file, "");
-            }
-            br = new BufferedReader(new FileReader(file));
-
-            String line;
-            while ((line = br.readLine()) != null) {
-                if (line.length() > 0) {
-                    String[] keyvalue = line.split("=");
-                    double d = Double.NaN;
-                    try {
-                        d = Double.parseDouble(keyvalue[1]);
-                    } catch (Exception e) {
-                        System.out.println("cannot parse value in " + line);
-                    }
-                    map.put(keyvalue[0], d);
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace(System.out);
-        } finally {
-            if (br != null) {
-                try {
-                    br.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        return map;
-    }
-
-    /**
-     * Convert a domains string to a list of domains.
-     *
-     * @param domain comma separated domain list as String.
-     * @return array of domains as String [].
-     */
-    static String[] parseDomain(String domain) {
-        if (domain == null || domain.length() == 0) {
-            return null;
-        }
-        String[] domains = domain.split(",");
-        for (int i = 0; i < domains.length; i++) {
-            domains[i] = domains[i].trim();
-        }
-        return domains;
-    }
-
-    /**
-     * Test if two domain arrays contain a common domain.
-     *
-     * @param domain1 list of domains as String []
-     * @param domain2 list of domains as String []
-     * @return true iff the domains overlap.
-     */
-    static boolean isSameDomain(String[] domain1, String[] domain2) {
-        if (domain1 == null || domain2 == null) {
-            return true;
-        }
-
-        for (String s1 : domain1) {
-            for (String s2 : domain2) {
-                if (s1.equalsIgnoreCase(s2)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    public static void all() {
-        try {
-            LayerDistanceIndex ldi = new LayerDistanceIndex();
-            ldi.occurrencesUpdate(1, null);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public static void put(Map<String, Double> newDistances) {
-        try {
-            //create distances file if it does not exist.
-            File layerDistancesFile = new File(IntersectConfig.getAlaspatialOutputPath()
-                    + LAYER_DISTANCE_FILE);
-            if (!layerDistancesFile.exists()) {
-                FileWriter fw = new FileWriter(layerDistancesFile);
-                fw.close();
-            }
-
-            FileWriter fw = new FileWriter(layerDistancesFile, true);
-            for (String key : newDistances.keySet()) {
-                fw.write(key + "=" + newDistances.get(key) + "\n");
-            }
-            fw.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-    }
 }
 
 // layer distance calculation thread.
 class CalcThread extends Thread {
+
+    private static final Logger logger = Logger.getLogger(CalcThread.class);
 
     CountDownLatch cdl;
     LinkedBlockingQueue<String> lbq;
@@ -319,10 +340,9 @@ class CalcThread extends Thread {
                 try {
                     Double distance = calculateDistance(layers[0], layers[1]);
                     toDisk.put(key + "=" + distance);
-                    System.out.println(key + "=" + distance);
+                    logger.debug(key + "=" + distance);
                 } catch (Exception e) {
-                    System.out.println(key + ":error");
-                    e.printStackTrace(System.out);
+                    logger.error(key + ":error", e);
                 }
 
                 cdl.countDown();
@@ -374,6 +394,8 @@ class CalcThread extends Thread {
 //appends to the LayerDistanceIndex.LAYER_DISTANCE_FILE file.
 class ToDiskThread extends Thread {
 
+    private static final Logger logger = Logger.getLogger(CalcThread.class);
+
     String filename;
     LinkedBlockingQueue<String> toDisk;
 
@@ -403,18 +425,18 @@ class ToDiskThread extends Thread {
                         fw.flush();
                     }
                 } catch (Exception ex) {
-                    ex.printStackTrace();
+                    logger.error(ex.getMessage(), ex);
                 }
 
             }
-        } catch (IOException ex) {
-            ex.printStackTrace();
+        } catch (IOException e) {
+            logger.error(e.getMessage(), e);
         } finally {
             if (fw != null) {
                 try {
                     fw.close();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    logger.error(e.getMessage(), e);
                 }
             }
         }

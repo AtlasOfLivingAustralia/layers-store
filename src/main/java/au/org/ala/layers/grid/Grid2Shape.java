@@ -1,20 +1,21 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.grid;
 
 import com.vividsolutions.jts.geom.*;
+import org.apache.log4j.Logger;
 import org.geotools.geometry.jts.JTSFactoryFinder;
 
 import java.io.ByteArrayOutputStream;
@@ -34,13 +35,14 @@ public class Grid2Shape {
     static final byte rEdge = 0x02;
     static final byte tEdge = 0x04;
     static final byte bEdge = 0x08;
+    private static final Logger logger = Logger.getLogger(Grid2Shape.class);
 
     static public String grid2Wkt(BitSet data, int nrows, int ncols, double minx, double miny, double resx, double resy) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
             streamGrid2Wkt(baos, data, nrows, ncols, minx, miny, resx, resy);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
 
         return baos.toString();
@@ -54,7 +56,7 @@ public class Grid2Shape {
         try {
             streamGrid2WktIndexed(baos, data, nrows, ncols, minx, miny, resx, resy, map, index, startKey);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
 
         HashMap output = new HashMap();
@@ -212,7 +214,7 @@ public class Grid2Shape {
                 try {
                     streamGrid2Wkt(os, grid, rows, cols, minx + bbox[0] * resx, miny + (nrows - bbox[3] - 1) * resy, resx, resy);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    logger.error(e.getMessage(), e);
                 }
                 return null;
             } else {
@@ -297,7 +299,7 @@ public class Grid2Shape {
         int groupCount = 0;
         for (int i = 0; i < nrows; i++) {
             if (time < System.currentTimeMillis()) {
-                System.out.println(sdf.format(new Date()) + " processing row " + i + " of " + nrows);
+                logger.info(sdf.format(new Date()) + " processing row " + i + " of " + nrows);
                 time = System.currentTimeMillis() + 10000;
             }
             for (int j = 0; j < ncols; j++) {
@@ -486,7 +488,7 @@ public class Grid2Shape {
 
         //follow edges
         if (keys == null || keys.isEmpty()) {
-            System.out.println("no polygons for this key value");
+            logger.info("no polygons for this key value");
             return characterPos;
         }
         int thisKey = keys.get(0);
@@ -853,7 +855,7 @@ public class Grid2Shape {
                             break;
                         }
                     }
-                    System.out.println("path not coded");
+                    logger.info("path not coded");
                     break;
                 case rEdge:
                     if ((edges[current.pos] & bEdge) > 0) {
@@ -877,7 +879,7 @@ public class Grid2Shape {
                             break;
                         }
                     }
-                    System.out.println("path not coded");
+                    logger.info("path not coded");
                     break;
                 case tEdge:
                     if ((edges[current.pos] & rEdge) > 0) {
@@ -901,7 +903,7 @@ public class Grid2Shape {
                             break;
                         }
                     }
-                    System.out.println("path not coded");
+                    logger.info("path not coded");
                     break;
                 case bEdge:
                     if ((edges[current.pos] & lEdge) > 0) {
@@ -925,11 +927,11 @@ public class Grid2Shape {
                             break;
                         }
                     }
-                    System.out.println("path not coded");
+                    logger.info("path not coded");
                     break;
             }
         } else { //!currentCw
-            System.out.println("path not coded");
+            logger.info("path not coded");
         }
     }
 

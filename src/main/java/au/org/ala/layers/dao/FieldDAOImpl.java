@@ -1,16 +1,16 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.dao;
 
@@ -47,9 +47,11 @@ public class FieldDAOImpl implements FieldDAO {
     private SimpleJdbcTemplate jdbcTemplate;
     private SimpleJdbcInsert insertField;
     private String selectLayerSql;
-    
+
     @Resource(name = "layerIntersectDao")
     private LayerIntersectDAO layerIntersectDao;
+    @Resource(name = "layerDao")
+    private LayerDAO layerDao;
 
     @PostConstruct
     private void init() {
@@ -59,9 +61,6 @@ public class FieldDAOImpl implements FieldDAO {
         }
         selectLayerSql = sb.toString();
     }
-
-    @Resource(name = "layerDao")
-    private LayerDAO layerDao;
 
     @Resource(name = "dataSource")
     public void setDataSource(DataSource dataSource) {
@@ -111,7 +110,6 @@ public class FieldDAOImpl implements FieldDAO {
         if (layerIntersectDao.getConfig().getLayerIndexUrl() != null) {
             return layerIntersectDao.getConfig().getFieldsByDB();
         } else {
-            //return hibernateTemplate.find("from Field where enabled=true and indb=true");
             logger.info("Getting a list of all enabled fields with indb");
             String sql = "select * from fields where enabled=TRUE and indb=TRUE";
             return jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Field.class));
@@ -209,7 +207,7 @@ public class FieldDAOImpl implements FieldDAO {
         sql += " l.enabled=true AND f.enabled=true AND ( ";
         sql += "lower(l.keywords) like ? ";
         sql += " or lower(l.displayname) like ? ";
-        //sql += " or lower(type) like ? ";
+
         sql += " or lower(l.name) like ? ";
         sql += " or lower(l.domain) like ? ";
         sql += " or lower(f.name) like ? ";
@@ -232,7 +230,7 @@ public class FieldDAOImpl implements FieldDAO {
         sql += " l.enabled=true AND f.enabled=true AND ( ";
         sql += "lower(l.keywords) like ? ";
         sql += " or lower(l.displayname) like ? ";
-        //sql += " or lower(type) like ? ";
+
         sql += " or lower(l.name) like ? ";
         sql += " or lower(l.domain) like ? ";
         sql += " or lower(f.name) like ? ";

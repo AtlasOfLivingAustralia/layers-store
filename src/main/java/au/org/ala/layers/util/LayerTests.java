@@ -39,13 +39,13 @@ public class LayerTests {
 
     private static void testError(boolean expectTrue, String errorMsg) {
         if (!expectTrue) {
-            System.out.println("ERROR> " + errorMsg);
+            logger.info("ERROR> " + errorMsg);
         }
     }
 
     private static void testWarning(boolean expectTrue, String errorMsg) {
         if (!expectTrue) {
-            System.out.println("WARN> " + errorMsg);
+            logger.info("WARN> " + errorMsg);
         }
     }
 
@@ -59,7 +59,7 @@ public class LayerTests {
     }
 
     private static void msg(String msg) {
-        System.out.println("*************> " + msg);
+        logger.info("*************> " + msg);
     }
 
     private static void TestLayer(Layer l) {
@@ -191,12 +191,21 @@ public class LayerTests {
     }
 
     private static int getUrlResponseCode(String displaypath) {
+        GetMethod get = null;
         try {
             HttpClient client = new HttpClient();
-            GetMethod get = new GetMethod(displaypath);
+            get = new GetMethod(displaypath);
             return client.executeMethod(get);
         } catch (Exception e) {
             return -1;
+        } finally {
+            if (get != null) {
+                try {
+                    get.releaseConnection();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 

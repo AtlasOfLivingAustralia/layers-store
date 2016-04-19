@@ -1,16 +1,16 @@
 /**************************************************************************
- *  Copyright (C) 2010 Atlas of Living Australia
- *  All Rights Reserved.
- *
- *  The contents of this file are subject to the Mozilla Public
- *  License Version 1.1 (the "License"); you may not use this file
- *  except in compliance with the License. You may obtain a copy of
- *  the License at http://www.mozilla.org/MPL/
- *
- *  Software distributed under the License is distributed on an "AS
- *  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
- *  implied. See the License for the specific language governing
- *  rights and limitations under the License.
+ * Copyright (C) 2010 Atlas of Living Australia
+ * All Rights Reserved.
+ * <p>
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * <p>
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
  ***************************************************************************/
 package au.org.ala.layers.intersect;
 
@@ -67,8 +67,9 @@ public class IniReader {
      * @param filename file to load into document object
      */
     private void loadFile(String filename) {
+        BufferedReader in = null;
         try {
-            BufferedReader in = new BufferedReader(new FileReader(filename));
+            in = new BufferedReader(new FileReader(filename));
             String currentSection = "";
             String key;
             String value;
@@ -101,9 +102,16 @@ public class IniReader {
 
                 }
             }
-            in.close();
         } catch (Exception e) {
             logger.error("error opening ini file", e);
+        } finally {
+            if (in != null) {
+                try {
+                    in.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 
@@ -174,8 +182,9 @@ public class IniReader {
     }
 
     public void write(Map<String, String> doc, String filename) {
+        PrintWriter out = null;
         try {
-            PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(filename)));
+            out = new PrintWriter(new BufferedWriter(new FileWriter(filename)));
 
             TreeMap<String, String> pmap = new TreeMap<String, String>(doc);
             Iterator<String> it = pmap.keySet().iterator();
@@ -190,11 +199,17 @@ public class IniReader {
                 }
                 out.println(sectionkey[1] + "=" + pmap.get(key));
             }
-            out.close();
-
+            out.flush();
         } catch (Exception e) {
-            logger.error("Unable to write ini to " + filename);
-            e.printStackTrace(System.out);
+            logger.error("Unable to write ini to " + filename, e);
+        } finally {
+            if (out != null) {
+                try {
+                    out.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 }

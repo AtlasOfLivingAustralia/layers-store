@@ -29,7 +29,7 @@ public class LayerStoreFilesUtil {
      * Log4j instance
      */
     private static final String[] VALID_DIRECTORIES = {"diva", "diva_cache", "shape", "shape_diva", "analysis", "tabulation"};
-    private static final Logger LOGGER = Logger.getLogger(LayerStoreFilesUtil.class);
+    private static final Logger logger = Logger.getLogger(LayerStoreFilesUtil.class);
     private static Thread thread = null;
     private static Map log = new ConcurrentSkipListMap();
 
@@ -80,9 +80,11 @@ public class LayerStoreFilesUtil {
      */
     public static void writeFilesZippedToStream(String layerFilesPath, OutputStream stream, StoreRequest request) throws Exception {
 
+        BufferedOutputStream bos;
+        ZipOutputStream zos = null;
         try {
-            BufferedOutputStream bos = new BufferedOutputStream(stream);
-            ZipOutputStream zos = new ZipOutputStream(bos);
+            bos = new BufferedOutputStream(stream);
+            zos = new ZipOutputStream(bos);
 
             //zip dummy incase output is empty
             ZipEntry ze = new ZipEntry("blank");
@@ -111,10 +113,18 @@ public class LayerStoreFilesUtil {
                 }
             }
 
-            zos.close();
+            zos.flush();
         } catch (Exception e) {
-            LOGGER.error("failed to return layers files.", e);
+            logger.error("failed to return layers files.", e);
             throw new RuntimeException("failed to get files");
+        } finally {
+            if (zos != null) {
+                try {
+                    zos.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 
@@ -145,14 +155,25 @@ public class LayerStoreFilesUtil {
             ZipEntry ze = new ZipEntry(fname);
             zos.putNextEntry(ze);
 
-            BufferedInputStream bis = new BufferedInputStream(new FileInputStream(f));
-            byte[] b = new byte[1024 * 1024];
-            int n;
-            while ((n = bis.read(b)) > 0) {
-                zos.write(b, 0, n);
+            BufferedInputStream bis = null;
+            try {
+                bis = new BufferedInputStream(new FileInputStream(f));
+                byte[] b = new byte[1024 * 1024];
+                int n;
+                while ((n = bis.read(b)) > 0) {
+                    zos.write(b, 0, n);
+                }
+            } catch (Exception e) {
+                logger.error(e.getMessage(), e);
+            } finally {
+                if (bis != null) {
+                    try {
+                        bis.close();
+                    } catch (Exception e) {
+                        logger.error(e.getMessage(), e);
+                    }
+                }
             }
-
-            bis.close();
             zos.closeEntry();
         }
     }
@@ -220,39 +241,72 @@ public class LayerStoreFilesUtil {
 
                         int result = client.executeMethod(post);
 
-                        ZipInputStream zis = new ZipInputStream(new BufferedInputStream(post.getResponseBodyAsStream()));
-
-                        ZipEntry ze;
                         String pth = layerFilesPathFinal + "/forSync/";
                         File filePth = new File(pth);
+
+                        ZipInputStream zis = null;
                         try {
-                            FileUtils.deleteDirectory(filePth);
+                            zis = new ZipInputStream(new BufferedInputStream(post.getResponseBodyAsStream()));
+
+                            ZipEntry ze;
+
+                            try {
+                                FileUtils.deleteDirectory(filePth);
+                            } catch (Exception e) {
+                                //OK if it does not exist
+                            }
+                            FileUtils.forceMkdir(filePth);
+
+                            while ((ze = zis.getNextEntry()) != null) {
+                                FileUtils.forceMkdir(new File(new File(pth + ze.getName()).getParent()));
+                                BufferedOutputStream bos = null;
+                                try {
+                                    bos = new BufferedOutputStream(new FileOutputStream(pth + ze.getName()));
+                                    byte[] b = new byte[1024];
+                                    int n;
+                                    while ((n = zis.read(b)) > 0) {
+                                        bos.write(b, 0, n);
+                                    }
+                                    bos.flush();
+                                } catch (Exception e) {
+                                    logger.error(e.getMessage(), e);
+                                } finally {
+                                    if (bos != null) {
+                                        try {
+                                            bos.close();
+                                        } catch (Exception e) {
+                                            logger.error(e.getMessage(), e);
+                                        }
+                                    }
+                                }
+                                long len = new File(pth + ze.getName()).length();
+                                int typeIdx = 0;
+                                String[] types = {"B", "KB", "MB"};
+                                while (len / 1024 > 0 && typeIdx < types.length - 1) {
+                                    typeIdx++;
+                                    len = len / 1024;
+                                }
+                                String size = String.valueOf(len) + " " + types[typeIdx];
+                                log.put(new SimpleDateFormat("yyyy/MM/dd hh:mm:ss.SSS").format(new Date()), "Downloaded " + ze.getName() + " (" + size + ")");
+                            }
                         } catch (Exception e) {
-                            //OK if it does not exist
-                        }
-                        FileUtils.forceMkdir(filePth);
-
-                        while ((ze = zis.getNextEntry()) != null) {
-                            FileUtils.forceMkdir(new File(new File(pth + ze.getName()).getParent()));
-                            BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(pth + ze.getName()));
-                            byte[] b = new byte[1024];
-                            int n;
-                            while ((n = zis.read(b)) > 0) {
-                                bos.write(b, 0, n);
+                            logger.error(e.getMessage(), e);
+                        } finally {
+                            if (zis != null) {
+                                try {
+                                    zis.close();
+                                } catch (Exception e) {
+                                    logger.error(e.getMessage(), e);
+                                }
                             }
-                            bos.close();
-                            long len = new File(pth + ze.getName()).length();
-                            int typeIdx = 0;
-                            String[] types = {"B", "KB", "MB"};
-                            while (len / 1024 > 0 && typeIdx < types.length - 1) {
-                                typeIdx++;
-                                len = len / 1024;
+                            if (post != null) {
+                                try {
+                                    post.releaseConnection();
+                                } catch (Exception e) {
+                                    logger.error(e.getMessage(), e);
+                                }
                             }
-                            String size = String.valueOf(len) + " " + types[typeIdx];
-                            log.put(new SimpleDateFormat("yyyy/MM/dd hh:mm:ss.SSS").format(new Date()), "Downloaded " + ze.getName() + " (" + size + ")");
                         }
-
-                        zis.close();
 
                         //copy new files into the correct directories
                         for (File src : filePth.listFiles()) {
@@ -272,7 +326,7 @@ public class LayerStoreFilesUtil {
                         log.put(new SimpleDateFormat("yyyy/MM/dd hh:mm:ss.SSS").format(new Date()), "FINISHED");
                     } catch (Exception e) {
                         log.put(new SimpleDateFormat("yyyy/MM/dd hh:mm:ss.SSS").format(new Date()), "ERROR " + e);
-                        LOGGER.error("error in store/pullRequest", e);
+                        logger.error("error in store/pullRequest", e);
 
                         throw new RuntimeException("failed to send");
                     }
