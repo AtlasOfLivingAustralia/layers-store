@@ -420,12 +420,12 @@ public class TabulationGenerator {
             p2.load(new FileReader(pth2 + ".txt"));
 
             // pids
-            List<Objects> objects1 = Client.getObjectDao().getObjectsById(fieldId1);
-            List<Objects> objects2 = Client.getObjectDao().getObjectsById(fieldId2);
+            List<au.org.ala.layers.dto.Objects> objects1 = Client.getObjectDao().getObjectsById(fieldId1);
+            List<au.org.ala.layers.dto.Objects> objects2 = Client.getObjectDao().getObjectsById(fieldId2);
 
             // get pids for properties entries
             for (Entry<Object, Object> entry : p1.entrySet()) {
-                for (Objects o : objects1) {
+                for (au.org.ala.layers.dto.Objects o : objects1) {
                     if ((o.getId() == null && entry.getValue() == null) || (o.getId() != null && entry.getValue() != null && o.getId().equalsIgnoreCase(((String) entry.getValue())))) {
                         entry.setValue(o.getPid());
                         break;
@@ -433,7 +433,7 @@ public class TabulationGenerator {
                 }
             }
             for (Entry<Object, Object> entry : p2.entrySet()) {
-                for (Objects o : objects2) {
+                for (au.org.ala.layers.dto.Objects o : objects2) {
                     if ((o.getId() == null && entry.getValue() == null) || (o.getId() != null && entry.getValue() != null && o.getId().equalsIgnoreCase(((String) entry.getValue())))) {
                         entry.setValue(o.getPid());
                         break;
@@ -590,14 +590,14 @@ public class TabulationGenerator {
             }
 
             //map (objectId => pid)
-            List<Objects> objects1 = Client.getObjectDao().getObjectsById(fieldId1);
-            List<Objects> objects2 = Client.getObjectDao().getObjectsById(fieldId2);
+            List<au.org.ala.layers.dto.Objects> objects1 = Client.getObjectDao().getObjectsById(fieldId1);
+            List<au.org.ala.layers.dto.Objects> objects2 = Client.getObjectDao().getObjectsById(fieldId2);
             Map<String, String> pids1 = new HashMap<String, String>();
             Map<String, String> pids2 = new HashMap<String, String>();
-            for (Objects o : objects1) {
+            for (au.org.ala.layers.dto.Objects o : objects1) {
                 pids1.put(o.getId(), o.getPid());
             }
-            for (Objects o : objects2) {
+            for (au.org.ala.layers.dto.Objects o : objects2) {
                 pids2.put(o.getId(), o.getPid());
             }
 
@@ -858,7 +858,7 @@ public class TabulationGenerator {
                         int[] values = ssf.intersect(points, catagories, column_idx, threadCount);
 
                         // catagories to pid
-                        List<Objects> objects = objectDao.getObjectsById(f.getId());
+                        List<au.org.ala.layers.dto.Objects> objects = objectDao.getObjectsById(f.getId());
                         int[] catToPid = new int[catagories.length];
                         for (int j = 0; j < objects.size(); j++) {
                             for (int i = 0; i < catagories.length; i++) {
