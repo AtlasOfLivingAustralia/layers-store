@@ -5,6 +5,7 @@
 package au.org.ala.layers.util;
 
 import au.org.ala.layers.intersect.Grid;
+import org.apache.log4j.Logger;
 
 import java.io.File;
 
@@ -12,6 +13,8 @@ import java.io.File;
  * @author Adam
  */
 public class FixGridMinMax {
+
+    private static Logger logger = Logger.getLogger(FixGridMinMax.class);
 
     static public void main(String[] args) {
         logger.info("args[0] = directory containing diva grid files.");
