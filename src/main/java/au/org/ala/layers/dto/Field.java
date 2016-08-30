@@ -55,7 +55,7 @@ public class Field {
     private Boolean enabled;
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "last_update")
-    private Date lastUpdated;
+    private Date last_update;
     @Column(name = "namesearch")
     private Boolean namesearch;
     @Column(name = "defaultlayer")
@@ -126,12 +126,12 @@ public class Field {
         this.indb = indb;
     }
 
-    public Date getLastUpdated() {
-        return lastUpdated;
+    public Date getLast_update() {
+        return last_update;
     }
 
-    public void setLastUpdated(Date lastUpdated) {
-        this.lastUpdated = lastUpdated;
+    public void setLast_update(Date lastUpdated) {
+        this.last_update = lastUpdated;
     }
 
     public String getName() {
@@ -255,7 +255,7 @@ public class Field {
         m.put("defaultlayer", defaultlayer);
         m.put("name", name);
         m.put("namesearch", namesearch);
-        m.put("last_updated", lastUpdated);
+        m.put("last_update", last_update);
         m.put("desc", desc);
         m.put("enabled", enabled);
         m.put("spid", spid);

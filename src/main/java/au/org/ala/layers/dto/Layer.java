@@ -18,10 +18,7 @@ package au.org.ala.layers.dto;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 import javax.persistence.*;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Vector;
+import java.util.*;
 
 /**
  * This class serves as a model object for a list of layers
@@ -32,8 +29,6 @@ import java.util.Vector;
 
 @Entity
 @Table(name = "layers")
-//@XmlRootElement(name="layer")
-//@XStreamAlias("layer")
 @JsonSerialize(include = JsonSerialize.Inclusion.NON_DEFAULT)
 public class Layer {
     @Id
@@ -155,6 +150,10 @@ public class Layer {
 
     @Column(name = "pid")
     private String pid;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "dt_added")
+    private Date dt_added;
 
 
     //    @GeneratedValue
@@ -499,24 +498,6 @@ public class Layer {
         this.pid = pid;
     }
 
-//    public String getCapabilities() {
-//        return capabilities;
-//    }
-//
-//    private void setCapabilities(String capabilities) {
-//        //this.capabilities = capabilities;
-//        this.capabilities = "http://spatial.ala.org.au/geoserver/wms?request=getCapabilities";
-//    }
-//
-//    public String getPreview() {
-//        return preview;
-//    }
-//
-//    private void setPreview(String preview) {
-//        //this.preview = preview;
-//        //this.preview = "http://spatial.ala.org.au/geoserver/wms/reflect?layers=ALA:"+this.name+"&width=300";
-//    }
-
     public String[] toArray() {
         if (description == null) {
             description = "";
@@ -640,6 +621,7 @@ public class Layer {
         m.put("type", type);
         m.put("uid", uid);
         m.put("id", id);
+        m.put("dt_added", dt_added);
 
         return m;
     }
@@ -650,5 +632,13 @@ public class Layer {
 
     public boolean isGrid() {
         return type != null && "environmental".equals(type.toLowerCase());
+    }
+
+    public void setDt_added(Date date) {
+        dt_added = date;
+    }
+
+    public Date getDt_added() {
+        return dt_added;
     }
 }
