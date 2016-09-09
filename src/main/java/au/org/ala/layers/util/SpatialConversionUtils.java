@@ -217,74 +217,95 @@ public class SpatialConversionUtils {
             throw new IllegalArgumentException("Supplied directory does not exist or is not a directory");
         }
 
-        File shpFile = null;
-        for (File f : shpFileDir.listFiles()) {
-            if (f.getName().endsWith(".shp")) {
-                shpFile = f;
-                break;
-            }
-        }
+        FileDataStore store = null;
+        SimpleFeatureIterator it = null;
 
-        if (shpFile == null) {
-            throw new IllegalArgumentException("No .shp file present in directory");
-        }
-
-        FileDataStore store = FileDataStoreFinder.getDataStore(shpFile);
-
-        SimpleFeatureSource featureSource = store.getFeatureSource(store.getTypeNames()[0]);
-        SimpleFeatureCollection featureCollection = featureSource.getFeatures();
-        SimpleFeatureIterator it = featureCollection.features();
-
-        //transform CRS to the same as the shapefile (at least try)
-        //default to 4326
-        CoordinateReferenceSystem crs = null;
         try {
-            crs = store.getSchema().getCoordinateReferenceSystem();
-            if (crs == null) {
-                //attempt to parse prj
-                try {
-                    File prjFile = new File(shpFile.getPath().substring(0, shpFile.getPath().length() - 3) + "prj");
-                    if (prjFile.exists()) {
-                        String prj = FileUtils.readFileToString(prjFile);
 
-                        if (prj.equals("PROJCS[\"WGS_1984_Web_Mercator_Auxiliary_Sphere\",GEOGCS[\"GCS_WGS_1984\",DATUM[\"D_WGS_1984\",SPHEROID[\"WGS_1984\",6378137.0,298.257223563]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]],PROJECTION[\"Mercator_Auxiliary_Sphere\"],PARAMETER[\"False_Easting\",0.0],PARAMETER[\"False_Northing\",0.0],PARAMETER[\"Central_Meridian\",0.0],PARAMETER[\"Standard_Parallel_1\",0.0],PARAMETER[\"Auxiliary_Sphere_Type\",0.0],UNIT[\"Meter\",1.0]]")) {
-                            //support for arcgis online default shp exports
-                            crs = CRS.decode("EPSG:3857");
-                        } else {
-                            crs = CRS.parseWKT(FileUtils.readFileToString(prjFile));
-                        }
-                    }
-                } catch (Exception e) {
-                    logger.error("failed to read prj for " + shpFile.getPath());
+            File shpFile = null;
+            for (File f : shpFileDir.listFiles()) {
+                if (f.getName().endsWith(".shp")) {
+                    shpFile = f;
+                    break;
                 }
+            }
 
+            if (shpFile == null) {
+                throw new IllegalArgumentException("No .shp file present in directory");
+            }
+
+            store = FileDataStoreFinder.getDataStore(shpFile);
+
+            SimpleFeatureSource featureSource = store.getFeatureSource(store.getTypeNames()[0]);
+            SimpleFeatureCollection featureCollection = featureSource.getFeatures();
+            it = featureCollection.features();
+
+            //transform CRS to the same as the shapefile (at least try)
+            //default to 4326
+            CoordinateReferenceSystem crs = null;
+            try {
+                crs = store.getSchema().getCoordinateReferenceSystem();
                 if (crs == null) {
-                    crs = DefaultGeographicCRS.WGS84;
+                    //attempt to parse prj
+                    try {
+                        File prjFile = new File(shpFile.getPath().substring(0, shpFile.getPath().length() - 3) + "prj");
+                        if (prjFile.exists()) {
+                            String prj = FileUtils.readFileToString(prjFile);
+
+                            if (prj.equals("PROJCS[\"WGS_1984_Web_Mercator_Auxiliary_Sphere\",GEOGCS[\"GCS_WGS_1984\",DATUM[\"D_WGS_1984\",SPHEROID[\"WGS_1984\",6378137.0,298.257223563]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]],PROJECTION[\"Mercator_Auxiliary_Sphere\"],PARAMETER[\"False_Easting\",0.0],PARAMETER[\"False_Northing\",0.0],PARAMETER[\"Central_Meridian\",0.0],PARAMETER[\"Standard_Parallel_1\",0.0],PARAMETER[\"Auxiliary_Sphere_Type\",0.0],UNIT[\"Meter\",1.0]]")) {
+                                //support for arcgis online default shp exports
+                                crs = CRS.decode("EPSG:3857");
+                            } else {
+                                crs = CRS.parseWKT(FileUtils.readFileToString(prjFile));
+                            }
+                        }
+                    } catch (Exception e) {
+                        logger.error("failed to read prj for " + shpFile.getPath());
+                    }
+
+                    if (crs == null) {
+                        crs = DefaultGeographicCRS.WGS84;
+                    }
                 }
+            } catch (Exception e) {
+                logger.error("error with CRS");
+            }
+
+            int i = 0;
+            while (it.hasNext()) {
+                SimpleFeature feature = (SimpleFeature) it.next();
+                if (i == featureIndex) {
+                    Geometry g = (Geometry) feature.getDefaultGeometry();
+
+                    try {
+                        wkt = JTS.transform(g, CRS.findMathTransform(crs, DefaultGeographicCRS.WGS84, true)).toString();
+                    } catch (Exception e) {
+                        //log the error and continue anyway
+                        logger.error("failed CRS transformation for: " + shpFile.getPath() + ", continuing with untransformed geometry", e);
+
+                        wkt = g.toString();
+                    }
+
+                    break;
+                }
+
+                i++;
             }
         } catch (Exception e) {
-            logger.error("error with CRS");
-        }
-
-        int i = 0;
-        while (it.hasNext()) {
-            SimpleFeature feature = (SimpleFeature) it.next();
-            if (i == featureIndex) {
-                Geometry g = (Geometry) feature.getDefaultGeometry();
-
+            logger.error("failed to get wkt from shapefile", e);
+        } finally {
+            if (it != null) {
                 try {
-                    wkt = JTS.transform(g, CRS.findMathTransform(crs, DefaultGeographicCRS.WGS84, true)).toString();
+                    it.close();
                 } catch (Exception e) {
-                    //log the error and continue anyway
-                    logger.error("failed CRS transformation for: " + shpFile.getPath() + ", continuing with untransformed geometry", e);
-
-                    wkt = g.toString();
                 }
-
-                break;
             }
-
-            i++;
+            if (store != null) {
+                try {
+                    store.dispose();
+                } catch (Exception e) {
+                }
+            }
         }
 
         return wkt;
