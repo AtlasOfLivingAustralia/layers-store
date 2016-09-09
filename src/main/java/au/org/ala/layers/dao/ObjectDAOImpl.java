@@ -943,6 +943,20 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
         return jdbcTemplate.queryForInt(sql, objectPid);
     }
 
+    @Override
+    public Objects intersectObject(String pid, double latitude, double longitude) {
+        String sql = "SELECT o.pid, o.id, o.name, o.desc AS description, o.fid AS fid, f.name AS fieldname, o.bbox, " +
+                "o.area_km, GeometryType(o.the_geom) as featureType FROM objects o, fields f WHERE o.pid = ? AND o.fid = f.id AND " +
+                "ST_Intersects(the_geom, ST_GeomFromText('POINT(" + longitude + " " + latitude + ")', 4326))";
+        List<Objects> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Objects.class), pid);
+        updateObjectWms(l);
+        if (l.size() > 0) {
+            return l.get(0);
+        } else {
+            return null;
+        }
+    }
+
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         this.applicationContext = applicationContext;
     }

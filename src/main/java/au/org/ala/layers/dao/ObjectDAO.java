@@ -91,6 +91,8 @@ public interface ObjectDAO {
 
     int pointsOfInterestObjectIntersectCount(String objectPid);
 
+    Objects intersectObject(String pid, double latitude, double longitude);
+
     @Async
     void updateObjectNames();
 }
