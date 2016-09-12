@@ -126,7 +126,7 @@ public class FieldDAOImpl implements FieldDAO {
         parameters.remove("layer");
 
         //calc new fieldId
-        String idPrefix = "Contextual".equalsIgnoreCase(layerDao.getLayerById(Integer.parseInt(field.getSpid())).getType())
+        String idPrefix = "Contextual".equalsIgnoreCase(layerDao.getLayerById(Integer.parseInt(field.getSpid()), false).getType())
                 ? "cl" : "el";
 
         //test for requested id
