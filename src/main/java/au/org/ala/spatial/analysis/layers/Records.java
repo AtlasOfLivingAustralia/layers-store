@@ -356,14 +356,6 @@ public class Records {
                     csv = new CSVReader(new InputStreamReader(new GZIPInputStream(is)));
                 } catch (Exception e) {
                     logger.error("failed try " + tryCount + " of " + maxTrys + ": " + url, e);
-                } finally {
-                    if (is != null) {
-                        try {
-                            is.close();
-                        } catch (Exception e) {
-                            logger.error(e.getMessage(), e);
-                        }
-                    }
                 }
             }
 
@@ -441,6 +433,14 @@ public class Records {
 
             csv.close();
             is.close();
+
+            if (is != null) {
+                try {
+                    is.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
 
             if (currentCount == 0 || currentCount < pageSize) {
                 break;

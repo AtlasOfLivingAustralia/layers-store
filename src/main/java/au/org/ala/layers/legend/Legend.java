@@ -15,6 +15,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.InputStream;
 import java.io.Serializable;
 
 /**
@@ -611,9 +612,8 @@ public abstract class Legend implements Serializable {
      */
     public void generateLegend(String filename) {
         try {
-            String path = Legend.class.getResource(LEGEND_KEY).getFile();
-            logger.info("generating legend using key: " + path + " and producing output at " + filename);
-            BufferedImage legendImage = ImageIO.read(new File(path));
+            InputStream is = Legend.class.getResourceAsStream(LEGEND_KEY);
+            BufferedImage legendImage = ImageIO.read(is);
             File ciOut = new File(filename);
             Graphics cg = legendImage.getGraphics();
             cg.setColor(Color.BLACK);
