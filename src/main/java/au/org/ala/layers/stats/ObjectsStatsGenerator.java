@@ -15,6 +15,7 @@
 package au.org.ala.layers.stats;
 
 import au.org.ala.layers.util.SpatialUtil;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import java.sql.Connection;
@@ -55,6 +56,8 @@ public class ObjectsStatsGenerator {
     public static void main(String[] args) {
         long start = System.currentTimeMillis();
 
+        String fid = null;
+
         logger.info("args[0] = threadcount, args[1] = db connection string, args[2] = db username, args[3] = password");
         if (args.length >= 4) {
             CONCURRENT_THREADS = Integer.parseInt(args[0]);
@@ -62,10 +65,18 @@ public class ObjectsStatsGenerator {
             db_usr = args[2];
             db_pwd = args[3];
         }
+        if(args.length>4){
+            fid = args[4];
+        }
+
 
         Connection c = getConnection();
         //String count_sql = "select count(*) as cnt from objects where bbox is null or area_km is null";
         String count_sql = "select count(*) as cnt from objects where area_km is null and st_geometrytype(the_geom) <> 'ST_Point' ";
+        if(StringUtils.isEmpty(fid)){
+            count_sql = count_sql + " and fid = '" + fid + "'";
+        }
+
         int count = 0;
         try {
             Statement s = c.createStatement();
@@ -81,8 +92,8 @@ public class ObjectsStatsGenerator {
         logger.info("Breaking into " + iter + " iterations");
         for (int i = 0; i <= iter; i++) {
             long iterStart = System.currentTimeMillis();
-
-            updateArea();
+            //  updateBbox();
+            updateArea(fid);
             logger.info("iteration " + i + " completed after " + (System.currentTimeMillis() - iterStart) + "ms");
             logger.info("total time taken is " + (System.currentTimeMillis() - start) + "ms");
         }
@@ -123,12 +134,18 @@ public class ObjectsStatsGenerator {
         return;
     }
 
-    private static void updateArea() {
+    private static void updateArea(String fid) {
 
         try {
             Connection conn = getConnection();
-            String sql = "SELECT pid from objects where area_km is null and st_geometrytype(the_geom) <> 'Point' limit 200000;";
-            logger.info("loading area_km ...");
+            String sql = "SELECT pid from objects where area_km is null and st_geometrytype(the_geom) <> 'Point'";
+            if(fid != null){
+                sql = sql + " and fid = '" + fid + "'";
+            }
+
+            sql = sql + " limit 200000;";
+
+            System.out.println("loading area_km ...");
             Statement s1 = conn.createStatement();
             ResultSet rs1 = s1.executeQuery(sql);
 
