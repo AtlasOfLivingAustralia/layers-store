@@ -18,6 +18,7 @@ import au.org.ala.layers.dto.GridClass;
 import au.org.ala.layers.intersect.Grid;
 import au.org.ala.layers.util.SpatialUtil;
 import com.vividsolutions.jts.geom.MultiPolygon;
+import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.geotools.data.DataUtilities;
@@ -55,6 +56,7 @@ public class GridClassBuilder {
         logger.info("args[0]=diva grid input file (do not include .grd or .gri)\n\n");
 
         if (args.length > 0) {
+
             //remove existing
             try {
                 File f;
@@ -99,34 +101,72 @@ public class GridClassBuilder {
         Properties p = new Properties();
         p.load(new FileReader(filePath + ".txt"));
 
+        boolean mergeProperties = false;
+
+        Map<String, Set<Integer>> groupedKeys = new HashMap<String, Set<Integer>>();
+        Map<Integer, Integer> translateKeys = new HashMap<Integer, Integer>();
+        Map<String, Integer> translateValues = new HashMap<String, Integer>();
         ArrayList<Integer> keys = new ArrayList<Integer>();
         for (String key : p.stringPropertyNames()) {
             try {
                 int k = Integer.parseInt(key);
                 keys.add(k);
+
+                //grouping of property file keys by value
+                String value = p.getProperty(key);
+                Set<Integer> klist = groupedKeys.get(value);
+                if (klist == null) klist = new HashSet<Integer>();
+                else mergeProperties = true;
+                klist.add(k);
+                groupedKeys.put(value, klist);
+
+                if (!translateValues.containsKey(value)) translateValues.put(value, translateValues.size() + 1);
+                translateKeys.put(k, translateValues.get(value));
+
             } catch (NumberFormatException e) {
                 logger.info("Excluding shape key '" + key + "'");
             } catch (Exception e) {
                 logger.error(e.getMessage(), e);
             }
         }
-        boolean generateWkt = false;
+
         java.util.Collections.sort(keys);
 
+        Grid g = new Grid(filePath);
+        boolean generateWkt = false; //((long) g.nrows) * ((long) g.ncols) < (long) Integer.MAX_VALUE;
+
+        if (mergeProperties) {
+            g.replaceValues(translateKeys);
+
+            if (!new File(filePath + ".txt.old").exists())
+                FileUtils.moveFile(new File(filePath + ".txt"), new File(filePath + ".txt.old"));
+
+            StringBuilder sb = new StringBuilder();
+            for (String value : translateValues.keySet()) {
+                sb.append(translateValues.get(value)).append("=").append(value).append('\n');
+            }
+            FileUtils.writeStringToFile(new File(filePath + ".txt"), sb.toString());
+
+            return buildFromGrid(filePath);
+        }
+
         if (generateWkt) {
-            for (int j = 0; j < keys.size(); j++) {
-                int k = keys.get(j);
-                String key = String.valueOf(k);
+            for (String name : groupedKeys.keySet()) {
                 try {
-                    String name = p.getProperty(key);
+                    Set<Integer> klist = groupedKeys.get(name);
+
+                    String key = klist.iterator().next().toString();
+                    int k = Integer.parseInt(key);
 
                     GridClass gc = new GridClass();
                     gc.setName(name);
                     gc.setId(k);
 
+                    if (klist.size() == 1) klist = null;
+
                     logger.info("getting wkt for " + filePath + " > " + key);
 
-                    Map wktIndexed = Envelope.getGridSingleLayerEnvelopeAsWktIndexed(filePath + "," + key + "," + key, wktMap);
+                    Map wktIndexed = Envelope.getGridSingleLayerEnvelopeAsWktIndexed(filePath + "," + key + "," + key, klist, wktMap);
 
                     //write class wkt
                     File zipFile = new File(filePath + File.separator + key + ".wkt.zip");
@@ -377,7 +417,6 @@ public class GridClassBuilder {
             }
 
             //write polygon mapping
-            Grid g = new Grid(filePath);
             g.writeGrid(filePath + File.separator + "polygons", wktMap, g.xmin, g.ymin, g.xmax, g.ymax, g.xres, g.yres, g.nrows, g.ncols);
 
             //copy the header file to get it exactly the same, but change the data type
@@ -388,7 +427,7 @@ public class GridClassBuilder {
             for (int j = 0; j < keys.size(); j++) {
                 info.put(keys.get(j).floatValue(), new float[]{0, Float.NaN, Float.NaN, Float.NaN, Float.NaN});
             }
-            Grid g = new Grid(filePath);
+
             g.getClassInfo(info);
 
             for (int j = 0; j < keys.size(); j++) {
@@ -459,9 +498,19 @@ public class GridClassBuilder {
         sld.append(" </sld:ChannelSelection>");
         sld.append(" <sld:ColorMap type=\"intervals\">");
 
+        //sort labels
+        List<String> sortedLabels = new ArrayList<String>(labels);
+        Collections.sort(sortedLabels);
+
         /* outputs */
         sld.append("\n<sld:ColorMapEntry color=\"#ffffff\" opacity=\"0\" quantity=\"1\"/>\n");
-        for (int i = 0; i < labels.size(); i++) {
+        for (int j = 0; j < sortedLabels.size(); j++) {
+            int i = 0;
+            while (i < labels.size()) {
+                if (labels.get(i).equals(sortedLabels.get(j)))
+                    break;
+                i++;
+            }
             sld.append("<sld:ColorMapEntry color=\"#" + getHexColour(colours[i % colours.length]) + "\" quantity=\"" + (maxValues.get(i) + 1) + ".0\" label=\"" + labels.get(i) + "\" opacity=\"1\"/>\r\n");
         }
 

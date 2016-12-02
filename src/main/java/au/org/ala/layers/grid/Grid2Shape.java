@@ -100,12 +100,13 @@ public class Grid2Shape {
         return (String) grid2Object(true, data, minValue, maxValue, nrows, ncols, minx, miny, resx, resy, null);
     }
 
-    static public HashMap grid2WktIndexed(float[] data, double minValue, double maxValue, int nrows, int ncols, double minx, double miny, double resx, double resy, int[] map) {
+    static public HashMap grid2WktIndexed(float[] data, double minValue, double maxValue, Set keys, int nrows, int ncols, double minx, double miny, double resx, double resy, int[] map) {
         //determine output bbox as rows & columns
         int[] bbox = new int[4];
         int count = 0;
         for (int i = 0; i < data.length; i++) {
-            if (data[i] <= maxValue && data[i] >= minValue) {
+            if ((keys != null && keys.contains((int) data[i])) ||
+                    (keys == null && data[i] <= maxValue && data[i] >= minValue)) {
                 int x = i % ncols;
                 int y = i / ncols;
 
@@ -136,7 +137,8 @@ public class Grid2Shape {
             int y = i / cols;
 
             int pos = x + bbox[0] + ncols * (y + bbox[1]);
-            if (data[pos] <= maxValue && data[pos] >= minValue) {
+            if ((keys != null && keys.contains((int) data[pos])) ||
+                    (keys == null && data[pos] <= maxValue && data[pos] >= minValue)) {
                 grid.set(i);
             }
         }
@@ -156,7 +158,8 @@ public class Grid2Shape {
             int y = i / cols;
 
             int pos = x + bbox[0] + ncols * (y + bbox[1]);
-            if (data[pos] <= maxValue && data[pos] >= minValue) {
+            if ((keys != null && keys.contains((int) data[pos])) ||
+                    (keys == null && data[pos] <= maxValue && data[pos] >= minValue)) {
                 map[pos] = partial[i];
             }
         }

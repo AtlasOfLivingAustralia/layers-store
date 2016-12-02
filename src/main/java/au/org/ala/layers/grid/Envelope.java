@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * @author Adam
@@ -208,9 +209,9 @@ public class Envelope {
      * "index" as csv with records
      * 'map value','wkt polygon character start position'.
      */
-    static public Map getGridSingleLayerEnvelopeAsWktIndexed(String params, int[] map) {
+    static public Map getGridSingleLayerEnvelopeAsWktIndexed(String params, Set keys, int[] map) {
         String[] p = params.split(",");
         Grid g = new Grid(p[0]);
-        return Grid2Shape.grid2WktIndexed(g.getGrid(), Double.parseDouble(p[1]), Double.parseDouble(p[2]), g.nrows, g.ncols, g.xmin, g.ymin, g.xres, g.yres, map);
+        return Grid2Shape.grid2WktIndexed(g.getGrid(), Double.parseDouble(p[1]), Double.parseDouble(p[2]), keys, g.nrows, g.ncols, g.xmin, g.ymin, g.xres, g.yres, map);
     }
 }

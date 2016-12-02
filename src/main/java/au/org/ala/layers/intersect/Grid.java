@@ -15,6 +15,7 @@
 package au.org.ala.layers.intersect;
 
 import au.org.ala.layers.util.SpatialUtil;
+import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 
 import java.io.File;
@@ -643,6 +644,133 @@ public class Grid { //  implements Serializable
             }
         }
 
+    }
+
+    public void replaceValues(Map<Integer, Integer> translation) {
+
+        long length = ((long) nrows) * ((long) ncols);
+
+        Integer minv = null;
+        Integer maxv = null;
+        for (Integer i : translation.values()) {
+            if (minv == null || i < minv) minv = i;
+            if (maxv == null || i > maxv) maxv = i;
+        }
+
+        RandomAccessFile afile = null;
+        RandomAccessFile out = null;
+        File f2 = new File(filename + ".GRI");
+        File newGrid = new File(filename + ".gri.new");
+
+
+        try { //read of random access file can throw an exception
+            out = new RandomAccessFile(newGrid, "rw");
+
+            if (!f2.exists()) {
+                afile = new RandomAccessFile(filename + ".gri", "r");
+            } else {
+                afile = new RandomAccessFile(filename + ".GRI", "r");
+            }
+
+            byte[] b = new byte[65536];
+            byte[] bout = new byte[65536];
+
+            long i = 0;
+            long max = 0;
+            long len;
+            float v;
+            float ndv = (float) nodatavalue;
+
+            while ((len = afile.read(b)) > 0) {
+                ByteBuffer bb = ByteBuffer.wrap(b);
+                ByteBuffer bbout = ByteBuffer.wrap(bout);
+
+                if (byteorderLSB) {
+                    bb.order(ByteOrder.LITTLE_ENDIAN);
+                    bbout.order(ByteOrder.LITTLE_ENDIAN);
+                }
+
+                if (datatype.equalsIgnoreCase("UBYTE")) {
+                    throw new Exception("UBYTE translation not supported");
+                } else if (datatype.equalsIgnoreCase("BYTE")) {
+                    throw new Exception("BYTE translation not supported");
+                } else if (datatype.equalsIgnoreCase("SHORT")) {
+                    max += len / 2;
+                    max = Math.min(max, length);
+                    for (; i < max; i++) {
+                        v = bb.getShort();
+                        if (v != ndv && translation.get((int) (v * rescale)) == null) {
+                            v = v;
+                        }
+                        if (v != ndv && translation.get((int) (v * rescale)) != null)
+                            v = translation.get((int) (v * rescale));
+                        bbout.putShort((short) v);
+                    }
+                } else if (datatype.equalsIgnoreCase("INT")) {
+                    max += len / 4;
+                    max = Math.min(max, length);
+                    for (; i < max; i++) {
+                        v = bb.getInt();
+                        if (v != ndv && translation.get((int) (v * rescale)) != null)
+                            v = translation.get((int) (v * rescale));
+                        bbout.putInt((int) v);
+                    }
+                } else if (datatype.equalsIgnoreCase("LONG")) {
+                    max += len / 8;
+                    max = Math.min(max, length);
+                    for (; i < max; i++) {
+                        v = bb.getLong();
+                        if (v != ndv && translation.get((int) (v * rescale)) != null)
+                            v = translation.get((int) (v * rescale));
+                        bbout.putLong((long) v);
+                    }
+                } else if (datatype.equalsIgnoreCase("FLOAT")) {
+                    throw new Exception("FLOAT translation not supported");
+                } else if (datatype.equalsIgnoreCase("DOUBLE")) {
+                    throw new Exception("DOUBLE translation not supported");
+                } else {
+                    max += len / 4;
+                    for (; i < max; i++) {
+                        // should not happen; catch anyway...
+                    }
+                }
+
+                out.write(bout, 0, (int) len);
+            }
+
+            writeHeader(filename + ".new", xmin, ymin, xmin + xres * ncols, ymin + yres * nrows, xres, yres,
+                    nrows, ncols, minv, maxv, datatype, nodatavalue + "");
+        } catch (Exception e) {
+            logger.error("An error has occurred getting grid class stats", e);
+        } finally {
+            if (afile != null) {
+                try {
+                    afile.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
+
+            if (out != null) {
+                try {
+                    out.close();
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
+        }
+
+        try {
+            if (!new File(filename + ".gri.old").exists())
+                FileUtils.moveFile(new File(filename + ".gri"), new File(filename + ".gri.old"));
+            if (!new File(filename + ".grd.old").exists())
+                FileUtils.moveFile(new File(filename + ".grd"), new File(filename + ".grd.old"));
+
+            FileUtils.moveFile(new File(filename + ".gri.new"), new File(filename + ".gri"));
+            FileUtils.moveFile(new File(filename + ".new.grd"), new File(filename + ".grd"));
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        }
     }
 
     private void updatesStats(Map<Float, float[]> info, long i, float v) {
