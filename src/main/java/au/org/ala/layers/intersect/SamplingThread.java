@@ -17,6 +17,7 @@ package au.org.ala.layers.intersect;
 import au.org.ala.layers.dao.IntersectCallback;
 import au.org.ala.layers.dto.GridClass;
 import au.org.ala.layers.dto.IntersectionFile;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import java.util.ArrayList;
@@ -93,7 +94,7 @@ public class SamplingThread extends Thread {
         logger.info("Starting sampling " + points.length + " points in " + name + ":"
                 + fileName + (shapeFieldName == null ? "" : " field: " + shapeFieldName));
         callback.progressMessage("Started sampling layer:" + intersectionFile.getLayerName());
-        if (shapeFieldName != null) {
+        if (StringUtils.isNotEmpty(shapeFieldName)) {
             intersectShape(fileName, shapeFieldName, points, sb);
         } else if (classes != null) {
             intersectGridAsContextual(fileName, classes, points, sb);

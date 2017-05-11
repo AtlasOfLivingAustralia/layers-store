@@ -178,7 +178,7 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
                         out.add(m);
                     }
                 } else if (layer.isGrid() || (f != null && f.getClasses() != null)) {
-                    Grid g = new Grid(getConfig().getLayerFilesPath() + layer.getPath_orig());
+                    Grid g = new Grid(getConfig().getLayerFilesPath() + File.separator + layer.getPath_orig());
                     if (g != null) {
                         float[] v = g.getValues3(p, 40960);
 
@@ -213,7 +213,7 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
                         }
                         out.add(m);
                     } else {
-                        logger.error("Cannot find grid file: " + getConfig().getLayerFilesPath() + layer.getPath_orig());
+                        logger.error("Cannot find grid file: " + getConfig().getLayerFilesPath() + File.separator + layer.getPath_orig());
                         Map m = new HashMap();
                         m.put("field", id);
                         m.put("value", "");

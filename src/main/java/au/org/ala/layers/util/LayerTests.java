@@ -137,7 +137,7 @@ public class LayerTests {
             String r = "";
             for (Double d : IntersectConfig.getAnalysisResolutions()) {
                 try {
-                    if (isValidFilePrefix(IntersectConfig.getAnalysisLayerFilesPath() + d + File.separator + f.getId())) {
+                    if (isValidFilePrefix(IntersectConfig.getAnalysisLayerFilesPath() + File.separator + d + File.separator + f.getId())) {
                         valid = true;
                         break;
                     }
@@ -177,7 +177,7 @@ public class LayerTests {
         String path = filePrefix.substring(0, filePrefix.lastIndexOf(File.separator));
         String prefix = filePrefix.substring(path.length() + 1);
 
-        File f = new File(IntersectConfig.getLayerFilesPath() + path);
+        File f = new File(IntersectConfig.getLayerFilesPath() + File.separator + path);
 
         if (f.exists() && f.isDirectory()) {
             for (File c : f.listFiles()) {

@@ -154,7 +154,7 @@ public class AnalysisLayerUtil {
             //gdalwarp -te 109.51 -44.37 157.28 -8.19 -tr 0.01 -0.01
             //-s_srs '" + edlconfig.s_srs + "' -t_srs '" + edlconfig.t_srs + "'
             //-of EHdr -srcnodata -9999 -dstnodata -9999
-            String base_command = gdalPath + "gdalwarp -r cubicspline -te " + minx + " " + miny + " " + maxx + " " + maxy
+            String base_command = gdalPath + File.separator + "gdalwarp -r cubicspline -te " + minx + " " + miny + " " + maxx + " " + maxy
                     + " -dstnodata " + String.valueOf(nodatavalue)
                     + " -tr " + resolution + " " + resolution + " -of EHdr ";
 
@@ -255,10 +255,10 @@ public class AnalysisLayerUtil {
 
                     //for (Double d : resolutions) {
                     Double d = 0.01;    //one resolution for gridding of shape files
-                    if (shp2Analysis(liDao.getConfig().getLayerFilesPath() + l.getPath_orig(),
+                    if (shp2Analysis(liDao.getConfig().getLayerFilesPath() + File.separator + l.getPath_orig(),
                             tmpShp.getPath(),
                             f.getId(),
-                            liDao.getConfig().getAnalysisLayerFilesPath() + d + File.separator + f.getId(),
+                            liDao.getConfig().getAnalysisLayerFilesPath() + File.separator + d + File.separator + f.getId(),
                             d,
                             liDao.getConfig().getGdalPath(),
                             false)) {
@@ -295,7 +295,7 @@ public class AnalysisLayerUtil {
                     Layer l = layerDao.getLayerById(Integer.parseInt(f.getSpid()));
 
                     //determine best resolution
-                    Grid g = new Grid(liDao.getConfig().getLayerFilesPath() + l.getPath_orig());
+                    Grid g = new Grid(liDao.getConfig().getLayerFilesPath() + File.separator + l.getPath_orig());
                     double minRes = Math.min(g.xres, g.yres);
                     int i = 0;
                     for (; i < resolutions.size(); i++) {
@@ -309,16 +309,16 @@ public class AnalysisLayerUtil {
                     while (i < resolutions.size()) {
                         if (resolutions.get(i) >= minRes) {
                             logger.info("processing: " + l.getPath_orig());
-                            if (diva2Analysis(liDao.getConfig().getLayerFilesPath() + l.getPath_orig(),
-                                    liDao.getConfig().getAnalysisLayerFilesPath() + resolutions.get(i) + File.separator + f.getId(),
+                            if (diva2Analysis(liDao.getConfig().getLayerFilesPath() + File.separator + l.getPath_orig(),
+                                    liDao.getConfig().getAnalysisLayerFilesPath() + File.separator + resolutions.get(i) + File.separator + f.getId(),
                                     resolutions.get(i),
                                     liDao.getConfig().getGdalPath(),
                                     false)) {
 
                                 //copy the contextual value lookup if required
                                 if (f.getType().equals("a") || f.getType().equals("b")) {
-                                    copyFile(liDao.getConfig().getLayerFilesPath() + l.getPath_orig() + ".txt",
-                                            liDao.getConfig().getAnalysisLayerFilesPath() + resolutions.get(i) + File.separator + f.getId() + ".txt");
+                                    copyFile(liDao.getConfig().getLayerFilesPath() + File.separator + l.getPath_orig() + ".txt",
+                                            liDao.getConfig().getAnalysisLayerFilesPath() + File.separator + resolutions.get(i) + File.separator + f.getId() + ".txt");
                                 }
 
                                 logger.info("successful for: " + f.getId() + " @ " + resolutions.get(i));
@@ -398,7 +398,7 @@ public class AnalysisLayerUtil {
             String layername = new File(srcFilename).getName().replace(".shp", "");
 
             //gdal_rasterize -ot Int16 -of EHdr -l aus1 -tr 0.01 0.01
-            String base_command = gdalPath + "gdal_rasterize -ot Int16 -of EHdr"
+            String base_command = gdalPath + File.separator + "gdal_rasterize -ot Int16 -of EHdr"
                     + " -te " + minx + " " + miny + " " + maxx + " " + maxy
                     + " -l " + layername
                     + " -a id "

@@ -19,7 +19,10 @@ import au.org.ala.layers.dao.FieldDAO;
 import au.org.ala.layers.dao.LayerDAO;
 import au.org.ala.layers.dao.LayerIntersectDAO;
 import au.org.ala.layers.dao.ObjectDAO;
-import au.org.ala.layers.dto.*;
+import au.org.ala.layers.dto.Field;
+import au.org.ala.layers.dto.IntersectionFile;
+import au.org.ala.layers.dto.Layer;
+import au.org.ala.layers.dto.Tabulation;
 import au.org.ala.layers.intersect.Grid;
 import au.org.ala.layers.intersect.SimpleRegion;
 import au.org.ala.layers.intersect.SimpleShapeFile;
@@ -276,8 +279,8 @@ public class TabulationGenerator {
                 String layer2 = (String) fieldSpid.get(rs1.getString("fid2"));
                 String path1 = (String) layerMap.get(layer1);
                 String path2 = (String) layerMap.get(layer2);
-                File f1 = new File(Client.getLayerIntersectDao().getConfig().getLayerFilesPath() + path1 + ".shp");
-                File f2 = new File(Client.getLayerIntersectDao().getConfig().getLayerFilesPath() + path2 + ".shp");
+                File f1 = new File(Client.getLayerIntersectDao().getConfig().getLayerFilesPath() + File.separator + path1 + ".shp");
+                File f2 = new File(Client.getLayerIntersectDao().getConfig().getLayerFilesPath() + File.separator + path2 + ".shp");
 
                 //domain test
                 if (isSameDomain(parseDomain(rs1.getString("domain1")), parseDomain(rs1.getString("domain2")))) {
@@ -353,8 +356,8 @@ public class TabulationGenerator {
                 String layer2 = Client.getFieldDao().getFieldById(rs1.getString("fid2")).getSpid();
                 String path1 = Client.getLayerDao().getLayerById(Integer.parseInt(layer1)).getPath_orig();
                 String path2 = Client.getLayerDao().getLayerById(Integer.parseInt(layer2)).getPath_orig();
-                File f1 = new File(Client.getLayerIntersectDao().getConfig().getLayerFilesPath() + path1 + ".shp");
-                File f2 = new File(Client.getLayerIntersectDao().getConfig().getLayerFilesPath() + path2 + ".shp");
+                File f1 = new File(Client.getLayerIntersectDao().getConfig().getLayerFilesPath() + File.separator + path1 + ".shp");
+                File f2 = new File(Client.getLayerIntersectDao().getConfig().getLayerFilesPath() + File.separator + path2 + ".shp");
 
                 // domain test
                 if (isSameDomain(parseDomain(rs1.getString("domain1")), parseDomain(rs1.getString("domain2")))) {

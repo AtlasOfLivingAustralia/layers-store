@@ -79,7 +79,7 @@ public class LayerDistanceIndex {
         Map<String, Double> map = new ConcurrentHashMap<String, Double>();
         BufferedReader br = null;
         try {
-            File file = new File(IntersectConfig.getAlaspatialOutputPath()
+            File file = new File(IntersectConfig.getAlaspatialOutputPath() + File.separator
                     + LAYER_DISTANCE_FILE);
 
             //attempt to create empty file if it does not exist
@@ -172,7 +172,7 @@ public class LayerDistanceIndex {
         FileWriter fw = null;
         try {
             //create distances file if it does not exist.
-            File layerDistancesFile = new File(IntersectConfig.getAlaspatialOutputPath()
+            File layerDistancesFile = new File(IntersectConfig.getAlaspatialOutputPath() + File.separator
                     + LAYER_DISTANCE_FILE);
             if (!layerDistancesFile.exists()) {
                 fw = new FileWriter(layerDistancesFile);
@@ -208,7 +208,7 @@ public class LayerDistanceIndex {
     public void occurrencesUpdate(int threadcount, String[] onlyThesePairs) throws InterruptedException {
 
         //create distances file if it does not exist.
-        File layerDistancesFile = new File(IntersectConfig.getAlaspatialOutputPath()
+        File layerDistancesFile = new File(IntersectConfig.getAlaspatialOutputPath() + File.separator
                 + LAYER_DISTANCE_FILE);
         if (!layerDistancesFile.exists()) {
             FileWriter fw = null;
@@ -302,7 +302,7 @@ public class LayerDistanceIndex {
             threads[i].start();
         }
 
-        ToDiskThread toDiskThread = new ToDiskThread(IntersectConfig.getAlaspatialOutputPath()
+        ToDiskThread toDiskThread = new ToDiskThread(IntersectConfig.getAlaspatialOutputPath() + File.separator
                 + LAYER_DISTANCE_FILE, toDisk);
         toDiskThread.start();
 

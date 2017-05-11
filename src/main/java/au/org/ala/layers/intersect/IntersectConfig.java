@@ -25,6 +25,7 @@ import net.sf.json.JSONObject;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
@@ -114,7 +115,8 @@ public class IntersectConfig {
         Properties properties = new Properties();
         InputStream is = null;
         try {
-            String pth = "/data/layers-store/config/layers-store-config.properties";
+            String pth = System.getProperty("layers.store.config.path", "/data/layers-store/config/layers-store-config.properties");
+
             logger.debug("config path: " + pth);
             is = new FileInputStream(pth);
             if (is != null) {
@@ -135,13 +137,13 @@ public class IntersectConfig {
             }
         }
 
-        layerFilesPath = getProperty(LAYER_FILES_PATH, properties, null);
+        layerFilesPath = cleanFilePath(getProperty(LAYER_FILES_PATH, properties, null));
         isValidPath(layerFilesPath, LAYER_FILES_PATH);
-        analysisLayerFilesPath = getProperty(ANALYSIS_LAYER_FILES_PATH, properties, null);
+        analysisLayerFilesPath = cleanFilePath(getProperty(ANALYSIS_LAYER_FILES_PATH, properties, null));
         isValidPath(analysisLayerFilesPath, ANALYSIS_LAYER_FILES_PATH);
-        analysisTmpLayerFilesPath = getProperty(ANALYSIS_TMP_LAYER_FILES_PATH, properties, null);
+        analysisTmpLayerFilesPath = cleanFilePath(getProperty(ANALYSIS_TMP_LAYER_FILES_PATH, properties, null));
         isValidPath(analysisTmpLayerFilesPath, ANALYSIS_TMP_LAYER_FILES_PATH);
-        alaspatialOutputPath = getProperty(ALASPATIAL_OUTPUT_PATH, properties, null);
+        alaspatialOutputPath = cleanFilePath(getProperty(ALASPATIAL_OUTPUT_PATH, properties, null));
         isValidPath(alaspatialOutputPath, ALASPATIAL_OUTPUT_PATH);
         layerIndexUrl = getProperty(LAYER_INDEX_URL, properties, null);
         isValidUrl(layerIndexUrl, LAYER_INDEX_URL);
@@ -149,7 +151,7 @@ public class IntersectConfig {
         configReloadWait = getPositiveLongProperty(CONFIG_RELOAD_WAIT, properties, 3600000);
         preloadedShapeFiles = getProperty(PRELOADED_SHAPE_FILES, properties, null);
         gridBufferSize = (int) getPositiveLongProperty(GRID_BUFFER_SIZE, properties, 4096);
-        gridCachePath = getProperty(GRID_CACHE_PATH, properties, null);
+        gridCachePath = cleanFilePath(getProperty(GRID_CACHE_PATH, properties, null));
         gridCacheReaderCount = (int) getPositiveLongProperty(GRID_CACHE_READER_COUNT, properties, 10);
         localSampling = getProperty(LOCAL_SAMPLING, properties, "true").toLowerCase().equals("true");
         geoserverUrl = getProperty(GEOSERVER_URL, properties, null);
@@ -158,7 +160,7 @@ public class IntersectConfig {
 
         geonetworkUrl = getProperty(GEONETWORK_URL, properties, null);
 
-        gdalPath = getProperty(GDAL_PATH, properties, null);
+        gdalPath = cleanFilePath(getProperty(GDAL_PATH, properties, null));
         isValidPathGDAL(gdalPath, GDAL_PATH);
         analysisResolutions = getDoublesFrom(getProperty(ANALYSIS_RESOLUTIONS, properties, "0.5"));
         occurrenceSpeciesRecordsFilename = getProperty(OCCURRENCE_SPECIES_RECORDS_FILENAME, properties, null);
@@ -186,7 +188,7 @@ public class IntersectConfig {
             }
         }
 
-        shp2pgsqlPath = getProperty(SHP2PGSQL_PATH, properties, null);
+        shp2pgsqlPath = cleanFilePath(getProperty(SHP2PGSQL_PATH, properties, null));
     }
 
     long lastReload;
@@ -578,9 +580,9 @@ public class IntersectConfig {
                         logger.error("cannot find layer with id '" + f.getSpid() + "'");
                         continue;
                     }
-                    HashMap<Integer, GridClass> gridClasses = getGridClasses(getLayerFilesPath() + layer.getPath_orig(), layer.getType());
+                    HashMap<Integer, GridClass> gridClasses = getGridClasses(getLayerFilesPath() + File.separator + layer.getPath_orig(), layer.getType());
                     IntersectionFile intersectionFile = new IntersectionFile(f.getName(),
-                            getLayerFilesPath() + layer.getPath_orig(),
+                            getLayerFilesPath() + File.separator + layer.getPath_orig(),
                             f.getSname(),
                             layer.getName(),
                             f.getId(),
@@ -771,7 +773,11 @@ public class IntersectConfig {
     public String[] getAnalysisLayerInfo(String id) {
         String gid, filename, name;
         gid = filename = name = null;
-        if (id.startsWith("species_")) {
+
+        String[] v2 = getAnalysisLayerInfoV2(id);
+        if (v2 != null) {
+            return v2;
+        } else if (id.startsWith("species_")) {
             //maxent layer
             gid = id.substring("species_".length());
             filename = getAlaspatialOutputPath() + File.separator + "maxent" + File.separator + gid + File.separator + gid;
@@ -846,5 +852,39 @@ public class IntersectConfig {
 
     public String getShp2pgsqlPath() {
         return shp2pgsqlPath;
+    }
+
+    public static String[] getAnalysisLayerInfoV2(String id) {
+        String gid, filename, name;
+        gid = filename = name = null;
+
+        String v2Name = getAlaspatialOutputPath() + File.separator + id;
+        File v2Grd = new File(v2Name + ".grd");
+        File v2Shp = new File(v2Name + ".shp");
+        if (v2Grd.exists() || v2Shp.exists()) {
+            int idx = id.indexOf('_');
+            gid = idx > 0 ? id.substring(0, idx) : id;
+            filename = v2Name;
+            if (v2Grd.exists()) {
+                name = idx > 0 ? id.substring(idx + 1) : "Gridfile";
+            } else {
+                name = idx > 0 ? id.substring(idx + 1) : "Shapefile";
+            }
+            name = StringUtils.capitalize(name.replace("_", " "));
+        }
+
+        if (gid != null) {
+            return new String[]{gid, filename, name};
+        } else {
+            return null;
+        }
+    }
+
+    static String cleanFilePath(String path) {
+        if (path != null && path.endsWith(File.separator)) {
+            return path.substring(0, path.length() - 1);
+        } else {
+            return path;
+        }
     }
 }
