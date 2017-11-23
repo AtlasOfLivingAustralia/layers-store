@@ -16,9 +16,9 @@ package au.org.ala.layers.dao;
 
 import au.org.ala.layers.dto.Task;
 import org.apache.log4j.Logger;
-import org.springframework.jdbc.core.simple.ParameterizedBeanPropertyRowMapper;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
-import org.springframework.jdbc.core.simple.SimpleJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,12 +39,12 @@ public class TaskDAOImpl implements TaskDAO {
      */
     private static final Logger logger = Logger.getLogger(TaskDAOImpl.class);
 
-    private SimpleJdbcTemplate jdbcTemplate;
+    private JdbcTemplate jdbcTemplate;
     private SimpleJdbcInsert insertTask;
 
     @Resource(name = "dataSource")
     public void setDataSource(DataSource dataSource) {
-        this.jdbcTemplate = new SimpleJdbcTemplate(dataSource);
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
         this.insertTask = new SimpleJdbcInsert(dataSource).withTableName("task")
                 .usingColumns("name", "json", "size");
     }
@@ -60,14 +60,14 @@ public class TaskDAOImpl implements TaskDAO {
 
         logger.debug(sql);
 
-        return jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Task.class));
+        return jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Task.class));
     }
 
     @Transactional
     public synchronized void addTask(String name, String json, Integer size) {
-        if (jdbcTemplate.queryForInt("select count(*) from task where name = '" + name + "' and " +
+        if (jdbcTemplate.queryForObject("select count(*) from task where name = '" + name + "' and " +
                 (json == null ? " json = '' " : " json = '" + json + "' ") +
-                " and started is null ") == 0) {
+                " and started is null ", Integer.class) == 0) {
             Map m = new HashMap();
             m.put("name", name);
             m.put("json", json);
@@ -78,7 +78,7 @@ public class TaskDAOImpl implements TaskDAO {
     }
 
     public synchronized boolean startTask(int id) {
-        if (jdbcTemplate.queryForInt("select count(*) from task where id = " + id + " AND started is NULL") > 0) {
+        if (jdbcTemplate.queryForObject("select count(*) from task where id = " + id + " AND started is NULL", Integer.class) > 0) {
             String sql = "UPDATE task SET started = CURRENT_TIMESTAMP WHERE id = " + id + " AND started is NULL";
             jdbcTemplate.update(sql);
             return true;

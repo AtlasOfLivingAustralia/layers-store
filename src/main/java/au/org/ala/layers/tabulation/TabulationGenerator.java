@@ -37,7 +37,7 @@ import org.geotools.data.DataStoreFinder;
 import org.geotools.data.FeatureSource;
 import org.geotools.feature.FeatureIterator;
 import org.opengis.feature.simple.SimpleFeature;
-import org.springframework.jdbc.core.simple.SimpleJdbcTemplate;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.io.*;
 import java.sql.*;
@@ -512,7 +512,7 @@ public class TabulationGenerator {
 
     public static void shpIntersection(String fieldId1, String shapeFile1, String idColumn1,
                                        String fieldId2, String shapeFile2, String idColumn2,
-                                       File shpIntersectionFile, Records records, SimpleJdbcTemplate jdbcTemplate) throws IOException, ParseException {
+                                       File shpIntersectionFile, Records records, JdbcTemplate jdbcTemplate) throws IOException, ParseException {
         //open both shapefiles and build (shpId => objectId) map.
         SimpleShapeFile shp1 = new SimpleShapeFile(shapeFile1, idColumn1);
         SimpleShapeFile shp2 = new SimpleShapeFile(shapeFile2, idColumn2);

@@ -18,8 +18,8 @@ import au.org.ala.layers.dto.GridClass;
 import au.org.ala.layers.dto.IntersectionFile;
 import au.org.ala.layers.dto.SearchObject;
 import org.apache.log4j.Logger;
-import org.springframework.jdbc.core.simple.ParameterizedBeanPropertyRowMapper;
-import org.springframework.jdbc.core.simple.SimpleJdbcTemplate;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -37,20 +37,20 @@ public class SearchDAOImpl implements SearchDAO {
      * log4j logger
      */
     private static final Logger logger = Logger.getLogger(SearchDAOImpl.class);
-    private SimpleJdbcTemplate jdbcTemplate;
+    private JdbcTemplate jdbcTemplate;
     @Resource(name = "layerIntersectDao")
     private LayerIntersectDAO layerIntersectDao;
 
     @Resource(name = "dataSource")
     public void setDataSource(DataSource dataSource) {
-        this.jdbcTemplate = new SimpleJdbcTemplate(dataSource);
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
     }
 
     @Override
     public List<SearchObject> findByCriteria(final String criteria, int limit) {
         logger.info("Getting search results for query: " + criteria);
         String sql = "select pid, id, name, \"desc\" as description, fid, fieldname from searchobjects(?,?)";
-        return addGridClassesToSearch(jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(SearchObject.class), "%" + criteria + "%", limit), criteria, limit);
+        return addGridClassesToSearch(jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(SearchObject.class), "%" + criteria + "%", limit), criteria, limit);
 
     }
 

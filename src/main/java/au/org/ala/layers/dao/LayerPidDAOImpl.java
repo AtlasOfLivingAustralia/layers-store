@@ -17,8 +17,8 @@ package au.org.ala.layers.dao;
 
 import au.org.ala.layers.dto.LayerPid;
 import org.apache.log4j.Logger;
-import org.springframework.jdbc.core.simple.ParameterizedBeanPropertyRowMapper;
-import org.springframework.jdbc.core.simple.SimpleJdbcTemplate;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -35,25 +35,25 @@ public class LayerPidDAOImpl implements LayerPidDAO {
      * log4j logger
      */
     private static final Logger logger = Logger.getLogger(LayerPidDAOImpl.class);
-    private SimpleJdbcTemplate jdbcTemplate;
+    private JdbcTemplate jdbcTemplate;
 
     @Resource(name = "dataSource")
     public void setDataSource(DataSource dataSource) {
-        this.jdbcTemplate = new SimpleJdbcTemplate(dataSource);
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
     }
 
     @Override
     public List<LayerPid> getLayers() {
         logger.info("Getting a list of all enabled layerpids");
         String sql = "select * from layerpids";
-        return jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(LayerPid.class));
+        return jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(LayerPid.class));
     }
 
     @Override
     public LayerPid getLayerById(String id) {
         logger.info("Getting enabled layerpids info for id = " + id);
         String sql = "select * from layerpids where id = ?";
-        List<LayerPid> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(LayerPid.class), id);
+        List<LayerPid> l = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(LayerPid.class), id);
         if (l.size() > 0) {
             return l.get(0);
         } else {
@@ -65,7 +65,7 @@ public class LayerPidDAOImpl implements LayerPidDAO {
     public LayerPid getLayerByPid(String pid) {
         logger.info("Getting enabled layerpids info for pid = " + pid);
         String sql = "select * from layerpids where pid = ?";
-        List<LayerPid> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(LayerPid.class), pid);
+        List<LayerPid> l = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(LayerPid.class), pid);
         if (l.size() > 0) {
             return l.get(0);
         } else {

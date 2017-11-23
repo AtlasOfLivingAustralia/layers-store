@@ -20,8 +20,8 @@ import au.org.ala.layers.tabulation.TabulationGenerator;
 import au.org.ala.layers.tabulation.TabulationUtil;
 import au.org.ala.layers.util.SpatialUtil;
 import org.apache.log4j.Logger;
-import org.springframework.jdbc.core.simple.ParameterizedBeanPropertyRowMapper;
-import org.springframework.jdbc.core.simple.SimpleJdbcTemplate;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -38,7 +38,7 @@ public class TabulationDAOImpl implements TabulationDAO {
      * log4j logger
      */
     private static final Logger logger = Logger.getLogger(TabulationDAOImpl.class);
-    private SimpleJdbcTemplate jdbcTemplate;
+    private JdbcTemplate jdbcTemplate;
 
     @Resource(name = "layerIntersectDao")
     private LayerIntersectDAO layerIntersectDao;
@@ -51,7 +51,7 @@ public class TabulationDAOImpl implements TabulationDAO {
 
     @Resource(name = "dataSource")
     public void setDataSource(DataSource dataSource) {
-        this.jdbcTemplate = new SimpleJdbcTemplate(dataSource);
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
     }
 
     @Override
@@ -75,7 +75,7 @@ public class TabulationDAOImpl implements TabulationDAO {
                     + "(select t2.pid2 as pid, name from tabulation t2 left join objects o4 on t2.fid2=o4.fid and t2.pid2=o4.pid where t2.fid2= ? group by t2.pid2, name) o2 "
                     + "WHERE i.pid1=o1.pid AND i.pid2=o2.pid ;";
 
-            tabulations = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Tabulation.class), min, max, min, max);
+            tabulations = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Tabulation.class), min, max, min, max);
 
         } else {
             String sql = "SELECT fid1, pid1, fid2, pid2, ST_AsText(newgeom) as geometry, name1, name2, occurrences, species, speciest1, speciest2 FROM "
@@ -86,7 +86,7 @@ public class TabulationDAOImpl implements TabulationDAO {
                     + "WHERE i.pid1=o1.pid AND i.pid2=o2.pid) a "
                     + "WHERE a.newgeom is not null AND ST_Area(a.newgeom) > 0;";
 
-            tabulations = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Tabulation.class), wkt, min, max, min, max);
+            tabulations = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Tabulation.class), wkt, min, max, min, max);
 
             for (Tabulation t : tabulations) {
                 try {
@@ -129,7 +129,7 @@ public class TabulationDAOImpl implements TabulationDAO {
                 + " AND f1.intersect=true AND f2.intersect=true "
                 + " GROUP BY fid1, fid2, name1, name2;";
 
-        return jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Tabulation.class));
+        return jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Tabulation.class));
     }
 
     @Override
@@ -157,7 +157,7 @@ public class TabulationDAOImpl implements TabulationDAO {
                             + "WHERE newgeom is not null AND ST_Area(newgeom) > 0;";
 
                     tabulations = jdbcTemplate.query(sql,
-                            ParameterizedBeanPropertyRowMapper.newInstance(Tabulation.class),
+                            BeanPropertyRowMapper.newInstance(Tabulation.class),
                             fid, wkt);
                 } else {
                     sql = "SELECT fid as fid1, pid as pid1, name as name1,"
@@ -169,7 +169,7 @@ public class TabulationDAOImpl implements TabulationDAO {
                             + "WHERE newgeom is not null AND ST_Area(newgeom) > 0;";
 
                     tabulations = jdbcTemplate.query(sql,
-                            ParameterizedBeanPropertyRowMapper.newInstance(Tabulation.class),
+                            BeanPropertyRowMapper.newInstance(Tabulation.class),
                             wkt, fid, wkt);
                 }
 
@@ -192,7 +192,7 @@ public class TabulationDAOImpl implements TabulationDAO {
                         + "objects WHERE fid= ? ) t "
                         + "WHERE newgeom is not null AND ST_Area(newgeom) > 0;";
 
-                List<Tabulation> tabulations = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Tabulation.class), fid);
+                List<Tabulation> tabulations = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Tabulation.class), fid);
 
                 return tabulations;
             }

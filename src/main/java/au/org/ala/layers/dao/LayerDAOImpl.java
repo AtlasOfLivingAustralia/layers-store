@@ -17,9 +17,9 @@ package au.org.ala.layers.dao;
 import au.org.ala.layers.dto.Layer;
 import au.org.ala.layers.util.Util;
 import org.apache.log4j.Logger;
-import org.springframework.jdbc.core.simple.ParameterizedBeanPropertyRowMapper;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
-import org.springframework.jdbc.core.simple.SimpleJdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -40,7 +40,7 @@ public class LayerDAOImpl implements LayerDAO {
      * log4j logger
      */
     private static final Logger logger = Logger.getLogger(LayerDAOImpl.class);
-    private SimpleJdbcTemplate jdbcTemplate;
+    private JdbcTemplate jdbcTemplate;
     private SimpleJdbcInsert insertLayer;
     private Connection connection;
     private DataSource dataSource;
@@ -55,7 +55,7 @@ public class LayerDAOImpl implements LayerDAO {
             logger.info("dataSource is null");
         }
         this.dataSource = dataSource;
-        this.jdbcTemplate = new SimpleJdbcTemplate(dataSource);
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
         this.insertLayer = new SimpleJdbcInsert(dataSource).withTableName("layers").usingGeneratedKeyColumns("id");
     }
 
@@ -63,7 +63,7 @@ public class LayerDAOImpl implements LayerDAO {
     public List<Layer> getLayers() {
         logger.info("Getting a list of all enabled layers");
         String sql = "select * from layers where enabled=true";
-        List<Layer> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Layer.class));
+        List<Layer> l = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Layer.class));
         Util.updateDisplayPaths(l);
         Util.updateMetadataPaths(l);
         return l;
@@ -81,7 +81,7 @@ public class LayerDAOImpl implements LayerDAO {
         if (enabledLayersOnly) {
             sql += " and enabled=true";
         }
-        List<Layer> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Layer.class), id);
+        List<Layer> l = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Layer.class), id);
         Util.updateDisplayPaths(l);
         Util.updateMetadataPaths(l);
         if (l.size() > 0) {
@@ -103,7 +103,7 @@ public class LayerDAOImpl implements LayerDAO {
         if (enabledLayersOnly) {
             sql += " and enabled=true";
         }
-        List<Layer> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Layer.class), name);
+        List<Layer> l = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Layer.class), name);
         Util.updateDisplayPaths(l);
         Util.updateMetadataPaths(l);
         logger.info("Searching for " + name + ": Found " + l.size() + " records. ");
@@ -118,7 +118,7 @@ public class LayerDAOImpl implements LayerDAO {
     public Layer getLayerByDisplayName(String name) {
         logger.info("Getting enabled layer info for name = " + name);
         String sql = "select * from layers where enabled=true and displayname = ?";
-        List<Layer> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Layer.class), name);
+        List<Layer> l = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Layer.class), name);
         Util.updateDisplayPaths(l);
         Util.updateMetadataPaths(l);
         if (l.size() > 0) {
@@ -133,7 +133,7 @@ public class LayerDAOImpl implements LayerDAO {
         String type = "Environmental";
         logger.info("Getting a list of all enabled environmental layers");
         String sql = "select * from layers where enabled=true and type = ?";
-        List<Layer> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Layer.class), type);
+        List<Layer> l = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Layer.class), type);
         Util.updateDisplayPaths(l);
         Util.updateMetadataPaths(l);
         return l;
@@ -144,7 +144,7 @@ public class LayerDAOImpl implements LayerDAO {
         String type = "Contextual";
         logger.info("Getting a list of all enabled Contextual layers");
         String sql = "select * from layers where enabled=true and type = ?";
-        List<Layer> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Layer.class), type);
+        List<Layer> l = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Layer.class), type);
         Util.updateDisplayPaths(l);
         Util.updateMetadataPaths(l);
         return l;
@@ -165,7 +165,7 @@ public class LayerDAOImpl implements LayerDAO {
 
         keywords = "%" + keywords.toLowerCase() + "%";
 
-        List<Layer> list = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Layer.class), keywords, keywords, keywords, keywords);
+        List<Layer> list = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Layer.class), keywords, keywords, keywords, keywords);
 
         //remove duplicates if any
         Set setItems = new LinkedHashSet(list);
@@ -182,7 +182,7 @@ public class LayerDAOImpl implements LayerDAO {
     public Layer getLayerByIdForAdmin(int id) {
         logger.info("Getting enabled layer info for id = " + id);
         String sql = "select * from layers where id = ?";
-        List<Layer> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Layer.class), id);
+        List<Layer> l = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Layer.class), id);
         Util.updateDisplayPaths(l);
         Util.updateMetadataPaths(l);
         if (l.size() > 0) {
@@ -196,7 +196,7 @@ public class LayerDAOImpl implements LayerDAO {
     public Layer getLayerByNameForAdmin(String name) {
         logger.info("Getting enabled layer info for name = " + name);
         String sql = "select * from layers where name = ?";
-        List<Layer> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Layer.class), name);
+        List<Layer> l = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Layer.class), name);
         Util.updateDisplayPaths(l);
         Util.updateMetadataPaths(l);
         if (l.size() > 0) {
@@ -210,7 +210,7 @@ public class LayerDAOImpl implements LayerDAO {
     public List<Layer> getLayersForAdmin() {
         logger.info("Getting a list of all layers");
         String sql = "select * from layers";
-        List<Layer> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Layer.class));
+        List<Layer> l = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Layer.class));
         Util.updateDisplayPaths(l);
         Util.updateMetadataPaths(l);
         return l;

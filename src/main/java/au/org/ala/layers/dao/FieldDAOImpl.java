@@ -20,9 +20,9 @@ import au.org.ala.layers.util.Util;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.springframework.jdbc.core.simple.ParameterizedBeanPropertyRowMapper;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
-import org.springframework.jdbc.core.simple.SimpleJdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -44,7 +44,7 @@ public class FieldDAOImpl implements FieldDAO {
      */
     private static final Logger logger = Logger.getLogger(FieldDAOImpl.class);
 
-    private SimpleJdbcTemplate jdbcTemplate;
+    private JdbcTemplate jdbcTemplate;
     private SimpleJdbcInsert insertField;
     private String selectLayerSql;
 
@@ -64,7 +64,7 @@ public class FieldDAOImpl implements FieldDAO {
 
     @Resource(name = "dataSource")
     public void setDataSource(DataSource dataSource) {
-        this.jdbcTemplate = new SimpleJdbcTemplate(dataSource);
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
         this.insertField = new SimpleJdbcInsert(dataSource).withTableName("fields")
                 .usingColumns("id", "name", "\"desc\"", "sname", "sdesc", "sid", "addtomap", "\"intersect\"",
                         "defaultlayer", "enabled", "layerbranch", "analysis", "indb", "spid", "namesearch", "type", "last_update");
@@ -82,7 +82,7 @@ public class FieldDAOImpl implements FieldDAO {
         if (enabledFieldsOnly) {
             sql += " where enabled=true";
         }
-        return jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Field.class));
+        return jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Field.class));
     }
 
     @Override
@@ -97,7 +97,7 @@ public class FieldDAOImpl implements FieldDAO {
         if (enabledFieldsOnly) {
             sql += " and enabled=true";
         }
-        List<Field> l = jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Field.class), id, id);
+        List<Field> l = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Field.class), id, id);
         if (l.size() > 0) {
             return l.get(0);
         } else {
@@ -112,7 +112,7 @@ public class FieldDAOImpl implements FieldDAO {
         } else {
             logger.info("Getting a list of all enabled fields with indb");
             String sql = "select * from fields where enabled=TRUE and indb=TRUE";
-            return jdbcTemplate.query(sql, ParameterizedBeanPropertyRowMapper.newInstance(Field.class));
+            return jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Field.class));
         }
 
     }
