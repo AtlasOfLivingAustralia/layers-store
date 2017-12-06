@@ -23,6 +23,7 @@ import org.apache.log4j.Logger;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -44,6 +45,7 @@ public class DistributionDAOImpl implements DistributionDAO {
             + "caab_family_number,group_name,metadata_u,wmsurl,lsid,type,area_name,pid,checklist_name,area_km,notes,"
             + "geom_idx,image_quality,data_resource_uid,endemic";
     private JdbcTemplate jdbcTemplate;
+    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private String viewName = "distributions";
     private DataSource dataSource;
 
@@ -66,7 +68,7 @@ public class DistributionDAOImpl implements DistributionDAO {
         params.put("scientificNameWithSubgenus", removeSubGenus(lsidOrName));
         params.put("caab_species_number", lsidOrName);
         params.put("distribution_type", type);
-        List<Distribution> ds = updateWMSUrl(jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Distribution.class), params));
+        List<Distribution> ds = updateWMSUrl(namedParameterJdbcTemplate.query(sql, params, BeanPropertyRowMapper.newInstance(Distribution.class)));
         return ds;
     }
 
@@ -105,7 +107,7 @@ public class DistributionDAOImpl implements DistributionDAO {
             sql += " WHERE " + whereClause.toString();
         }
 
-        return updateWMSUrl(jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Distribution.class), params));
+        return updateWMSUrl(namedParameterJdbcTemplate.query(sql, params, BeanPropertyRowMapper.newInstance(Distribution.class)));
     }
 
     @Override
@@ -131,7 +133,7 @@ public class DistributionDAOImpl implements DistributionDAO {
         }
         sql = sql + " group by family";
 
-        return jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Facet.class), params);
+        return namedParameterJdbcTemplate.query(sql, params, BeanPropertyRowMapper.newInstance(Facet.class));
     }
 
 
@@ -210,7 +212,7 @@ public class DistributionDAOImpl implements DistributionDAO {
 
         sql = sql + " group by family";
 
-        return jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Facet.class), params);
+        return namedParameterJdbcTemplate.query(sql, params, BeanPropertyRowMapper.newInstance(Facet.class));
     }
 
 
@@ -222,7 +224,7 @@ public class DistributionDAOImpl implements DistributionDAO {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("lsids", Arrays.asList(lsids));
         params.put("distribution_type", type);
-        return updateWMSUrl(jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Distribution.class), params));
+        return updateWMSUrl(namedParameterJdbcTemplate.query(sql, params, BeanPropertyRowMapper.newInstance(Distribution.class)));
     }
 
     /**
@@ -526,6 +528,7 @@ public class DistributionDAOImpl implements DistributionDAO {
     @Resource(name = "dataSource")
     public void setDataSource(DataSource dataSource) {
         this.jdbcTemplate = new JdbcTemplate(dataSource);
+        this.namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(this.jdbcTemplate);
         this.dataSource = dataSource;
     }
 

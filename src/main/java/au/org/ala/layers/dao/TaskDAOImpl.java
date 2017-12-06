@@ -15,6 +15,7 @@
 package au.org.ala.layers.dao;
 
 import au.org.ala.layers.dto.Task;
+import com.google.common.base.Strings;
 import org.apache.log4j.Logger;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -65,9 +66,9 @@ public class TaskDAOImpl implements TaskDAO {
 
     @Transactional
     public synchronized void addTask(String name, String json, Integer size) {
-        if (jdbcTemplate.queryForObject("select count(*) from task where name = '" + name + "' and " +
-                (json == null ? " json = '' " : " json = '" + json + "' ") +
-                " and started is null ", Integer.class) == 0) {
+        if (jdbcTemplate.queryForObject("select count(*) from task where name = ? and " +
+                " json = ? " +
+                " and started is null ", Integer.class, name, Strings.nullToEmpty(json)) == 0) {
             Map m = new HashMap();
             m.put("name", name);
             m.put("json", json);

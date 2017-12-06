@@ -59,7 +59,7 @@ public class UserDataDAOImpl implements UserDataDAO {
         Date upload_dt = new Date(System.currentTimeMillis());
         int rows = jdbcTemplate.update(
                 sql_insert,
-                new Object[]{user_id, record_type, description, metadata, data_path, analysis_id, upload_dt});
+                user_id, record_type, description, metadata, data_path, analysis_id, upload_dt);
 
 
         if (rows > 0) {
@@ -68,7 +68,7 @@ public class UserDataDAOImpl implements UserDataDAO {
             Ud_header ud_header = (Ud_header) jdbcTemplate.queryForObject(
                     sql_select,
                     new BeanPropertyRowMapper(Ud_header.class),
-                    new Object[]{user_id, upload_dt});
+                    user_id, upload_dt);
 
             return ud_header;
         }
@@ -83,7 +83,7 @@ public class UserDataDAOImpl implements UserDataDAO {
         Ud_header ud_header = (Ud_header) jdbcTemplate.queryForObject(
                 sql_select,
                 new BeanPropertyRowMapper(Ud_header.class),
-                new Object[]{ud_header_id});
+                ud_header_id);
         return ud_header;
     }
 
@@ -125,7 +125,7 @@ public class UserDataDAOImpl implements UserDataDAO {
         String sql = "SELECT * FROM ud_data_x WHERE ud_header_id = ? AND ref = ? AND data_type = ?;";
 
         try {
-            Map<String, Object> o = jdbcTemplate.queryForMap(sql, new Object[]{id, ref + facet_id, data_type});
+            Map<String, Object> o = jdbcTemplate.queryForMap(sql, id, ref + facet_id, data_type);
 
             if (o != null) {
                 try {
@@ -170,14 +170,13 @@ public class UserDataDAOImpl implements UserDataDAO {
             try {
                 String sql_delete = "DELETE FROM ud_data_x WHERE ud_header_id = ? AND ref = ? AND data_type = ?;";
 
-                int deleted = jdbcTemplate.update(sql_delete, new Object[]{id, ref + facet_id, data_type});
+                int deleted = jdbcTemplate.update(sql_delete, id, ref + facet_id, data_type);
 
                 String sql_insert = "INSERT INTO ud_data_x (ud_header_id,ref,data_type, data) "
                         + " VALUES ( ?, ?, ?, ?);";
 
                 int inserted = jdbcTemplate.update(sql_insert,
-                        new Object[]{
-                                id, ref + facet_id, data_type, bytes.toByteArray()});
+                        id, ref + facet_id, data_type, bytes.toByteArray());
 
                 return inserted > 0;
             } catch (Exception e) {
@@ -198,7 +197,7 @@ public class UserDataDAOImpl implements UserDataDAO {
         List<Ud_header> ud_headers = (List<Ud_header>) jdbcTemplate.queryForObject(
                 sql,
                 new BeanPropertyRowMapper(Ud_header.class),
-                new Object[]{user_id});
+                user_id);
 
         return ud_headers;
     }
@@ -322,7 +321,7 @@ public class UserDataDAOImpl implements UserDataDAO {
         Date upload_dt = new Date(System.currentTimeMillis());
         int rows = jdbcTemplate.update(
                 sql_insert,
-                new Object[]{JSONObject.fromObject(data).toString(), header_id});
+                JSONObject.fromObject(data).toString(), header_id);
         return rows == 1;
     }
 

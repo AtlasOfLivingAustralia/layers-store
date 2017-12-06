@@ -552,7 +552,7 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
         String sql = "select o.pid, o.id, o.name, o.desc as description, o.fid as fid, f.name as fieldname, " +
                 "o.bbox, o.area_km from search_objects_by_geometry_intersect(?, " +
                 "ST_GeomFromText('POINT(" + lng + " " + lat + ")', 4326)) o, fields f WHERE o.fid = f.id";
-        List<Objects> l = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), new Object[]{fid});
+        List<Objects> l = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), fid);
         updateObjectWms(l);
         if (l == null || l.isEmpty()) {
             // get grid classes intersection
@@ -602,7 +602,7 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
                 "degrees(Azimuth( ST_SETSRID(ST_Point( ? , ? ),4326), the_geom)) as degrees " +
                 "from objects where fid= ? order by distance limit ? ";
 
-        List<Objects> objects = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), lng, lat, lng, lat, fid, new Integer(limit));
+        List<Objects> objects = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), lng, lat, lng, lat, fid, limit);
         updateObjectWms(objects);
         return objects;
     }
@@ -612,7 +612,7 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
         logger.info("Getting object info for fid = " + fid + " and name: (" + name + ") ");
         String sql = "select o.pid, o.id, o.name, o.desc as description, o.fid as fid, f.name as fieldname, o.bbox, " +
                 "o.area_km, ST_AsText(the_geom) as geometry, GeometryType(the_geom) as featureType from objects o, fields f where o.fid = ? and o.name like ? and o.fid = f.id";
-        List<Objects> objects = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), new Object[]{fid, name});
+        List<Objects> objects = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), fid, name);
         updateObjectWms(objects);
         return objects;
     }
@@ -679,7 +679,7 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
         String sql = "select fid, name, \"desc\", pid, id, ST_AsText(the_geom) as geometry, GeometryType(the_geom) as featureType from objects where fid= ? and " +
                 "ST_Within(the_geom, ST_GeomFromText( ? , 4326)) limit ? ";
 
-        List<Objects> objects = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), id, wkt, new Integer(limit));
+        List<Objects> objects = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), id, wkt, limit);
         updateObjectWms(objects);
         return objects;
     }
@@ -738,7 +738,7 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
         String sql = "select fid, name, \"desc\", pid, id, ST_AsText(the_geom) as geometry, GeometryType(the_geom) as featureType from objects, " +
                 "(select the_geom as g from Objects where pid = ? ) t where fid= ? and ST_Within(the_geom, g) limit ? ";
 
-        List<Objects> objects = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), intersectingPid, id, new Integer(limit));
+        List<Objects> objects = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), intersectingPid, id, limit);
         updateObjectWms(objects);
 
         return objects;

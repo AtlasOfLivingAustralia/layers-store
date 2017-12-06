@@ -194,8 +194,8 @@ public class FieldDAOImpl implements FieldDAO {
         Field f = getFieldById(fieldId);
 
         if (f != null) {
-            jdbcTemplate.update("delete from objects where fid='" + f.getId() + "'");
-            jdbcTemplate.update("delete from fields where id='" + f.getId() + "'");
+            jdbcTemplate.update("delete from objects where fid=?", f.getId());
+            jdbcTemplate.update("delete from fields where id=?", f.getId());
         }
     }
 
