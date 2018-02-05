@@ -903,7 +903,7 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
     public List<Map<String, Object>> getPointsOfInterestWithinRadius(double latitude, double longitude, double radiusKm) {
         String sql = "SELECT id, object_id, name, type, latitude, longitude, bearing, user_id, description, " +
                 "focal_length_millimetres from points_of_interest " +
-                "WHERE ST_DWithin(ST_GeographyFromText('POINT(" + longitude + " " + latitude + "'), geography(the_geom), ?)";
+                "WHERE ST_DWithin(ST_GeographyFromText('POINT(" + longitude + " " + latitude + ")'), geography(the_geom), ?)";
         List<Map<String, Object>> l = jdbcTemplate.queryForList(sql, radiusKm * 1000);
         return l;
     }
