@@ -20,6 +20,7 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -510,6 +511,10 @@ public class SimpleShapeFile extends Object implements Serializable {
         } else {
             return shapesreference.intersection(longitude, latitude);
         }
+    }
+
+    public static String getDBFEncoding(){
+        return System.getProperty("dbf.encoding", "ISO8859-1");
     }
 
     /**
@@ -1514,7 +1519,7 @@ class DBFField extends Object implements Serializable {
             ba[i] = buffer.get();
         }
         try {
-            name = (new String(ba, "US-ASCII")).trim().toUpperCase();
+            name = (new String(ba, SimpleShapeFile.getDBFEncoding())).trim().toUpperCase();
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }
@@ -1522,7 +1527,7 @@ class DBFField extends Object implements Serializable {
         byte[] ba2 = new byte[1];
         ba2[0] = buffer.get();
         try {
-            type = (new String(ba2, "US-ASCII")).charAt(0);
+            type = (new String(ba2, SimpleShapeFile.getDBFEncoding())).charAt(0);
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }
@@ -1760,10 +1765,10 @@ class DBFRecord extends Object implements Serializable {
             try {
                 switch (f.getType()) {
                     case 'C':            //string
-                        record[i] = (new String(data, "US-ASCII")).trim();
+                        record[i] = (new String(data,  SimpleShapeFile.getDBFEncoding())).trim();
                         break;
                     case 'N':            //number as string
-                        record[i] = (new String(data, "US-ASCII")).trim();
+                        record[i] = (new String(data, SimpleShapeFile.getDBFEncoding())).trim();
                         break;
                 }
             } catch (Exception e) {
@@ -1786,10 +1791,10 @@ class DBFRecord extends Object implements Serializable {
             try {
                 switch (f.getType()) {
                     case 'C':            //string
-                        fieldValues[i] = (new String(data, "US-ASCII")).trim();
+                        fieldValues[i] = (new String(data, SimpleShapeFile.getDBFEncoding())).trim();
                         break;
                     case 'N':            //number as string
-                        fieldValues[i] = (new String(data, "US-ASCII")).trim();
+                        fieldValues[i] = (new String(data, SimpleShapeFile.getDBFEncoding())).trim();
                         break;
                 }
             } catch (Exception e) {

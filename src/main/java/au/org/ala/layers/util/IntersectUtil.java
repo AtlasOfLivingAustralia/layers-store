@@ -81,31 +81,31 @@ public class IntersectUtil {
      * @param points array of latitude,longitude pairs.
      *               [even]=latitude, [odd]=longitude.  As String[].
      * @param sample sampling output from LayerIntersectDAO, as ArrayList<String>.
-     * @param os     OutputStream.
+     * @param outputStream OutputStream.
      * @throws IOException
      */
-    public static void writeSampleToStream(String[] fields, String[] points, ArrayList<String> sample, OutputStream os) throws IOException {
+    public static void writeSampleToStream(String[] fields, String[] points, ArrayList<String> sample, OutputStream outputStream) throws IOException {
         int[] curPos = new int[sample.size()];
         for (int i = 0; i < curPos.length; i++) {
             curPos[i] = 0;
         }
 
-        String charSet = "UTF-8";
-        byte[] bNewLine = "\n".getBytes(charSet);
-        byte[] bComma = ",".getBytes(charSet);
-        byte[] bDblQuote = "\"".getBytes(charSet);
+        OutputStreamWriter os = new OutputStreamWriter(outputStream, "UTF-8");
+        char bNewLine = '\n';
+        char bComma = ',';
+        char bDblQuote = '"';
 
-        os.write("latitude,longitude".getBytes(charSet));
+        os.write("latitude,longitude");
         for (int i = 0; i < fields.length; i++) {
             os.write(bComma);
-            os.write(fields[i].getBytes(charSet));
+            os.write(fields[i]);
         }
 
         for (int i = 0; i < points.length; i += 2) {
             os.write(bNewLine);
-            os.write(points[i].getBytes(charSet));
+            os.write(points[i]);
             os.write(bComma);
-            os.write(points[i + 1].getBytes(charSet));
+            os.write(points[i + 1]);
 
             for (int j = 0; j < sample.size(); j++) {
                 os.write(bComma);
@@ -127,15 +127,16 @@ public class IntersectUtil {
                         }
                         if (useQuotes) {
                             os.write(bDblQuote);
-                            os.write(s.getBytes(charSet));
+                            os.write(s);
                             os.write(bDblQuote);
                         } else {
-                            os.write(s.getBytes(charSet));
+                            os.write(s);
                         }
                     }
                 }
             }
         }
+        os.flush();
     }
 
     private static String readPointsFile(String filename) throws IOException {
