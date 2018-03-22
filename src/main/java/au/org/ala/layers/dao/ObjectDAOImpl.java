@@ -635,7 +635,12 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
 
     private void updateObjectWms(List<Objects> objects) {
         for (Objects o : objects) {
-            o.setWmsurl(layerIntersectDao.getConfig().getGeoserverUrl() + objectWmsUrl.replace("<pid>", o.getPid()));
+            String wmsurl = objectWmsUrl.replace("<pid>", o.getPid());
+            //Points
+            if (o.getArea_km() == 0) {
+                wmsurl = wmsurl.replace("ALA:Objects", "ALA:Points");
+            }
+            o.setWmsurl(layerIntersectDao.getConfig().getGeoserverUrl() + wmsurl);
         }
     }
 
