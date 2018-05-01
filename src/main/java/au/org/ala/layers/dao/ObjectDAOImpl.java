@@ -601,9 +601,9 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
                 "st_Distance_Sphere(ST_SETSRID(ST_Point( ? , ? ),4326), the_geom) as distance, " +
                 "degrees(Azimuth( ST_SETSRID(ST_Point( ? , ? ),4326), the_geom)) as degrees, " +
                 "area_km " +
-                "from objects where fid= ? order by distance limit ? ";
+                "from objects where fid= ? order by the_geom <#> st_setsrid(st_makepoint( ? , ? ),4326) limit ? ";
 
-        List<Objects> objects = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), lng, lat, lng, lat, fid, limit);
+        List<Objects> objects = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), lng, lat, lng, lat, fid, lng, lat, limit);
         updateObjectWms(objects);
         return objects;
     }
