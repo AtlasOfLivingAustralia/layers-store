@@ -52,6 +52,10 @@ public class Client {
         }
     }
 
+    public static void setContext(ApplicationContext context) {
+        gContext = context;
+    }
+
     static void initContext() {
         if (gContext == null) {
             Object obj = ContextSingletonBeanFactoryLocator.getInstance();
