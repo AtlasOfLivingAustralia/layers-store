@@ -22,6 +22,7 @@ import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Service;
 
@@ -44,6 +45,7 @@ public class FieldDAOImpl implements FieldDAO {
      */
     private static final Logger logger = Logger.getLogger(FieldDAOImpl.class);
 
+    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private JdbcTemplate jdbcTemplate;
     private SimpleJdbcInsert insertField;
     private String selectLayerSql;
@@ -65,6 +67,7 @@ public class FieldDAOImpl implements FieldDAO {
     @Resource(name = "dataSource")
     public void setDataSource(DataSource dataSource) {
         this.jdbcTemplate = new JdbcTemplate(dataSource);
+        this.namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
         this.insertField = new SimpleJdbcInsert(dataSource).withTableName("fields")
                 .usingColumns("id", "name", "\"desc\"", "sname", "sdesc", "sid", "addtomap", "\"intersect\"",
                         "defaultlayer", "enabled", "layerbranch", "analysis", "indb", "spid", "namesearch", "type", "last_update");
@@ -186,7 +189,7 @@ public class FieldDAOImpl implements FieldDAO {
 
         Map map = field.toMap();
         map.remove("layer");
-        jdbcTemplate.update(sql, map);
+        namedParameterJdbcTemplate.update(sql, map);
     }
 
     @Override

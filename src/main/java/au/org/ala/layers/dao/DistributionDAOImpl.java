@@ -180,7 +180,7 @@ public class DistributionDAOImpl implements DistributionDAO {
         if (whereClause.length() > 0) {
             sql += " AND " + whereClause.toString();
         }
-        return updateWMSUrl(jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Distribution.class), params));
+        return updateWMSUrl(namedParameterJdbcTemplate.query(sql, params, BeanPropertyRowMapper.newInstance(Distribution.class)));
     }
 
     /**
