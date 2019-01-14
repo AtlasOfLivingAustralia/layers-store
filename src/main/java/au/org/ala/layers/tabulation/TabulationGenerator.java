@@ -377,11 +377,19 @@ public class TabulationGenerator {
     }
 
     public static String gridToGrid(String fieldId1, String fieldId2, Records records) {
+        return gridToGrid(fieldId1, fieldId2, records, null);
+    }
+
+    public static String gridToGrid(String fieldId1, String fieldId2, Records records, String sqlFilePath) {
         FileWriter fw = null;
         StringBuilder sb = new StringBuilder();
 
         try {
-            fw = new FileWriter(fieldId1 + "_" + fieldId2 + ".sql");
+            if (sqlFilePath != null) {
+                fw = new FileWriter(sqlFilePath);
+            } else {
+                fw = new FileWriter(fieldId1 + "_" + fieldId2 + ".sql");
+            }
 
             List<Double> resolutions = Client.getLayerIntersectDao().getConfig().getAnalysisResolutions();
             Double resolution = resolutions.get(0);
