@@ -37,6 +37,8 @@ public interface ObjectDAO {
 
     List<Objects> getObjectsById(String id, int start, int pageSize);
 
+    List<Objects> getObjectsById(String id, int start, int pageSize, String filter);
+
     void writeObjectsToCSV(OutputStream output, String id) throws Exception;
 
     String getObjectsGeometryById(String id, String geomtype);

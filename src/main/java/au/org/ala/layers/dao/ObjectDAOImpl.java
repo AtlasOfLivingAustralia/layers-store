@@ -190,14 +190,22 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
 
     @Override
     public List<Objects> getObjectsById(String id, int start, int pageSize) {
+        return getObjectsById(id, start, pageSize, null);
+    }
+
+    @Override
+    public List<Objects> getObjectsById(String id, int start, int pageSize, String filter) {
+        if (filter == null) filter = "";
+        filter = "%" + filter + "%";
+
         logger.info("Getting object info for fid = " + id);
         String limit_offset = " limit " + (pageSize < 0 ? "all" : pageSize) + " offset " + start;
         String sql = "select o.pid as pid, o.id as id, o.name as name, o.desc as description, " +
                 "o.fid as fid, f.name as fieldname, o.bbox, o.area_km, " +
                 "ST_AsText(ST_Centroid(o.the_geom)) as centroid," +
                 "GeometryType(o.the_geom) as featureType from objects o, fields f " +
-                "where o.fid = ? and o.fid = f.id order by o.pid " + limit_offset;
-        List<Objects> objects = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), id);
+                "where o.fid = ? and o.fid = f.id and o.name || o.desc || o.id || o.pid like ? order by o.pid " + limit_offset;
+        List<Objects> objects = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), id, filter);
 
         updateObjectWms(objects);
 
