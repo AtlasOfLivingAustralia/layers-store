@@ -196,12 +196,15 @@ public class SimpleShapeFile extends Object implements Serializable {
 
         ArrayList<ArrayList<SimpleRegion>> regions = new ArrayList<ArrayList<SimpleRegion>>();
 
+        int bracket1st = pointsString.indexOf('(');
+        int bracket2nd = pointsString.indexOf('(', bracket1st + 1);
+        int bracket3rd = pointsString.indexOf('(', bracket2nd + 1);
         if (pointsString.startsWith("GEOMETRYCOLLECTION")) {
-            regions.addAll(parseGeometryCollection(pointsString.substring("GEOMETRYCOLLECTION(".length(), pointsString.length() - 1)));
+            regions.addAll(parseGeometryCollection(pointsString.substring(bracket1st + 1, pointsString.length() - 1)));
         } else if (pointsString.startsWith("MULTIPOLYGON")) {
-            regions.addAll(parseMultipolygon(pointsString.substring("MULTIPOLYGON(((".length(), pointsString.length() - 3)));
+            regions.addAll(parseMultipolygon(pointsString.substring(bracket3rd + 1, pointsString.length() - 3)));
         } else if (pointsString.startsWith("POLYGON")) {
-            regions.add(parsePolygon(pointsString.substring("POLYGON((".length(), pointsString.length() - 2)));
+            regions.add(parsePolygon(pointsString.substring(bracket2nd + 1, pointsString.length() - 2)));
         }
 
         if (regions.size() == 0) {
@@ -232,12 +235,16 @@ public class SimpleShapeFile extends Object implements Serializable {
 
         ArrayList<ArrayList<SimpleRegion>> regions = new ArrayList<ArrayList<SimpleRegion>>();
         for (int i = 0; i < stringsList.size(); i++) {
+            int bracket1st = stringsList.get(i).indexOf('(');
+            int bracket2nd = stringsList.get(i).indexOf('(', bracket1st + 1);
+            int bracket3rd = stringsList.get(i).indexOf('(', bracket2nd + 1);
+
             if (stringsList.get(i).startsWith("MULTIPOLYGON")) {
                 //remove trailing ")))"
-                regions.addAll(parseMultipolygon(stringsList.get(i).substring("MULTIPOLYGON(((".length(), stringsList.get(i).length() - 3)));
+                regions.addAll(parseMultipolygon(stringsList.get(i).substring(bracket3rd, stringsList.get(i).length() - 3)));
             } else if (stringsList.get(i).startsWith("POLYGON")) {
                 //remove trailing "))"
-                regions.add(parsePolygon(stringsList.get(i).substring("POLYGON((".length(), stringsList.get(i).length() - 2)));
+                regions.add(parsePolygon(stringsList.get(i).substring(bracket2nd, stringsList.get(i).length() - 2)));
             }
         }
 
@@ -246,7 +253,7 @@ public class SimpleShapeFile extends Object implements Serializable {
 
     static ArrayList<ArrayList<SimpleRegion>> parseMultipolygon(String multipolygon) {
         ArrayList<ArrayList<SimpleRegion>> regions = new ArrayList<ArrayList<SimpleRegion>>();
-        String[] splitMultipolygon = multipolygon.split("\\)\\),\\(\\(");
+        String[] splitMultipolygon = multipolygon.split("\\)\\),( )*\\(\\(");
         for (int j = 0; j < splitMultipolygon.length; j++) {
             regions.add(parsePolygon(splitMultipolygon[j]));
         }
@@ -255,7 +262,7 @@ public class SimpleShapeFile extends Object implements Serializable {
 
     static ArrayList<SimpleRegion> parsePolygon(String polygon) {
         ArrayList<SimpleRegion> regions = new ArrayList<SimpleRegion>();
-        for (String p : polygon.split("\\),\\(")) {
+        for (String p : polygon.split("\\),( )*\\(")) {
             regions.add(SimpleRegion.parseSimpleRegion(p));
         }
         return regions;

@@ -127,13 +127,18 @@ public class SimpleRegion extends Object implements Serializable {
         int pos;
         int lastpos = 0;
         while ((pos = Math.min(pointsString.indexOf(',', lastpos), pointsString.indexOf(' ', lastpos))) > 0) {
-            try {
-                points.add(Double.parseDouble(pointsString.substring(lastpos, pos)));
-            } catch (Exception e) {
-                points.add(0.0);
+            if (pos > lastpos) {
+                try {
+                    points.add(Double.parseDouble(pointsString.substring(lastpos, pos)));
+                } catch (Exception e) {
+                    points.add(0.0);
+                }
             }
             lastpos = pos + 1;
         }
+        // test for extra space
+        if (pointsString.charAt(lastpos) == ' ') lastpos++;
+
         //one coordinate pair left
         pos = pointsString.indexOf(' ', lastpos);
         try {
