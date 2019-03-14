@@ -204,7 +204,7 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
                 "o.fid as fid, f.name as fieldname, o.bbox, o.area_km, " +
                 "ST_AsText(ST_Centroid(o.the_geom)) as centroid," +
                 "GeometryType(o.the_geom) as featureType from objects o, fields f " +
-                "where o.fid = ? and o.fid = f.id and o.name || o.desc || o.id || o.pid like ? order by o.pid " + limit_offset;
+                "where o.fid = ? and o.fid = f.id and concat(o.name, o.desc, o.id, o.pid) like ? order by o.pid " + limit_offset;
         List<Objects> objects = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), id, filter);
 
         updateObjectWms(objects);
