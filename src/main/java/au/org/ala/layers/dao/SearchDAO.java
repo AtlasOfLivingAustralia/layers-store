@@ -23,5 +23,7 @@ import java.util.List;
  * @author ajay
  */
 public interface SearchDAO {
-    public List<SearchObject> findByCriteria(String criteria, int limit);
+    List<SearchObject> findByCriteria(String criteria, int limit);
+
+    List<SearchObject> findByCriteria(final String criteria, int limit, List<String> includeFieldIds, List<String> excludeFieldIds);
 }

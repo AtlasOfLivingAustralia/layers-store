@@ -58,3 +58,5 @@ CREATE INDEX objects_namesearch_idx
   USING btree
   (namesearch );
 
+CREATE INDEX objects_name_idx ON objects USING gin (name gin_trgm_ops);
+
