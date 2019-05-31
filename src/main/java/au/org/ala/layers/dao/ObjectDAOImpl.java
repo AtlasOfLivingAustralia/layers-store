@@ -204,8 +204,8 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
                 "o.fid as fid, f.name as fieldname, o.bbox, o.area_km, " +
                 "ST_AsText(ST_Centroid(o.the_geom)) as centroid," +
                 "GeometryType(o.the_geom) as featureType from objects o, fields f " +
-                "where o.fid = ? and o.fid = f.id and concat(o.name, o.desc, o.id, o.pid) like ? order by o.pid " + limit_offset;
-        List<Objects> objects = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), id, filter);
+                "where o.fid = ? and o.fid = f.id and (o.name ilike ? or o.desc ilike ? ) order by o.pid " + limit_offset;
+        List<Objects> objects = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), id, filter, filter);
 
         updateObjectWms(objects);
 
@@ -620,7 +620,7 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
     public List<Objects> getObjectByFidAndName(String fid, String name) {
         logger.info("Getting object info for fid = " + fid + " and name: (" + name + ") ");
         String sql = "select o.pid, o.id, o.name, o.desc as description, o.fid as fid, f.name as fieldname, o.bbox, " +
-                "o.area_km, ST_AsText(the_geom) as geometry, GeometryType(the_geom) as featureType from objects o, fields f where o.fid = ? and o.name like ? and o.fid = f.id";
+                "o.area_km, ST_AsText(the_geom) as geometry, GeometryType(the_geom) as featureType from objects o, fields f where o.fid = ? and o.name ilike ? and o.fid = f.id";
         List<Objects> objects = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), fid, name);
         updateObjectWms(objects);
         return objects;

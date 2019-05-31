@@ -159,14 +159,14 @@ public class LayerDAOImpl implements LayerDAO {
         String sql = "";
         sql += "select * from layers where ";
         sql += " enabled=true AND ( ";
-        sql += "lower(keywords) like ? ";
-        sql += " or lower(displayname) like ? ";
+        sql += "keywords ilike ? ";
+        sql += " or displayname ilike ? ";
 
-        sql += " or lower(name) like ? ";
-        sql += " or lower(domain) like ? ";
+        sql += " or name ilike ? ";
+        sql += " or domain ilike ? ";
         sql += ") order by displayname ";
 
-        keywords = "%" + keywords.toLowerCase() + "%";
+        keywords = "%" + keywords + "%";
 
         List<Layer> list = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Layer.class), keywords, keywords, keywords, keywords);
 

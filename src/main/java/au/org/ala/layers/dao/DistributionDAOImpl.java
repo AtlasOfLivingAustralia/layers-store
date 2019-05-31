@@ -61,7 +61,7 @@ public class DistributionDAOImpl implements DistributionDAO {
     public List<Distribution> findDistributionsByLSIDOrName(String lsidOrName, String type) {
         String sql = SELECT_CLAUSE + " from " + viewName + " WHERE " +
                 "(lsid=:lsid OR caab_species_number=:caab_species_number " +
-                "OR scientific like :scientificName OR scientific like :scientificNameWithSubgenus) AND type = :distribution_type limit 1";
+                "OR scientific ilike :scientificName OR scientific ilike :scientificNameWithSubgenus) AND type = :distribution_type limit 1";
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("lsid", lsidOrName);
         params.put("scientificName", lsidOrName);
@@ -260,7 +260,7 @@ public class DistributionDAOImpl implements DistributionDAO {
             if (where.length() > 0) {
                 where.append(" AND ");
             }
-            where.append(":lsids LIKE '% '||lsid||' %'  ");
+            where.append(":lsids ILIKE '% '||lsid||' %'  ");
             params.put("lsids", " " + lsids.replace(",", " ") + " ");
         }
 

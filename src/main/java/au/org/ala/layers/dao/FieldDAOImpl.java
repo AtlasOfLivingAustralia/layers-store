@@ -208,12 +208,12 @@ public class FieldDAOImpl implements FieldDAO {
         String sql = "";
         sql += "select f.* " + selectLayerSql + " from fields f inner join layers l on f.spid = l.id || '' where ";
         sql += " l.enabled=true AND f.enabled=true AND ( ";
-        sql += "lower(l.keywords) like ? ";
-        sql += " or lower(l.displayname) like ? ";
+        sql += "l.keywords ilike ? ";
+        sql += " or l.displayname ilike ? ";
 
-        sql += " or lower(l.name) like ? ";
-        sql += " or lower(l.domain) like ? ";
-        sql += " or lower(f.name) like ? ";
+        sql += " or l.name ilike ? ";
+        sql += " or l.domain ilike ? ";
+        sql += " or f.name ilike ? ";
         sql += ") order by f.name ";
 
         keywords = "%" + keywords.toLowerCase() + "%";
@@ -231,12 +231,12 @@ public class FieldDAOImpl implements FieldDAO {
         String sql = "";
         sql += "select f.* " + selectLayerSql + " from fields f inner join layers l on f.spid = l.id || '' where ";
         sql += " l.enabled=true AND f.enabled=true AND ( ";
-        sql += "lower(l.keywords) like ? ";
-        sql += " or lower(l.displayname) like ? ";
+        sql += "l.keywords ilike ? ";
+        sql += " or l.displayname ilike ? ";
 
-        sql += " or lower(l.name) like ? ";
-        sql += " or lower(l.domain) like ? ";
-        sql += " or lower(f.name) like ? ";
+        sql += " or l.name ilike ? ";
+        sql += " or l.domain ilike ? ";
+        sql += " or f.name ilike ? ";
         sql += ") order by f.name ";
 
         keywords = "%" + keywords.toLowerCase() + "%";
