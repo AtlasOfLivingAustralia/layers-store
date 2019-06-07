@@ -14,7 +14,7 @@
  ***************************************************************************/
 package au.org.ala.layers.grid;
 
-import com.vividsolutions.jts.geom.*;
+import org.locationtech.jts.geom.*;
 import org.apache.log4j.Logger;
 import org.geotools.geometry.jts.JTSFactoryFinder;
 

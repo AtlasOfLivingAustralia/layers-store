@@ -15,8 +15,8 @@
 package au.org.ala.layers.grid;
 
 import au.org.ala.layers.intersect.Grid;
-import com.vividsolutions.jts.geom.*;
 import org.apache.log4j.Logger;
+import org.locationtech.jts.geom.*;
 
 import java.io.IOException;
 import java.io.OutputStream;

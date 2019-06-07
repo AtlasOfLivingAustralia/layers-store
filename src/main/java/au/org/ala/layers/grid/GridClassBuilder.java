@@ -17,7 +17,7 @@ package au.org.ala.layers.grid;
 import au.org.ala.layers.dto.GridClass;
 import au.org.ala.layers.intersect.Grid;
 import au.org.ala.layers.util.SpatialUtil;
-import com.vividsolutions.jts.geom.MultiPolygon;
+import org.locationtech.jts.geom.MultiPolygon;
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
