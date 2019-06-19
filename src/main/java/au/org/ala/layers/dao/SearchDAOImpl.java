@@ -102,8 +102,8 @@ public class SearchDAOImpl implements SearchDAO {
         for (Entry<String, IntersectionFile> e : layerIntersectDao.getConfig().getIntersectionFiles().entrySet()) {
             IntersectionFile f = e.getValue();
             if ("a".equalsIgnoreCase(f.getType()) && f.getClasses() != null && e.getKey().equals(f.getFieldId()) &&
-                    (includeFieldIds == null || includeFieldIds.contains(f.getFieldId())) &&
-                    (excludeFieldIds == null || !excludeFieldIds.contains(f.getFieldId()))) {
+                    (includeFieldIds == null || includeFieldIds.isEmpty() || includeFieldIds.contains(f.getFieldId())) &&
+                    (excludeFieldIds == null || excludeFieldIds.isEmpty() || !excludeFieldIds.contains(f.getFieldId()))) {
                 //search
                 for (Entry<Integer, GridClass> c : f.getClasses().entrySet()) {
                     if ((pos = c.getValue().getName().toLowerCase().indexOf(criteria)) >= 0) {
