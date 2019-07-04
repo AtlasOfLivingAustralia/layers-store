@@ -24,8 +24,6 @@ import java.util.List;
  */
 public interface SearchDAO {
     List<SearchObject> findByCriteria(String criteria, int limit);
-    List<SearchObject> findByCriteria(String criteria, int offset, int limit);
 
     List<SearchObject> findByCriteria(final String criteria, int limit, List<String> includeFieldIds, List<String> excludeFieldIds);
-    List<SearchObject> findByCriteria(final String criteria, int offset, int limit, List<String> includeFieldIds, List<String> excludeFieldIds);
 }
