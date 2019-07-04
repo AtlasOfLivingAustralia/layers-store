@@ -52,14 +52,24 @@ public class SearchDAOImpl implements SearchDAO {
 
     @Override
     public List<SearchObject> findByCriteria(final String criteria, int limit) {
+        return findByCriteria(criteria, 0, limit);
+    }
+
+    @Override
+    public List<SearchObject> findByCriteria(String criteria, int offset, int limit) {
         logger.info("Getting search results for query: " + criteria);
-        String sql = "select pid, id, name, \"desc\" as description, fid, fieldname from searchobjects(?,?)";
-        return addGridClassesToSearch(jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(SearchObject.class), "%" + criteria + "%", limit), criteria, limit, null, null);
+        String sql = "select pid, id, name, \"desc\" as description, fid, fieldname from searchobjects(?,?,?)";
+        return addGridClassesToSearch(jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(SearchObject.class), "%" + criteria + "%", limit,offset), criteria, limit, null, null);
 
     }
 
     @Override
     public List<SearchObject> findByCriteria(final String criteria, int limit, List<String> includeFieldIds, List<String> excludeFieldIds) {
+       return findByCriteria(criteria, 0, limit, includeFieldIds,  excludeFieldIds);
+    }
+
+    @Override
+    public List<SearchObject> findByCriteria(String criteria, int offset, int limit, List<String> includeFieldIds, List<String> excludeFieldIds) {
         logger.info("Getting search results for query: " + criteria);
         String fieldFilter = "";
         List<String> fieldIds = null;
@@ -74,17 +84,18 @@ public class SearchDAOImpl implements SearchDAO {
 
         if (fieldFilter.isEmpty()) {
             // no fieldFilter
-            String sql = "select o.pid as pid ,o.id as id, o.name as name, o.desc as description, o.fid as fid, f.name as fieldname from objects o inner join fields f on o.fid = f.id where o.name ilike ' ? ' and o.namesearch=true limit ?";
-            return addGridClassesToSearch(jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(SearchObject.class), "%" + criteria + "%", limit), criteria, limit, includeFieldIds, excludeFieldIds);
+            String sql = "select o.pid as pid ,o.id as id, o.name as name, o.desc as description, o.fid as fid, f.name as fieldname from objects o inner join fields f on o.fid = f.id where o.name ilike ' ? ' and o.namesearch=true limit ? offset ?";
+            return addGridClassesToSearch(jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(SearchObject.class), "%" + criteria + "%", limit, offset), criteria, limit, includeFieldIds, excludeFieldIds);
         } else {
             // use fieldFilter
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("fieldIds", fieldIds);
             parameters.addValue("searchTerm", "%" + criteria + "%");
             parameters.addValue("limit", limit);
+            parameters.addValue("offset", offset);
 
 
-            String sql = "select o.pid as pid ,o.id as id, o.name as name, o.desc as description, o.fid as fid, f.name as fieldname from objects o inner join fields f on o.fid = f.id where o.name ilike :searchTerm and o.namesearch=true " + fieldFilter + " limit :limit";
+            String sql = "select o.pid as pid ,o.id as id, o.name as name, o.desc as description, o.fid as fid, f.name as fieldname from objects o inner join fields f on o.fid = f.id where o.name ilike :searchTerm and o.namesearch=true " + fieldFilter + " limit :limit" +" offset :offset";
             return addGridClassesToSearch(jdbcParameterTemplate.query(sql, parameters, BeanPropertyRowMapper.newInstance(SearchObject.class)), criteria, limit, includeFieldIds, excludeFieldIds);
         }
     }
