@@ -52,15 +52,15 @@ public class SearchDAOImpl implements SearchDAO {
 
     @Override
     public List<SearchObject> findByCriteria(final String criteria, int limit) {
-        return findByCriteria(criteria, 0, limit);
+        logger.info("Getting search results for query: " + criteria);
+        String sql = "select pid, id, name, \"desc\" as description, fid, fieldname from searchobjects(?,?,?)";
+        return addGridClassesToSearch(jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(SearchObject.class), "%" + criteria + "%", limit), criteria, limit, null, null);
     }
 
     @Override
     public List<SearchObject> findByCriteria(String criteria, int offset, int limit) {
-        logger.info("Getting search results for query: " + criteria);
-        String sql = "select pid, id, name, \"desc\" as description, fid, fieldname from searchobjects(?,?,?)";
-        return addGridClassesToSearch(jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(SearchObject.class), "%" + criteria + "%", limit,offset), criteria, limit, null, null);
-
+        String sql = "select pid, id, name, \"desc\" as description, fid, fieldname from objects limit ? offset ?";
+        return addGridClassesToSearch(jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(SearchObject.class), "%" + criteria + "%", limit, offset), criteria, limit, null, null);
     }
 
     @Override

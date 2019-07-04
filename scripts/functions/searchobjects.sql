@@ -17,7 +17,7 @@ BEGIN
     IF position('%' in q) > 0 THEN 
         q2 := substring(q from 2 for length(q)-2);
     ELSE
-	q2 := q;
+	      q2 := q;
     END IF;
     FOR r IN SELECT id FROM obj_names WHERE position(q2 in name) > 0 order by position(q2 in name), name LIMIT lim LOOP
         FOR s IN SELECT o.pid as pid, o.id as id, o.name as name, o.desc as desc, o.fid as fid, f.name as fieldname FROM objects o, fields f WHERE o.fid = f.id and o.name_id=r.id LOOP
