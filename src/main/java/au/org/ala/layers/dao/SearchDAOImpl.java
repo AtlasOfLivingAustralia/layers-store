@@ -53,7 +53,7 @@ public class SearchDAOImpl implements SearchDAO {
     @Override
     public List<SearchObject> findByCriteria(final String criteria, int limit) {
         logger.info("Getting search results for query: " + criteria);
-        String sql = "select pid, id, name, \"desc\" as description, fid, fieldname from searchobjects(?,?,?)";
+        String sql = "select pid, id, name, \"desc\" as description, fid, fieldname from searchobjects(?,?)";
         return addGridClassesToSearch(jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(SearchObject.class), "%" + criteria + "%", limit), criteria, limit, null, null);
     }
 
