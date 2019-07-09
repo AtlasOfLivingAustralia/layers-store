@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.sql.DataSource;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 
@@ -59,8 +60,7 @@ public class SearchDAOImpl implements SearchDAO {
 
     @Override
     public List<SearchObject> findByCriteria(String criteria, int offset, int limit) {
-        String sql = "select pid, id, name, \"desc\" as description, fid, fieldname from objects limit ? offset ?";
-        return addGridClassesToSearch(jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(SearchObject.class), "%" + criteria + "%", limit, offset), criteria, limit, null, null);
+        return findByCriteria( criteria,  offset,  limit, new ArrayList<String>(), new ArrayList<String>());
     }
 
     @Override
@@ -84,8 +84,14 @@ public class SearchDAOImpl implements SearchDAO {
 
         if (fieldFilter.isEmpty()) {
             // no fieldFilter
-            String sql = "select o.pid as pid ,o.id as id, o.name as name, o.desc as description, o.fid as fid, f.name as fieldname from objects o inner join fields f on o.fid = f.id where o.name ilike ' ? ' and o.namesearch=true limit ? offset ?";
-            return addGridClassesToSearch(jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(SearchObject.class), "%" + criteria + "%", limit, offset), criteria, limit, includeFieldIds, excludeFieldIds);
+            String sql = "select o.pid as pid ,o.id as id, o.name as name, o.desc as description, o.fid as fid, f.name as fieldname from objects o inner join fields f on o.fid = f.id where o.name ilike :criteria and o.namesearch=true limit :limit offset :offset";
+            MapSqlParameterSource parameters = new MapSqlParameterSource();
+            parameters.addValue("criteria", "%" + criteria + "%");
+            parameters.addValue("limit", limit);
+            parameters.addValue("offset", offset);
+            List<SearchObject> searchObjects = jdbcParameterTemplate.query(sql, parameters, BeanPropertyRowMapper.newInstance(SearchObject.class));
+
+            return addGridClassesToSearch(searchObjects, criteria,  limit, includeFieldIds, excludeFieldIds);
         } else {
             // use fieldFilter
             MapSqlParameterSource parameters = new MapSqlParameterSource();
@@ -100,37 +106,35 @@ public class SearchDAOImpl implements SearchDAO {
         }
     }
 
+
     private List<SearchObject> addGridClassesToSearch(List<SearchObject> search, String criteria, int limit, List<String> includeFieldIds, List<String> excludeFieldIds) {
         criteria = criteria.toLowerCase();
-        int maxPos = Integer.MAX_VALUE;
-        int pos;
-        for (SearchObject so : search) {
-            pos = so.getName().toLowerCase().indexOf(criteria);
-            if (pos >= 0 && pos < maxPos) {
-                maxPos = pos;
-            }
-        }
-        for (Entry<String, IntersectionFile> e : layerIntersectDao.getConfig().getIntersectionFiles().entrySet()) {
-            IntersectionFile f = e.getValue();
-            if ("a".equalsIgnoreCase(f.getType()) && f.getClasses() != null && e.getKey().equals(f.getFieldId()) &&
-                    (includeFieldIds == null || includeFieldIds.isEmpty() || includeFieldIds.contains(f.getFieldId())) &&
-                    (excludeFieldIds == null || excludeFieldIds.isEmpty() || !excludeFieldIds.contains(f.getFieldId()))) {
-                //search
-                for (Entry<Integer, GridClass> c : f.getClasses().entrySet()) {
-                    if ((pos = c.getValue().getName().toLowerCase().indexOf(criteria)) >= 0) {
-                        if (pos <= maxPos) {
-                            search.add(SearchObject.create(
-                                    f.getLayerPid() + ":" + c.getKey(),
-                                    f.getLayerPid() + ":" + c.getKey(),
-                                    c.getValue().getName(),
-                                    null,
-                                    f.getFieldId(),
-                                    f.getFieldName()));
+        int vacantCount = limit - search.size() ;
+
+        if (vacantCount>0)
+            for (Entry<String, IntersectionFile> e : layerIntersectDao.getConfig().getIntersectionFiles().entrySet()) {
+                IntersectionFile f = e.getValue();
+                if ("a".equalsIgnoreCase(f.getType()) && f.getClasses() != null && e.getKey().equals(f.getFieldId()) &&
+                        (includeFieldIds == null || includeFieldIds.isEmpty() || includeFieldIds.contains(f.getFieldId())) &&
+                        (excludeFieldIds == null || excludeFieldIds.isEmpty() || !excludeFieldIds.contains(f.getFieldId()))) {
+                    //search
+                    for (Entry<Integer, GridClass> c : f.getClasses().entrySet()) {
+                        if ((c.getValue().getName().toLowerCase().indexOf(criteria)) >= 0 && vacantCount >0  ) {
+                             vacantCount --;
+                             search.add(SearchObject.create(
+                                     f.getLayerPid() + ":" + c.getKey(),
+                                     f.getLayerPid() + ":" + c.getKey(),
+                                     c.getValue().getName(),
+                                     null,
+                                     f.getFieldId(),
+                                     f.getFieldName()));
+
+                        }else{
+                            break;
                         }
                     }
                 }
             }
-        }
         return search;
     }
 }
