@@ -84,8 +84,12 @@ public class SearchDAOImpl implements SearchDAO {
 
         if (fieldFilter.isEmpty()) {
             // no fieldFilter
-            String sql = "select o.pid as pid ,o.id as id, o.name as name, o.desc as description, o.fid as fid, f.name as fieldname from objects o inner join fields f on o.fid = f.id where o.name ilike :criteria and o.namesearch=true limit :limit offset :offset";
+            //String sql = "select o.pid as pid ,o.id as id, o.name as name, o.desc as description, o.fid as fid, f.name as fieldname from objects o inner join fields f on o.fid = f.id where o.name ilike :criteria and o.namesearch=true order by position(:nativeQ in lower(o.name)), pid limit :limit offset :offset";
+            String sql = "with o as (select o.pid as pid ,o.id as id, o.name as name, o.desc as description, o.fid as fid, f.name as fieldname from objects o inner join fields f on o.fid = f.id where o.name ilike :criteria and o.namesearch=true )" +
+                    " select pid, id, name, description, fid, fieldname, (select array_to_string(array_agg(a.f),',') from (select distinct (fid || '|' || fieldname) as f from o) a) as fields, position(:nativeQ in lower(name)) as rank from o order by rank, name, pid limit :limit offset :offset";
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
+            parameters.addValue("nativeQ",  criteria );
             parameters.addValue("criteria", "%" + criteria + "%");
             parameters.addValue("limit", limit);
             parameters.addValue("offset", offset);
@@ -96,12 +100,13 @@ public class SearchDAOImpl implements SearchDAO {
             // use fieldFilter
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("fieldIds", fieldIds);
-            parameters.addValue("searchTerm", "%" + criteria + "%");
+            parameters.addValue("nativeQ",  criteria );
+            parameters.addValue("criteria", "%" + criteria + "%");
             parameters.addValue("limit", limit);
             parameters.addValue("offset", offset);
 
 
-            String sql = "select o.pid as pid ,o.id as id, o.name as name, o.desc as description, o.fid as fid, f.name as fieldname from objects o inner join fields f on o.fid = f.id where o.name ilike :searchTerm and o.namesearch=true " + fieldFilter + " limit :limit" +" offset :offset";
+            String sql = "select o.pid as pid ,o.id as id, o.name as name, o.desc as description, o.fid as fid, f.name as fieldname from objects o inner join fields f on o.fid = f.id where o.name ilike :criteria and o.namesearch=true " + fieldFilter + " order by position(:nativeQ in lower(o.name)), o.pid limit :limit" +" offset :offset";
             return addGridClassesToSearch(jdbcParameterTemplate.query(sql, parameters, BeanPropertyRowMapper.newInstance(SearchObject.class)), criteria, limit, includeFieldIds, excludeFieldIds);
         }
     }
@@ -119,15 +124,14 @@ public class SearchDAOImpl implements SearchDAO {
                         (excludeFieldIds == null || excludeFieldIds.isEmpty() || !excludeFieldIds.contains(f.getFieldId()))) {
                     //search
                     for (Entry<Integer, GridClass> c : f.getClasses().entrySet()) {
-                        if ((c.getValue().getName().toLowerCase().indexOf(criteria)) >= 0 && vacantCount >0  ) {
-                             vacantCount --;
-                             search.add(SearchObject.create(
+                        if ((c.getValue().getName().toLowerCase().indexOf(criteria)) >= 0 ) {
+                              search.add(SearchObject.create(
                                      f.getLayerPid() + ":" + c.getKey(),
                                      f.getLayerPid() + ":" + c.getKey(),
                                      c.getValue().getName(),
                                      null,
                                      f.getFieldId(),
-                                     f.getFieldName()));
+                                     f.getFieldName(), ""));
 
                         }else{
                             break;

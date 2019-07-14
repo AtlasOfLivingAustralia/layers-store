@@ -33,8 +33,9 @@ public class SearchObject {
     private String name;
     private String fid;
     private String fieldname;
+    private String fields;  //Get all possible related fields for auto gaz autocomplete
 
-    public static SearchObject create(String id, String pid, String name, String description, String fid, String fieldname) {
+    public static SearchObject create(String id, String pid, String name, String description, String fid, String fieldname,String fields) {
         SearchObject so = new SearchObject();
         so.id = id;
         so.pid = pid;
@@ -42,6 +43,7 @@ public class SearchObject {
         so.name = name;
         so.fid = fid;
         so.fieldname = fieldname;
+        so.fields = fields;
         return so;
     }
 
@@ -91,5 +93,13 @@ public class SearchObject {
 
     public void setPid(String pid) {
         this.pid = pid;
+    }
+
+    public String getFields() {
+        return fields;
+    }
+
+    public void setFields(String fields) {
+        this.fields = fields;
     }
 }
