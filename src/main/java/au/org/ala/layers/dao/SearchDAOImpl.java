@@ -86,7 +86,7 @@ public class SearchDAOImpl implements SearchDAO {
             // no fieldFilter
             //String sql = "select o.pid as pid ,o.id as id, o.name as name, o.desc as description, o.fid as fid, f.name as fieldname from objects o inner join fields f on o.fid = f.id where o.name ilike :criteria and o.namesearch=true order by position(:nativeQ in lower(o.name)), pid limit :limit offset :offset";
             String sql = "with o as (select o.pid as pid ,o.id as id, o.name as name, o.desc as description, o.fid as fid, f.name as fieldname from objects o inner join fields f on o.fid = f.id where o.name ilike :criteria and o.namesearch=true )" +
-                    " select pid, id, name, description, fid, fieldname, (select array_to_string(array_agg(a.f),',') from (select distinct (fid || '|' || fieldname) as f from o) a) as fields, position(:nativeQ in lower(name)) as rank from o order by rank, name, pid limit :limit offset :offset";
+                    " select pid, id, name, description, fid, fieldname, (select json_agg(a.f) from (select distinct (fid || '|' || fieldname) as f from o) a) as fields, position(:nativeQ in lower(name)) as rank from o order by rank, name, pid limit :limit offset :offset";
 
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("nativeQ",  criteria );
@@ -105,8 +105,9 @@ public class SearchDAOImpl implements SearchDAO {
             parameters.addValue("limit", limit);
             parameters.addValue("offset", offset);
 
+            String sql = "with o as (select o.pid as pid ,o.id as id, o.name as name, o.desc as description, o.fid as fid, f.name as fieldname from objects o inner join fields f on o.fid = f.id where o.name ilike :criteria and o.namesearch=true " + fieldFilter + ")"+
+                    " select pid, id, name, description, fid, fieldname, (select json_agg(a.f) from (select distinct (fid || '|' || fieldname) as f from o) a) as fields, position(:nativeQ in lower(name)) as rank from o order by rank, name, pid limit :limit offset :offset";
 
-            String sql = "select o.pid as pid ,o.id as id, o.name as name, o.desc as description, o.fid as fid, f.name as fieldname from objects o inner join fields f on o.fid = f.id where o.name ilike :criteria and o.namesearch=true " + fieldFilter + " order by position(:nativeQ in lower(o.name)), o.pid limit :limit" +" offset :offset";
             return addGridClassesToSearch(jdbcParameterTemplate.query(sql, parameters, BeanPropertyRowMapper.newInstance(SearchObject.class)), criteria, limit, includeFieldIds, excludeFieldIds);
         }
     }
