@@ -26,6 +26,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -42,6 +43,7 @@ public class UserDataDAOImpl implements UserDataDAO {
      */
     private static final Logger logger = Logger.getLogger(UserDataDAOImpl.class);
     private JdbcTemplate jdbcTemplate;
+    private NamedParameterJdbcTemplate jdbcParameterTemplate;
 
     @Resource(name = "layerIntersectDao")
     private LayerIntersectDAO layerIntersectDao;
@@ -49,6 +51,7 @@ public class UserDataDAOImpl implements UserDataDAO {
     @Resource(name = "dataSource")
     public void setDataSource(DataSource dataSource) {
         this.jdbcTemplate = new JdbcTemplate(dataSource);
+        this.jdbcParameterTemplate = new NamedParameterJdbcTemplate(dataSource);
     }
 
     @Override
@@ -85,6 +88,24 @@ public class UserDataDAOImpl implements UserDataDAO {
                 new BeanPropertyRowMapper(Ud_header.class),
                 ud_header_id);
         return ud_header;
+    }
+
+    @Override
+    public boolean delete(Long ud_header_id) {
+        String sqlDeleteData = "DELETE FROM ud_data_x WHERE ud_header_id = :ud_header_id ;";
+        String sqlDeleteHeader = "DELETE FROM ud_header WHERE ud_header_id = :ud_header_id ;";
+
+        try {
+            Map params = new HashMap();
+            params.put("ud_header_id", ud_header_id);
+            jdbcParameterTemplate.update(sqlDeleteData, params);
+            jdbcParameterTemplate.update(sqlDeleteHeader, params);
+            return true;
+        } catch (Exception e) {
+            logger.error("failed to delete user data for ud_header_id=" + ud_header_id);
+        }
+
+        return false;
     }
 
     @Override
@@ -526,6 +547,67 @@ public class UserDataDAOImpl implements UserDataDAO {
         }
 
         return sb.toString();
+    }
+
+    @Override
+    public List<Ud_header> searchDescAndTypeOr(String desc, String record_type, String user_id, String data_path,
+                                               String analysis_id, int start, int limit) {
+        Map params = new HashMap();
+
+        String and = "";
+
+        if (desc != null) {
+            and += " description ilike :desc ";
+            params.put("desc", desc);
+        }
+
+        if (record_type != null) {
+            if (!and.isEmpty()) and += " AND ";
+            and += " record_type = :record_type";
+            params.put("record_type", record_type);
+        }
+
+        String or = "";
+
+        if (user_id != null) {
+            or = " user_id = :user_id ";
+            params.put("user_id", user_id);
+        }
+
+        if (data_path != null) {
+            if (!or.isEmpty()) or += " OR ";
+            or += " data_path = :data_path ";
+            params.put("data_path", data_path);
+        }
+
+        if (analysis_id != null) {
+            if (!or.isEmpty()) or += " OR ";
+            or += " analysis_id = :analysis_id ";
+            params.put("analysis_id", analysis_id);
+        }
+
+        String where = "";
+
+        if (!and.isEmpty()) {
+            where += " " + and;
+        }
+
+        if (!or.isEmpty()) {
+            if (!where.isEmpty()) where += " AND ";
+            where += " (" + or + ") ";
+        }
+
+        String sql = "SELECT * FROM ud_header";
+
+        if (!where.isEmpty()) {
+            sql += " WHERE " + where;
+        }
+
+        sql += " offset :offset limit :limit";
+        params.put("offset", start);
+        params.put("limit", limit);
+
+        return jdbcParameterTemplate.query(sql, params, BeanPropertyRowMapper.newInstance(Ud_header.class));
     }
 
 
