@@ -80,6 +80,31 @@ public class UserDataDAOImpl implements UserDataDAO {
     }
 
     @Override
+    public Ud_header update(Long ud_header_id, String user_id, String record_type, String description, String metadata, String data_path, String analysis_id) {
+        String sql_update = "UPDATE ud_header SET user_id=?, record_type=?, description=?, metadata=?, data_path=?, " +
+                "analysis_id=?, upload_dt=? WHERE ud_header_id=?";
+
+        Date upload_dt = new Date(System.currentTimeMillis());
+        int rows = jdbcTemplate.update(
+                sql_update,
+                user_id, record_type, description, metadata, data_path, analysis_id, upload_dt, ud_header_id);
+
+
+        if (rows > 0) {
+            String sql_select = "SELECT * FROM ud_header WHERE user_id = ? AND ud_header_id = ?";
+
+            Ud_header ud_header = (Ud_header) jdbcTemplate.queryForObject(
+                    sql_select,
+                    new BeanPropertyRowMapper(Ud_header.class),
+                    user_id, upload_dt);
+
+            return ud_header;
+        }
+
+        return null;
+    }
+
+    @Override
     public Ud_header get(Long ud_header_id) {
         String sql_select = "SELECT * FROM ud_header WHERE ud_header_id = ? ;";
 

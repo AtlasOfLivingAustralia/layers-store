@@ -23,7 +23,9 @@ import java.util.Map;
 
 public interface UserDataDAO {
 
-    public Ud_header put(String user_id, String record_type, String desc, String metadata, String data_path, String analysis_id);
+    Ud_header put(String user_id, String record_type, String desc, String metadata, String data_path, String analysis_id);
+
+    Ud_header update(Long ud_header_id, String user_id, String record_type, String description, String metadata, String data_path, String analysis_id);
 
     public Ud_header get(Long ud_header_id);
 
