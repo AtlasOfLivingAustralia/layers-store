@@ -69,6 +69,8 @@ public class Distribution {
     Boolean endemic;
     String imageUrl;
 
+    Double intersectArea;
+
     public String getData_resource_uid() {
         return data_resource_uid;
     }
@@ -610,6 +612,16 @@ public class Distribution {
         // dynamic fields
         if (imageUrl != null) m.put("image_url", imageUrl);
 
+        if (intersectArea != null) m.put("intersectArea", intersectArea);
+
         return m;
+    }
+
+    public Double getIntersectArea() {
+        return intersectArea;
+    }
+
+    public void setIntersectArea(Double intersectArea) {
+        this.intersectArea = intersectArea;
     }
 }

@@ -94,15 +94,19 @@ public class DistributionDAOImpl implements DistributionDAO {
         Map<String, Object> params = new HashMap<String, Object>();
         constructWhereClause(min_depth, max_depth, pelagic, coastal, estuarine, desmersal, groupName, geomIdx, lsids,
                 families, familyLsids, genera, generaLsids, type, dataResources, params, whereClause, endemic);
+
+        String wktSelect = "";
         if (wkt != null && wkt.length() > 0) {
             if (whereClause.length() > 0) {
                 whereClause.append(" AND ");
             }
             whereClause.append("ST_INTERSECTS(the_geom, ST_GEOMFROMTEXT( :wkt , 4326))");
             params.put("wkt", wkt);
+
+            wktSelect = ", ST_AREA(ST_INTERSECTION(GEOGRAPHY(the_geom), ST_GEOGFROMTEXT( :wkt ))) as intersectArea";
         }
 
-        String sql = SELECT_CLAUSE + " from " + viewName;
+        String sql = SELECT_CLAUSE + wktSelect + " from " + viewName;
         if (whereClause.length() > 0) {
             sql += " WHERE " + whereClause.toString();
         }
