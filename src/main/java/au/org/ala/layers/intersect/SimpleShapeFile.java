@@ -20,12 +20,15 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
+
+import static java.nio.charset.StandardCharsets.ISO_8859_1;
 
 /**
  * SimpleShapeFile is a representation of a Shape File for
@@ -84,9 +87,6 @@ public class SimpleShapeFile extends Object implements Serializable {
     protected SimpleShapeFile() {
     }
 
-    public static String getDBFEncoding(){
-        return System.getProperty("dbf.encoding", "UTF-8");
-    }
 
     /**
      * Constructor for a SimpleShapeFile, requires .dbf and .shp files present
@@ -1506,6 +1506,12 @@ class DBFField extends Object implements Serializable {
     byte[] data;        //placeholder for reading byte blocks
     /* don't care autoinc */
 
+
+    static String convertToUTF8(String myString){
+        byte[] ptext = myString.getBytes(StandardCharsets.UTF_8);
+        return new String(ptext, StandardCharsets.UTF_8);
+    }
+
     /**
      * constructor for DBFField with first byte separated from
      * rest of the data structure
@@ -1523,7 +1529,7 @@ class DBFField extends Object implements Serializable {
             ba[i] = buffer.get();
         }
         try {
-            name = (new String(ba, SimpleShapeFile.getDBFEncoding())).trim().toUpperCase();
+            name = convertToUTF8(new String(ba, "ISO-8859-1").trim().toUpperCase());
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }
@@ -1531,7 +1537,7 @@ class DBFField extends Object implements Serializable {
         byte[] ba2 = new byte[1];
         ba2[0] = buffer.get();
         try {
-            type = (new String(ba2, SimpleShapeFile.getDBFEncoding())).charAt(0);
+            type = convertToUTF8(new String(ba2, "ISO-8859-1").trim()).charAt(0);
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }
@@ -1769,10 +1775,10 @@ class DBFRecord extends Object implements Serializable {
             try {
                 switch (f.getType()) {
                     case 'C':            //string
-                        record[i] = (new String(data, SimpleShapeFile.getDBFEncoding())).trim();
+                        record[i] = DBFField.convertToUTF8(new String(data, "ISO-8859-1").trim());
                         break;
                     case 'N':            //number as string
-                        record[i] = (new String(data, SimpleShapeFile.getDBFEncoding())).trim();
+                        record[i] = DBFField.convertToUTF8(new String(data, "ISO-8859-1").trim());
                         break;
                 }
             } catch (Exception e) {
@@ -1795,10 +1801,10 @@ class DBFRecord extends Object implements Serializable {
             try {
                 switch (f.getType()) {
                     case 'C':            //string
-                        fieldValues[i] = (new String(data, SimpleShapeFile.getDBFEncoding())).trim();
+                        fieldValues[i] = DBFField.convertToUTF8(new String(data, "ISO-8859-1").trim());
                         break;
                     case 'N':            //number as string
-                        fieldValues[i] = (new String(data, SimpleShapeFile.getDBFEncoding())).trim();
+                        fieldValues[i] = DBFField.convertToUTF8(new String(data, "ISO-8859-1").trim());
                         break;
                 }
             } catch (Exception e) {
