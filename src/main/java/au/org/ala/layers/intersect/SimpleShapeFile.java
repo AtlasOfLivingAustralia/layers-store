@@ -1775,10 +1775,10 @@ class DBFRecord extends Object implements Serializable {
             try {
                 switch (f.getType()) {
                     case 'C':            //string
-                        record[i] = new String(new String(data, "ISO-8859-1").trim().getBytes("ISO-8859-1"),  StandardCharsets.UTF_8);
+                        record[i] = DBFField.convertToUTF8(new String(data, "ISO-8859-1").trim());
                         break;
                     case 'N':            //number as string
-                        record[i] = new String(new String(data, "ISO-8859-1").trim().getBytes("ISO-8859-1"),  StandardCharsets.UTF_8);
+                        record[i] = DBFField.convertToUTF8(new String(data, "ISO-8859-1").trim());
                         break;
                 }
             } catch (Exception e) {
