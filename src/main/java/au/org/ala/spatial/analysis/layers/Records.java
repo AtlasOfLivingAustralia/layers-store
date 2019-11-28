@@ -242,7 +242,7 @@ public class Records {
         logger.info("\nGot " + getRecordsSize() + " records of " + getSpeciesSize() + " species");
     }
 
-    static InputStream getUrlStream(String url) throws IOException {
+    InputStream getUrlStream(String url) throws IOException {
         logger.debug("getting : " + url + " ... ");
         long start = System.currentTimeMillis();
         URLConnection c = new URL(url).openConnection();
@@ -610,15 +610,15 @@ public class Records {
     }
 
     public int getSortedSpeciesNumber(int pos) {
-        return lsidIdx.get(sortOrder[pos]);
+        return lsidIdx.get((sortOrder[pos] - 1) / 2);
     }
 
     public double getSortedLongitude(int pos) {
-        return points.get(sortOrder[pos] * 2);
+        return points.get(sortOrder[pos] - 1);
     }
 
     public double getSortedLatitude(int pos) {
-        return points.get(sortOrder[pos] * 2 + 1);
+        return points.get(sortOrder[pos]);
     }
 
     public String getSpeciesN(int speciesNumber) {

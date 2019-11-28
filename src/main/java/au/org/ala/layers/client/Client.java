@@ -56,6 +56,11 @@ public class Client {
         gContext = context;
     }
 
+    public static ApplicationContext getContext() {
+        initContext();
+        return gContext;
+    }
+
     static void initContext() {
         if (gContext == null) {
             Object obj = ContextSingletonBeanFactoryLocator.getInstance();
@@ -98,5 +103,10 @@ public class Client {
     public static UserDataDAO getUserDataDao() {
         initContext();
         return (UserDataDAO) gContext.getBean("userDataDao");
+    }
+
+    public static TabulationDAO getTabulationDao() {
+        initContext();
+        return (TabulationDAO) gContext.getBean("tabulationDao");
     }
 }

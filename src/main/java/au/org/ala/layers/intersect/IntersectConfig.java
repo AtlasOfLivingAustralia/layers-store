@@ -526,7 +526,7 @@ public class IntersectConfig {
             classGrids = new HashMap<String, HashMap<Integer, GridClass>>();
         }
 
-        if (layerIndexUrl != null) {
+        if (StringUtils.trimToNull(layerIndexUrl) != null) {
             //request from url
             JSONArray layers = JSONArray.fromObject(getUrl(layerIndexUrl + "/layers"));
             HashMap<String, String> layerPathOrig = new HashMap<String, String>();

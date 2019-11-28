@@ -17,6 +17,7 @@ package au.org.ala.layers.dao;
 import au.org.ala.layers.dto.Field;
 import au.org.ala.layers.dto.Layer;
 import au.org.ala.layers.util.Util;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -110,7 +111,7 @@ public class FieldDAOImpl implements FieldDAO {
 
     @Override
     public List<Field> getFieldsByDB() {
-        if (layerIntersectDao.getConfig().getLayerIndexUrl() != null) {
+        if (StringUtils.trimToNull(layerIntersectDao.getConfig().getLayerIndexUrl()) != null) {
             return layerIntersectDao.getConfig().getFieldsByDB();
         } else {
             logger.info("Getting a list of all enabled fields with indb");
@@ -194,7 +195,7 @@ public class FieldDAOImpl implements FieldDAO {
 
     @Override
     public void delete(String fieldId) {
-        Field f = getFieldById(fieldId);
+        Field f = getFieldById(fieldId, false);
 
         if (f != null) {
             jdbcTemplate.update("delete from objects where fid=?", f.getId());

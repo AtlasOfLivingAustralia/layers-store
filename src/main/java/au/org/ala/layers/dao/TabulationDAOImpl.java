@@ -79,7 +79,7 @@ public class TabulationDAOImpl implements TabulationDAO {
 
         } else {
             String sql = "SELECT fid1, pid1, fid2, pid2, ST_AsText(newgeom) as geometry, name1, name2, occurrences, species, speciest1, speciest2 FROM "
-                    + "(SELECT fid1, pid1, fid2, pid2, (ST_INTERSECTION(ST_GEOMFROMTEXT( ? ,4326), i.the_geom)) as newgeom, o1.name as name1, o2.name as name2, i.occurrences, i.species FROM "
+                    + "(SELECT fid1, pid1, fid2, pid2, (ST_INTERSECTION(ST_GEOMFROMTEXT( ? ,4326), i.the_geom)) as newgeom, o1.name as name1, o2.name as name2, i.occurrences, i.species, speciest1, speciest2 FROM "
                     + "(SELECT * FROM tabulation WHERE fid1= ? AND fid2 = ? ) i, "
                     + "(select t1.pid1 as pid, name from tabulation t1 left join objects o3 on t1.fid1=o3.fid and t1.pid1=o3.pid where t1.fid1= ? group by t1.pid1, name) o1, "
                     + "(select t2.pid2 as pid, name from tabulation t2 left join objects o4 on t2.fid2=o4.fid and t2.pid2=o4.pid where t2.fid2= ? group by t2.pid2, name) o2 "
