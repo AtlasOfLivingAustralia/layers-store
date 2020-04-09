@@ -96,7 +96,7 @@ public class UserDataDAOImpl implements UserDataDAO {
             Ud_header ud_header = (Ud_header) jdbcTemplate.queryForObject(
                     sql_select,
                     new BeanPropertyRowMapper(Ud_header.class),
-                    user_id, upload_dt);
+                    user_id, ud_header_id);
 
             return ud_header;
         }
