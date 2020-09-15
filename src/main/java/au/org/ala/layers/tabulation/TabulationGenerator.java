@@ -437,7 +437,7 @@ public class TabulationGenerator {
             // get pids for properties entries
             for (Entry<Object, Object> entry : p1.entrySet()) {
                 for (au.org.ala.layers.dto.Objects o : objects1) {
-                    if ((o.getId() == null && entry.getValue() == null) || (o.getId() != null && entry.getValue() != null && o.getId().equalsIgnoreCase(((String) entry.getValue())))) {
+                    if ((o.getId() == null && entry.getValue() == null) || (o.getId() != null && entry.getValue() != null && o.getName().equalsIgnoreCase(((String) entry.getValue())))) {
                         entry.setValue(o.getPid());
                         break;
                     }
@@ -445,7 +445,7 @@ public class TabulationGenerator {
             }
             for (Entry<Object, Object> entry : p2.entrySet()) {
                 for (au.org.ala.layers.dto.Objects o : objects2) {
-                    if ((o.getId() == null && entry.getValue() == null) || (o.getId() != null && entry.getValue() != null && o.getId().equalsIgnoreCase(((String) entry.getValue())))) {
+                    if ((o.getId() == null && entry.getValue() == null) || (o.getId() != null && entry.getValue() != null && o.getName().equalsIgnoreCase(((String) entry.getValue())))) {
                         entry.setValue(o.getPid());
                         break;
                     }
