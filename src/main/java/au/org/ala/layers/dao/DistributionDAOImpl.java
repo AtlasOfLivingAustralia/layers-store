@@ -103,7 +103,7 @@ public class DistributionDAOImpl implements DistributionDAO {
             whereClause.append("ST_INTERSECTS(the_geom, ST_GEOMFROMTEXT( :wkt , 4326))");
             params.put("wkt", wkt);
 
-            wktSelect = ", ST_AREA(ST_INTERSECTION(GEOGRAPHY(the_geom), ST_GEOGFROMTEXT( :wkt ))) as intersectArea";
+            wktSelect = ", ST_AREA(ST_INTERSECTION(the_geom, ST_GEOMFROMTEXT( :wkt , 4326))) as intersectArea";
         }
 
         String sql = SELECT_CLAUSE + wktSelect + " from " + viewName;
