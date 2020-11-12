@@ -196,6 +196,7 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
     @Override
     public List<Objects> getObjectsById(String id, int start, int pageSize, String filter) {
         if (filter == null) filter = "";
+        String upperCaseFilter = filter.toUpperCase();
         filter = "%" + filter + "%";
 
         logger.info("Getting object info for fid = " + id);
@@ -219,7 +220,8 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
 
                 for (Entry<Integer, GridClass> c : f.getClasses().entrySet()) {
                     File file = new File(f.getFilePath() + File.separator + c.getKey() + ".wkt.index.dat");
-                    if (f.getType().equals("a") || !file.exists()) { // class pid
+                    if ((f.getType().equals("a") || !file.exists()) &&
+                            c.getValue().getName().toUpperCase().contains(upperCaseFilter)) { // class pid
                         if (pageSize == -1 || (pos >= start && pos - start < pageSize)) {
                             Objects o = new Objects();
                             o.setPid(f.getLayerPid() + ":" + c.getKey());

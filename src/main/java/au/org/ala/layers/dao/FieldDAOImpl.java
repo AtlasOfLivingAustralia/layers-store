@@ -15,6 +15,7 @@
 package au.org.ala.layers.dao;
 
 import au.org.ala.layers.dto.Field;
+import au.org.ala.layers.dto.IntersectionFile;
 import au.org.ala.layers.dto.Layer;
 import au.org.ala.layers.util.Util;
 import org.apache.log4j.Logger;
@@ -102,6 +103,13 @@ public class FieldDAOImpl implements FieldDAO {
         }
         List<Field> l = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Field.class), id, id);
         if (l.size() > 0) {
+            if ("a".equalsIgnoreCase(l.get(0).getType()) || "b".equalsIgnoreCase(l.get(0).getType())) {
+                // fetch object count for this 'grid as contextual'
+                IntersectionFile f = layerIntersectDao.getConfig().getIntersectionFile(id);
+                if (f != null && f.getClasses() != null) {
+                    l.get(0).setNumber_of_objects(f.getClasses().size());
+                }
+            }
             return l.get(0);
         } else {
             return null;
@@ -269,7 +277,7 @@ public class FieldDAOImpl implements FieldDAO {
                 f.setLayer(l);
                 if (layerIntersectDao.getConfig().hasFieldStyles()) {
                     //conditional so as not to break older ingested layers
-                    l.setDisplaypath(l.getDisplaypath().replace("&styles=", "") + "&style=" + f.getId() + "_style");
+                    l.setDisplaypath(l.getDisplaypath().replace("&styles=", "") + "&style=" + f.getId());
                 }
                 l.setDisplayname(f.getName());
                 l.setPid(f.getId());
@@ -302,7 +310,7 @@ public class FieldDAOImpl implements FieldDAO {
                 Util.updateMetadataPath(l);
                 f.setLayer(l);
 
-                l.setDisplaypath(l.getDisplaypath().replace("&styles=", "") + "&style=" + f.getId() + "_style");
+                l.setDisplaypath(l.getDisplaypath().replace("&styles=", "") + "&style=" + f.getId());
 
                 list.add(f);
             } catch (Exception e) {
