@@ -108,6 +108,8 @@ public class Occurrences {
 
                 if (currentCount == 0 || currentCount < pageSize) {
                     break;
+                } else {
+                    start = currentCount;
                 }
             }
         }
