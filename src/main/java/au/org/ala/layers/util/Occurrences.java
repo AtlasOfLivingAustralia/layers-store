@@ -106,7 +106,7 @@ public class Occurrences {
                     currentCount++;
                 }
 
-                if (currentCount == 0 || currentCount < pageSize) {
+                if (currentCount % pageSize == 0 || currentCount % pageSize < pageSize) {
                     break;
                 } else {
                     start = currentCount;
