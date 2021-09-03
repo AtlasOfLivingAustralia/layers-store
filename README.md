@@ -9,3 +9,5 @@ It includes various functions for:
 * Layer ingestion 
 
 This library is referenced by the spatial-service grails module which provides a web service layer.
+
+2.0.7-SNAPSHOT -> support Grails 4
