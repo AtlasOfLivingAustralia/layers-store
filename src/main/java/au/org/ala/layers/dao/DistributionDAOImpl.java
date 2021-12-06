@@ -490,7 +490,7 @@ public class DistributionDAOImpl implements DistributionDAO {
             List<Map<String, Object>> outlierDistancesQueryResult = jdbcTemplate.queryForList(
                     "select points.path as id, st_x(points.geom) as x, st_y(points.geom) as y," +
                             " ST_DISTANCE(points.geom, d.the_geom) as distance from " +
-                            "(select geography(st_collect(the_geom)) as the_geom, st_setsrid(st_extent(bounding_box), 4326) as bounding_box " +
+                            "(select geometry(st_collect(the_geom)) as the_geom, st_setsrid(st_extent(bounding_box), 4326) as bounding_box " +
                             "from distributions where " +
                             "lsid = ? and type = ? ) d, " +
                             "st_dump(st_setsrid(sT_GeomFromText( ? ), 4326)) points " +
