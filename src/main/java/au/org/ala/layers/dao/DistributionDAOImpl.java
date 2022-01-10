@@ -28,6 +28,9 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.sql.DataSource;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.util.*;
 
 /**
@@ -88,8 +91,6 @@ public class DistributionDAOImpl implements DistributionDAO {
                                                  Boolean coastal, Boolean estuarine, Boolean desmersal, String groupName,
                                                  Integer geomIdx, String lsids, String[] families, String[] familyLsids, String[] genera,
                                                  String[] generaLsids, String type, String[] dataResources, Boolean endemic) {
-        logger.info("Getting distributions list");
-
         StringBuilder whereClause = new StringBuilder();
         Map<String, Object> params = new HashMap<String, Object>();
         constructWhereClause(min_depth, max_depth, pelagic, coastal, estuarine, desmersal, groupName, geomIdx, lsids,
@@ -503,10 +504,10 @@ public class DistributionDAOImpl implements DistributionDAO {
                 // distribution
                 if (distance > 0) {
                     String id = queryResultRow.get("id").toString();
-
                     //not sure why st_dump .path is sometimes null
                     if (id != null) {
-                        id = uuids.get(Integer.parseInt(queryResultRow.get("id").toString().replace("{", "").replace("}", "")) - 1);
+                        //ID may return as "{1}" or "{"1"}"
+                        id = uuids.get(Integer.parseInt(queryResultRow.get("id").toString().replace("{", "").replace("}", "").replace("\"","")) - 1);
                     } else {
                         //x and y as double for comparisons
                         String key = queryResultRow.get("x") + " " + queryResultRow.get("y");
@@ -524,6 +525,12 @@ public class DistributionDAOImpl implements DistributionDAO {
             }
         } catch (EmptyResultDataAccessException ex) {
             throw new IllegalArgumentException("No expert distribution associated with lsid " + lsid, ex);
+        } catch (Exception e) {
+            Writer buffer = new StringWriter();
+            PrintWriter pw = new PrintWriter(buffer);
+            e.printStackTrace(pw);
+            logger.error(pw.toString());
+            throw e;
         }
 
         return outlierDistances;
