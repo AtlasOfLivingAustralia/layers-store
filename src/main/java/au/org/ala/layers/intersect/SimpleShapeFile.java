@@ -28,8 +28,6 @@ import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import static java.nio.charset.StandardCharsets.ISO_8859_1;
-
 /**
  * SimpleShapeFile is a representation of a Shape File for
  * intersections with points
@@ -64,7 +62,7 @@ public class SimpleShapeFile extends Object implements Serializable {
     /**
      * one dbf column, for use after loading from a file
      */
-    short[] singleColumn;
+    int[] singleColumn;
     /**
      * one lookup for a dbf column, for use after loading from a file
      */
@@ -73,7 +71,7 @@ public class SimpleShapeFile extends Object implements Serializable {
     /**
      * one dbf column, for use after loading from a file
      */
-    List<short[]> multiColumn;
+    List<int[]> multiColumn;
     /**
      * one lookup for a dbf column, for use after loading from a file
      */
@@ -102,9 +100,9 @@ public class SimpleShapeFile extends Object implements Serializable {
             /* read dbf */
             dbf = new DBF(fileprefix + ".dbf", column);
             singleLookup = getColumnLookup(0);
-            singleColumn = new short[dbf.dbfrecords.records.size()];
+            singleColumn = new int[dbf.dbfrecords.records.size()];
             for (int i = 0; i < singleColumn.length; i++) {
-                singleColumn[i] = (short) java.util.Arrays.binarySearch(singleLookup, dbf.getValue(i, 0));
+                singleColumn[i] = java.util.Arrays.binarySearch(singleLookup, dbf.getValue(i, 0));
             }
             dbf = null;
 
@@ -127,15 +125,15 @@ public class SimpleShapeFile extends Object implements Serializable {
             //previously saved region loaded
         } else {
             /* read dbf */
-            multiColumn = new ArrayList<short[]>();
+            multiColumn = new ArrayList<int[]>();
             multiLookup = new ArrayList<String[]>();
             multiNames = new ArrayList<String>();
             dbf = new DBF(fileprefix + ".dbf", columns);
             for (int j = 0; j < columns.length; j++) {
                 String[] names = dbf.getColumnLookup(j);
-                short[] ids = new short[dbf.dbfrecords.records.size()];
+                int[] ids = new int[dbf.dbfrecords.records.size()];
                 for (int i = 0; i < ids.length; i++) {
-                    ids[i] = (short) java.util.Arrays.binarySearch(names, dbf.getValue(i, j));
+                    ids[i] = java.util.Arrays.binarySearch(names, dbf.getValue(i, j));
                 }
                 multiColumn.add(ids);
                 multiLookup.add(names);
@@ -302,7 +300,7 @@ public class SimpleShapeFile extends Object implements Serializable {
 
                 singleLookup = (String[]) ois.readObject();
 
-                singleColumn = (short[]) ois.readObject();
+                singleColumn = (int[]) ois.readObject();
 
                 result = true;
             } catch (Exception e) {
@@ -377,7 +375,7 @@ public class SimpleShapeFile extends Object implements Serializable {
      * @param column_name
      * @return -1 if not found, otherwise column index number, zero base
      */
-    public short[] getColumnIdxs(String column_name) {
+    public int[] getColumnIdxs(String column_name) {
         if (singleColumn != null) {
             return singleColumn;
         }
@@ -486,7 +484,7 @@ public class SimpleShapeFile extends Object implements Serializable {
             }
         } else {
             for (i = 0; i < target.length; i++) {
-                short[] multiCol = multiColumn.get(column);
+                int[] multiCol = multiColumn.get(column);
                 if (target[i] >= 0 && target[i] < multiCol.length) {
                     target[i] = multiCol[target[i]];
                 } else {
