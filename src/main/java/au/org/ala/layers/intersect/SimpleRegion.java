@@ -382,6 +382,100 @@ public class SimpleRegion extends Object implements Serializable {
         return false;
     }
 
+    /**
+     * returns true when the point provided is within distance of the SimpleRegion
+     * <p/>
+     * note: type UNDEFINED implies no boundary, always returns true.
+     *
+     * @param longitude
+     * @param latitude
+     * @param distance distance in degrees
+     * @return true iff point is within or on the edge or near to this SimpleRegion
+     */
+    public boolean isWithin(double longitude, double latitude, double distance) {
+        switch (type) {
+            case 0:
+                /* no region defined, must be within this absence of a boundary */
+                return true;
+            case 1:
+                /* return for bounding box */
+                // Distance going beyond east/west bounds
+                return (longitude <= points[2] + distance && longitude >= points[0] - distance && latitude <= points[3] && latitude >= points[1])
+                    // Going beyond north/south bounds
+                    || (longitude <= points[2] && longitude >= points[0] && latitude <= points[3] + distance && latitude >= points[1] - distance)
+                    // Within the quarter-circles at the corners
+                    || ( Math.pow(longitude-points[0],2) + Math.pow(latitude-points[1],2) <= Math.pow(distance,2) )
+                    || ( Math.pow(longitude-points[0],2) + Math.pow(latitude-points[3],2) <= Math.pow(distance,2) )
+                    || ( Math.pow(longitude-points[2],2) + Math.pow(latitude-points[1],2) <= Math.pow(distance,2) )
+                    || ( Math.pow(longitude-points[2],2) + Math.pow(latitude-points[3],2) <= Math.pow(distance,2) );
+            case 2:
+                /* TODO: fix to use radius units m not degrees */
+                double x = longitude - points[0];
+                double y = latitude - points[1];
+                return (Math.sqrt(x * x + y * y) <= radius + distance);
+            case 3:
+                /* determine for Polygon */
+                return isWithinPolygon(longitude, latitude, distance);
+        }
+        return false;
+    }
+
+    /**
+     * returns true when the point provided is within the SimpleRegion
+     * <p/>
+     * note: type UNDEFINED implies no boundary, always returns true.
+     *
+     * @param longitude
+     * @param latitude
+     * @return the distance if point is within or on the edge or near to this SimpleRegion,
+     *         otherwise null.
+     */
+    public Double distance(double longitude, double latitude, double distance, boolean evenWithin) {
+        switch (type) {
+            case 0:
+                /* no region defined, must be within this absence of a boundary */
+                return 0d;
+            case 1:
+                /* return for bounding box */
+                // Distance going beyond east/west bounds
+                if ((longitude <= points[2] + distance && longitude >= points[0] - distance && latitude <= points[3] && latitude >= points[1])
+                    // Going beyond north/south bounds
+                    || (longitude <= points[2] && longitude >= points[0] && latitude <= points[3] + distance && latitude >= points[1] - distance)
+                    // Within the quarter-circles at the corners
+                    || ( Math.pow(longitude-points[0],2) + Math.pow(latitude-points[1],2) <= Math.pow(distance,2) )
+                    || ( Math.pow(longitude-points[0],2) + Math.pow(latitude-points[3],2) <= Math.pow(distance,2) )
+                    || ( Math.pow(longitude-points[2],2) + Math.pow(latitude-points[1],2) <= Math.pow(distance,2) )
+                    || ( Math.pow(longitude-points[2],2) + Math.pow(latitude-points[3],2) <= Math.pow(distance,2) )) {
+                    return Math.min(
+                        Math.min(longitude - (points[2] + distance),
+                            longitude - (points[0] + distance)),
+                        Math.min(latitude - (points[3] + distance),
+                            latitude - (points[1] + distance))
+                    );
+                } else {
+                    return null;
+                }
+            case 2:
+                /* TODO: fix to use radius units m not degrees */
+                double x = longitude - points[0];
+                double y = latitude - points[1];
+                double rootx2y2 = Math.sqrt(x * x + y * y);
+                if (rootx2y2 <= radius + distance) {
+                    return rootx2y2 - radius;
+                } else {
+                    return null;
+                }
+            case 3:
+                /* determine for Polygon */
+                return distancePolygon(longitude, latitude, distance, true, evenWithin);
+        }
+        return null;
+    }
+
+    public Double distance(double longitude, double latitude, double distance) {
+        return distance(longitude, latitude, distance, false);
+    }
+
     public boolean isWithin_EPSG900913(double longitude, double latitude) {
         switch (type) {
             case 0:
@@ -407,14 +501,14 @@ public class SimpleRegion extends Object implements Serializable {
      * returns true when point is within the polygon
      * <p/>
      * method:
-     * treat as segments with target long in the middle:
+     * treat as segments with target longitude in the middle:
      * <p/>
-     * <p/>
+     * <pre>
      * __-1__|___1_
-     * |
+     *       |
+     * </pre>
      * <p/>
-     * <p/>
-     * iterate through points and count number of latitude axis crossing where
+     * iterate through points and count number of latitude axis crossings where
      * crossing is > latitude.
      * <p/>
      * point is inside of area when number of crossings is odd;
@@ -458,6 +552,128 @@ public class SimpleRegion extends Object implements Serializable {
         }
 
         return (score % 2 != 0);
+    }
+
+    /**
+     * Dot product of vectors p·q = p₁q₁ + p₂q₂
+     * @return p1*q1 + p2*q2
+     */
+    private double dotProduct(double p1, double p2, double q1, double q2) {
+        return p1*q1 + p2*q2;
+    }
+
+    /**
+     * Magnitude of vectors |p| = √(p₁² + p₂²)
+     * @return
+     */
+    private double magnitude(double p1, double p2) {
+        return Math.sqrt((p1*p1) + (p2*p2));
+    }
+
+    /**
+     * returns true if a point is within, or a distance from a polygon.
+     *
+     * See {@link #distancePolygon(double, double, double, boolean, boolean)} for implementation details.
+     *
+     * @param longitude
+     * @param latitude
+     * @return true iff longitude and latitude point is on edge or within or near polygon
+     */
+    private boolean isWithinPolygon(double longitude, double latitude, double distance) {
+        return distancePolygon(longitude, latitude, distance, false, false) != null;
+    }
+
+    /**
+     * returns a distance of a point from a polygon, or 0 if it is
+     * within the polygon.
+     *
+     * See {@link #distancePolygon(double, double, double, boolean, boolean)} for implementation details.
+     *
+     * @param longitude
+     * @param latitude
+     * @return Distance from the polygon, 0 if within, null if too far outside.
+     */
+    private Double distancePolygon(double longitude, double latitude, double distance) {
+        return distancePolygon(longitude, latitude, distance, true, false);
+    }
+
+    /**
+     * returns a distance of a point from a polygon, or 0 if it is
+     * within the polygon.  Returns the minimum (rather than the first found)
+     * if requested.
+     * <p/>
+     * method:
+     * first check whether the point is within the polygon using {@link #isWithin(double, double)}.
+     * <p/>
+     * Then measure the distance from each line segment in turn.
+     *
+     * @param longitude
+     * @param latitude
+     * @param distance
+     * @param findShortestDistance If false, return the first nearby point.  If true, find the minimum distance.
+     * @param evenIfInside If true, returns the distance from the edge, even if the point is within the polygon.
+     * @return Distance from the polygon, 0 if within, null if too far outside.
+     */
+    private Double distancePolygon(double longitude, double latitude, double distance, boolean findShortestDistance, boolean evenIfInside) {
+        // Set multiplier to -1 if point is within the polygon.
+        double multiplier = 1;
+        if (isWithinPolygon(longitude, latitude)) {
+            if (!evenIfInside) {
+                return 0d;
+            } else {
+                multiplier = -1;
+            }
+        }
+
+        if (distance <= 0) return null;
+
+        // Quick check on the expanded bounding box
+        if (longitude > bounding_box[1][0] + distance || longitude < bounding_box[0][0] - distance
+            || latitude > bounding_box[1][1] + distance || latitude < bounding_box[0][1] - distance) {
+            return null;
+        }
+
+        int len = points.length;
+        double minimumDistance = Double.MAX_VALUE;
+
+        // x is the target point (longitude,latitude)
+        // For each line segment [p,q] in the polygon
+        for (int i = 2; i < len; i += 2) {
+            double px = points[i - 2];
+            double py = points[i - 1];
+            double qx = points[i];
+            double qy = points[i + 1];
+
+            // Calculate r = (q - p) · (x - p) ÷ |q - p|²
+            double r = dotProduct(qx - px, qy - py, longitude - px, latitude - py);
+            r /= Math.pow(magnitude(qx - px, qy - py), 2);
+
+            double dist;
+            if (r < 0) {
+                // dist = |x - p|
+                dist = magnitude(longitude - px, latitude - py);
+            } else if (r > 1) {
+                // dist = |q - x|
+                dist = magnitude(qx - longitude, qy - latitude);
+            } else {
+                // √(|x-p|² - (r×|q-p|)²)
+                dist = Math.sqrt(
+                    Math.pow(magnitude(longitude - px, latitude - py), 2)
+                        - Math.pow(r * magnitude(qx - px, qy - py), 2));
+            }
+
+            if (!findShortestDistance && dist <= distance) {
+                return multiplier * dist;
+            }
+
+            minimumDistance = Math.min(minimumDistance, dist);
+        }
+
+        if (minimumDistance <= distance || multiplier == -1) {
+            return multiplier * minimumDistance;
+        } else {
+            return null;
+        }
     }
 
     private boolean isWithinPolygon_EPSG900913(double longitude, double latitude) {

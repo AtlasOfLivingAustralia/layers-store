@@ -14,6 +14,7 @@
  ***************************************************************************/
 package au.org.ala.layers.intersect;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.log4j.Logger;
 
 import java.io.*;
@@ -517,6 +518,19 @@ public class SimpleShapeFile extends Object implements Serializable {
         return null;
     }
 
+    public List<ImmutablePair<String, Double>> intersect(double longitude, double latitude, double distance) {
+        List<ImmutablePair<Integer, Double>> distancesIndices = shapesreference.intersection(longitude, latitude, distance);
+        List<ImmutablePair<String, Double>> withValues = new ArrayList<>();
+
+        for (ImmutablePair<Integer, Double> r : distancesIndices) {
+            if (r.left >= 0 && r.left < singleColumn.length) {
+                withValues.add(ImmutablePair.of(singleLookup[singleColumn[r.left]], r.right));
+            }
+        }
+
+        return withValues;
+    }
+
     public int intersectInt(double longitude, double latitude) {
         if (singleColumn != null) {
             int v = shapesreference.intersection(longitude, latitude);
@@ -528,6 +542,23 @@ public class SimpleShapeFile extends Object implements Serializable {
         } else {
             return shapesreference.intersection(longitude, latitude);
         }
+    }
+
+    public List<ImmutablePair<Integer, Double>> intersectInt(double longitude, double latitude, double distance) {
+        List<ImmutablePair<Integer, Double>> distancesIndices = shapesreference.intersection(longitude, latitude, distance);
+        List<ImmutablePair<Integer, Double>> withValues = new ArrayList<>();
+        for (ImmutablePair<Integer, Double> r : distancesIndices) {
+            if (singleColumn != null) {
+                if (r.left >= 0) {
+                    withValues.add(ImmutablePair.of((int) singleColumn[r.left], r.right));
+                } else {
+                    withValues.add(ImmutablePair.of(-1, r.right));
+                }
+            } else {
+                withValues.add(ImmutablePair.of(r.left, r.right));
+            }
+        }
+        return withValues;
     }
 
     /**
@@ -1238,6 +1269,9 @@ class DBF extends Object implements Serializable {
         int[] idx = new int[columns.length];
         for (int i = 0; i < idx.length; i++) {
             idx[i] = dbfheader.getColumnIdx(columns[i]);
+            if (idx[i] < 0) {
+                throw new RuntimeException("Column "+columns[i]+" not found in DBF");
+            }
         }
         dbfrecords = new DBFRecords(filename, charset, dbfheader, idx, true);
     }
@@ -1252,6 +1286,9 @@ class DBF extends Object implements Serializable {
         int[] idx = new int[columns.length];
         for (int i = 0; i < idx.length; i++) {
             idx[i] = dbfheader.getColumnIdx(columns[i]);
+            if (idx[i] < 0) {
+                throw new RuntimeException("Column "+columns[i]+" not found in DBF. Columns are "+ String.join(", ", dbfheader.getColumnNames()));
+            }
         }
         dbfrecords = new DBFRecords(filename, charset, dbfheader, idx, false);
     }
@@ -2036,6 +2073,55 @@ class ShapesReference extends Object implements Serializable {
             }
         }
         return -1;
+    }
+
+    /**
+     * performs intersection with a distance on one point
+     *
+     * @param longitude longitude of point to intersect as double
+     * @param latitude  latitude of point to intersect as double
+     * @param distance  maximum distance from the shape
+     * @return shape indices and distances for intersections found within the distance
+     */
+    public List<ImmutablePair<Integer, Double>> intersection(double longitude, double latitude, double distance) {
+        ArrayList<ComplexRegion> sra = sr.getRegions();
+
+        int i;
+
+        List<ImmutablePair<Integer, Double>> hits = new ArrayList<>();
+
+        /* TODO: test for mask
+        if (mask != null) {
+            // apply multipliers
+            int long1 = (int) Math.floor((longitude - boundingbox_all[0][0]) * mask_long_multiplier);
+            int lat1 = (int) Math.floor((latitude - boundingbox_all[0][1]) * mask_lat_multiplier);
+            // check is within mask bounds
+            if (long1 >= 0 && long1 < mask[0].length // TODO distance here
+                && lat1 >= 0 && lat1 < mask.length
+                && mask[long1][lat1] != null) {
+
+                // get list of shapes to check at this mask cell
+                ArrayList<Integer> ali = mask[long1][lat1];
+
+                // check each potential cell
+                for (i = 0; i < ali.size(); i++) {
+                    Double x = sra.get(ali.get(i).intValue()).distance(longitude, latitude, distance);
+                    if (x != null) {
+                        hits.add(ImmutablePair.of(ali.get(i).intValue(), x));
+                    }
+                }
+            }
+        } else { */
+            // no mask, check all shapes
+            for (i = 0; i < sra.size(); i++) {
+                Double d = sra.get(i).distance(longitude, latitude, distance);
+                if (d != null) {
+                    //System.out.println("X "+i+" "+d);
+                    hits.add(ImmutablePair.of(i, d));
+                }
+            }
+        // }
+        return hits;
     }
 }
 

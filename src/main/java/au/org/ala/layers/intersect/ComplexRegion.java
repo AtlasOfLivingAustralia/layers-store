@@ -164,11 +164,29 @@ public class ComplexRegion extends SimpleRegion {
      */
     @Override
     public boolean isWithin(double longitude, double latitude) {
+        return isWithin(longitude, latitude, 0);
+    }
+
+    /**
+     * returns true when the point provided is within the ComplexRegion, or a
+     * distance from it.
+     * <p/>
+     * uses <code>mask</code> when available
+     * <p/>
+     * note: type UNDEFINED implies no boundary, always returns true.
+     *
+     * @param longitude
+     * @param latitude
+     * @param distance
+     * @return true iff point is within distance of this ComplexRegion
+     */
+    @Override
+    public boolean isWithin(double longitude, double latitude, double distance) {
         if (simpleregions.size() == 1) {
-            return simpleregions.get(0).isWithin(longitude, latitude);
+            return simpleregions.get(0).isWithin(longitude, latitude, distance);
         }
-        if (boundingbox_all[0][0] > longitude || boundingbox_all[1][0] < longitude
-                || boundingbox_all[0][1] > latitude || boundingbox_all[1][1] < latitude) {
+        if (boundingbox_all[0][0] - distance > longitude || boundingbox_all[1][0] + distance < longitude
+                || boundingbox_all[0][1] - distance > latitude || boundingbox_all[1][1] + distance < latitude) {
             return false;
         }
 
@@ -176,8 +194,8 @@ public class ComplexRegion extends SimpleRegion {
         //int count_in = 0;       //count of regions overlapping the point
         if (mask != null) {
             /* use mask if exists */
-            int long1 = (int) Math.floor((longitude - boundingbox_all[0][0]) * mask_long_multiplier);
-            int lat1 = (int) Math.floor((latitude - boundingbox_all[0][1]) * mask_lat_multiplier);
+            int long1 = (int) Math.floor((longitude - boundingbox_all[0][0] - distance) * mask_long_multiplier);
+            int lat1 = (int) Math.floor((latitude - boundingbox_all[0][1] - distance) * mask_lat_multiplier);
 
             if (long1 == mask[0].length) {
                 long1--;
@@ -196,7 +214,7 @@ public class ComplexRegion extends SimpleRegion {
             if (maskDepth != null && maskDepth[lat1][long1] != null) {
                 int[] d = (int[]) maskDepth[lat1][long1];
                 for (int i = 0; i < d.length; i++) {
-                    if (simpleregions.get(d[i]).isWithin(longitude, latitude)) {
+                    if (simpleregions.get(d[i]).isWithin(longitude, latitude, distance)) {
                         countsIn[polygons.get(d[i])]++;
                     }
                 }
@@ -212,7 +230,7 @@ public class ComplexRegion extends SimpleRegion {
 
         /* check for all SimpleRegions */
         for (int i = 0; i < simpleregions.size(); i++) {
-            if (simpleregions.get(i).isWithin(longitude, latitude)) {
+            if (simpleregions.get(i).isWithin(longitude, latitude, distance)) {
                 countsIn[polygons.get(i)]++;
             }
         }
@@ -224,6 +242,128 @@ public class ComplexRegion extends SimpleRegion {
             }
         }
         return false;
+    }
+
+    /**
+     * returns the distance of a provided point from the ComplexRegion.
+     *
+     * note: type UNDEFINED implies no boundary, always returns true.
+     *
+     * @param longitude
+     * @param latitude
+     * @param distance
+     * @return the distance iff point is within distance of this ComplexRegion, null if not.
+     */
+    @Override
+    public Double distance(double longitude, double latitude, double distance) {
+        // This method duplicates some code from above, but becomes much more complicated when the point is near/in
+        // several polygons (and holes) at once.  Therefore I've kept it separate.
+
+        if (simpleregions.size() == 1) {
+            return simpleregions.get(0).distance(longitude, latitude, distance);
+        }
+        if (boundingbox_all[0][0] - distance > longitude || boundingbox_all[1][0] + distance < longitude
+            || boundingbox_all[0][1] - distance > latitude || boundingbox_all[1][1] + distance < latitude) {
+            return null;
+        }
+
+        short[] countsInOrNear = new short[polygons.get(polygons.size() - 1) + 1];
+        short[] countsIn = new short[polygons.get(polygons.size() - 1) + 1];
+        double[] distanceFrom = new double[polygons.get(polygons.size() - 1) + 1];
+
+        // Possible TODO: Use masks.
+
+        /* check for all SimpleRegions */
+        for (int i = 0; i < simpleregions.size(); i++) {
+            Double x = simpleregions.get(i).distance(longitude, latitude, distance);
+            if (x != null) {
+                if (countsInOrNear[polygons.get(i)] == 0) {
+                    distanceFrom[polygons.get(i)] = x;
+                } else if (Math.abs(x) < Math.abs(distanceFrom[polygons.get(i)])) {
+                    distanceFrom[polygons.get(i)] = x;
+                }
+                countsInOrNear[polygons.get(i)]++;
+                if (x == 0) {
+                    countsIn[polygons.get(i)]++;
+                }
+            }
+        }
+
+        // Handle being in/near multiple polygons, which might be area (land) or hole (lake),
+        // or area-within-hole (island in the lake), or hole-in-area-in-hole (pond on the island in the lake),
+        // or other bits of area (on this island but near that one, etc).
+        for (int i = 0; i < countsInOrNear.length; i++) {
+            if (countsIn[i] % 2 == 1) {
+                // WELL WITHIN an odd number of regions for this polygon.
+                return 0.0;
+            } else if (countsInOrNear[i] > 0) {
+                // Recheck for being NEAR the edge of a hole
+                countsInOrNear[i] = 0;
+                double dist = Double.MAX_VALUE;
+                // I am imagining the polygons represent land, and the holes and surroundings water.
+                Boolean onLand = null;
+                for (int j = 0; j < simpleregions.size(); j++) {
+                    if (polygons.get(j) == i) {
+                        Double x = simpleregions.get(j).distance(longitude, latitude, distance, true);
+                        if (x != null) {
+                            if (onLand == null) {
+                                // First hit: point is in the larger, outer polygon. If just outside, we are done.
+                                countsInOrNear[i]++;
+                                dist = Math.min(dist, Math.abs(x));
+                                if (x >= 0) {
+                                    // NEAR an OUTER polygon
+                                } else {
+                                    // INSIDE an OUTERMOST polygon
+                                    onLand = true;
+                                }
+                            } else if (onLand && x >= 0) {
+                                // NEAR a HOLE, just ignore
+                            } else if (onLand && x >= -distance) {
+                                // INSIDE a HOLE, near the edge
+                                dist = Math.min(dist, Math.abs(x));
+                                onLand = false;
+                                countsInOrNear[i]++;
+                            } else if (onLand) { // x < -distance
+                                // INSIDE a HOLE, far from the edge
+                                dist = Math.min(dist, Math.abs(x));
+                                onLand = false;
+                                countsInOrNear[i]++;
+                            } else {
+                                // An island
+                                countsInOrNear[i]++;
+                                dist = Math.min(dist, Math.abs(x));
+                                if (x >= 0) {
+                                    // NEAR an ISLAND
+                                } else {
+                                    // ON an ISLAND
+                                    onLand = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (Math.abs(dist) < distance) {
+                    countsInOrNear[i] = 1;
+                    distanceFrom[i] = dist;
+                } else {
+                    countsInOrNear[i] = 0;
+                }
+            }
+        }
+
+        double near = Double.MAX_VALUE;
+
+        for (int i = 0; i < countsInOrNear.length; i++) {
+            if (countsInOrNear[i] % 2 == 1) {
+                return distanceFrom[i];
+            }
+        }
+
+        if (near < Double.MAX_VALUE) {
+            return near;
+        } else {
+            return null;
+        }
     }
 
     /**
