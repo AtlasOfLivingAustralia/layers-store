@@ -344,13 +344,13 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
         logger.info("Getting object info for id = " + id + " and geometry as " + geomtype);
         String sql = "";
         if ("kml".equals(geomtype)) {
-            sql = "SELECT ST_AsKml(the_geom) as geometry, name, \"desc\" as description  FROM objects WHERE pid=?;";
+            sql = "SELECT ST_AsKml(the_geom,15) as geometry, name, \"desc\" as description  FROM objects WHERE pid=?;";
         } else if ("wkt".equals(geomtype)) {
-            sql = "SELECT ST_AsText(the_geom) as geometry FROM objects WHERE pid=?;";
+            sql = "SELECT ST_AsText(the_geom,15) as geometry FROM objects WHERE pid=?;";
         } else if ("geojson".equals(geomtype)) {
-            sql = "SELECT ST_AsGeoJSON(the_geom) as geometry FROM objects WHERE pid=?;";
+            sql = "SELECT ST_AsGeoJSON(the_geom,15) as geometry FROM objects WHERE pid=?;";
         } else if ("shp".equals(geomtype)) {
-            sql = "SELECT ST_AsText(the_geom) as geometry, name, \"desc\" as description FROM objects WHERE pid=?;";
+            sql = "SELECT ST_AsText(the_geom,15) as geometry, name, \"desc\" as description FROM objects WHERE pid=?;";
         }
 
         List<Objects> l = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), id);
@@ -608,7 +608,7 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
         logger.info("Getting " + limit + " nearest objects in field fid = " + fid + " to loc: (" + lng + ", " + lat + ") ");
 
         String sql = "select fid, name, \"desc\", pid, id, ST_AsText(the_geom) as geometry, " +
-                "st_Distance_Sphere(ST_SETSRID(ST_Point( ? , ? ),4326), the_geom) as distance, " +
+                "ST_DistanceSphere(ST_SETSRID(ST_Point( ? , ? ),4326), the_geom) as distance, " +
                 "degrees(Azimuth( ST_SETSRID(ST_Point( ? , ? ),4326), the_geom)) as degrees, " +
                 "area_km " +
                 "from objects where fid= ? order by the_geom <#> st_setsrid(st_makepoint( ? , ? ),4326) limit ? ";
@@ -893,7 +893,7 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
     public List<Objects> getObjectsWithinRadius(String fid, double latitude, double longitude, double radiusKm) {
         String sql = "SELECT o.pid, o.id, o.name, o.desc AS description, o.fid AS fid, f.name AS fieldname, o.bbox, " +
                 "o.area_km, GeometryType(o.the_geom) as featureType FROM objects o, fields f WHERE o.fid = ? AND o.fid = f.id AND " +
-                "ST_DWithin(ST_GeographyFromText('POINT(" + longitude + " " + latitude + ")'), geography(the_geom), ?)";
+                "ST_DWithin(ST_GeographyFromText('POINT(" + longitude + " " + latitude + ")'), geography(the_geom), ?, true)";
         List<Objects> l = jdbcTemplate.query(sql, BeanPropertyRowMapper.newInstance(Objects.class), fid, radiusKm * 1000);
         updateObjectWms(l);
         return l;
@@ -921,7 +921,7 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
     public List<Map<String, Object>> getPointsOfInterestWithinRadius(double latitude, double longitude, double radiusKm) {
         String sql = "SELECT id, object_id, name, type, latitude, longitude, bearing, user_id, description, " +
                 "focal_length_millimetres from points_of_interest " +
-                "WHERE ST_DWithin(ST_GeographyFromText('POINT(" + longitude + " " + latitude + ")'), geography(the_geom), ?)";
+                "WHERE ST_DWithin(ST_GeographyFromText('POINT(" + longitude + " " + latitude + ")'), geography(the_geom), ?,true)";
         List<Map<String, Object>> l = jdbcTemplate.queryForList(sql, radiusKm * 1000);
         return l;
     }
@@ -945,7 +945,7 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
     @Override
     public int getPointsOfInterestWithinRadiusCount(double latitude, double longitude, double radiusKm) {
         String sql = "SELECT count(*) from points_of_interest " +
-                "WHERE ST_DWithin(ST_GeographyFromText('POINT(" + longitude + " " + latitude + ")'), geography(the_geom), ?)";
+                "WHERE ST_DWithin(ST_GeographyFromText('POINT(" + longitude + " " + latitude + ")'), geography(the_geom), ?, true)";
         return jdbcTemplate.queryForObject(sql, Integer.class,radiusKm * 1000);
     }
 
