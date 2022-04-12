@@ -20,7 +20,10 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -51,6 +54,10 @@ public class SimpleShapeFile extends Object implements Serializable {
      * .shp file record contents
      */
     ShapeRecords shaperecords;
+    /**
+     * Charset for .dbf (read from .cpg)
+     */
+    Charset charset;
     /**
      * .dbf contents
      */
@@ -90,15 +97,17 @@ public class SimpleShapeFile extends Object implements Serializable {
      * Constructor for a SimpleShapeFile, requires .dbf and .shp files present
      * on the fileprefix provided.
      *
-     * @param filename file path for valid files after appending .shp and .dbf
+     * @param fileprefix file path for valid files after appending .shp and .dbf
      */
     public SimpleShapeFile(String fileprefix, String column) {
         //If fileprefix exists as-is it is probably a saved SimpleShapeFile
         if (loadRegion(fileprefix)) {
             //previously saved region loaded
         } else {
+            /* read cpg (encoding) */
+            charset = new CPG(fileprefix + ".cpg").getCharset();
             /* read dbf */
-            dbf = new DBF(fileprefix + ".dbf", column);
+            dbf = new DBF(fileprefix + ".dbf", charset, column);
             singleLookup = getColumnLookup(0);
             singleColumn = new int[dbf.dbfrecords.records.size()];
             for (int i = 0; i < singleColumn.length; i++) {
@@ -124,11 +133,13 @@ public class SimpleShapeFile extends Object implements Serializable {
         if (loadRegion(fileprefix)) {
             //previously saved region loaded
         } else {
+            /* read cpg (encoding) */
+            charset = new CPG(fileprefix + ".cpg").getCharset();
             /* read dbf */
             multiColumn = new ArrayList<int[]>();
             multiLookup = new ArrayList<String[]>();
             multiNames = new ArrayList<String>();
-            dbf = new DBF(fileprefix + ".dbf", columns);
+            dbf = new DBF(fileprefix + ".dbf", charset, columns);
             for (int j = 0; j < columns.length; j++) {
                 String[] names = dbf.getColumnLookup(j);
                 int[] ids = new int[dbf.dbfrecords.records.size()];
@@ -1148,6 +1159,39 @@ class PolygonZ extends Shape {
 }
 
 /**
+ * .cpg file object, specifies character encoding for the DBF file.
+ *
+ * https://desktop.arcgis.com/en/arcmap/latest/manage-data/shapefiles/shapefile-file-extensions.htm
+ */
+class CPG extends Object implements Serializable {
+
+    private static final long serialVersionUID = -292802307279651655L;
+
+    private static final Logger logger = Logger.getLogger(CPG.class);
+
+    // Default charset would be the system, but use ISO-8859-1 to maintain backward compatibility of this library.
+    Charset charset = StandardCharsets.ISO_8859_1;
+
+    /**
+     * constructor for new CPG from .cpg filename
+     *
+     * @param filename path and file name of .cpg file
+     */
+    public CPG(String filename) {
+        try {
+            String cpg = Files.readAllLines(Paths.get(filename)).get(0);
+            charset = Charset.forName(cpg);
+        } catch (Exception e) {
+            logger.info("loading cpg issue, assuming default ISO-8859-1 encoding: " + filename + ": " + e.toString(), e);
+        }
+    }
+
+    public Charset getCharset() {
+        return charset;
+    }
+}
+
+/**
  * .dbf file object
  *
  * @author adam
@@ -1173,17 +1217,17 @@ class DBF extends Object implements Serializable {
      *
      * @param filename path and file name of .dbf file
      */
-    public DBF(String filename) {
+    public DBF(String filename, Charset charset) {
         singleColumn = false;
 
         /* get file header */
         dbfheader = new DBFHeader(filename);
 
         /* get records */
-        dbfrecords = new DBFRecords(filename, dbfheader);
+        dbfrecords = new DBFRecords(filename, charset, dbfheader);
     }
 
-    DBF(String filename, String column) {
+    DBF(String filename, Charset charset, String column) {
         singleColumn = true;
 
         /* get file header */
@@ -1195,10 +1239,10 @@ class DBF extends Object implements Serializable {
         for (int i = 0; i < idx.length; i++) {
             idx[i] = dbfheader.getColumnIdx(columns[i]);
         }
-        dbfrecords = new DBFRecords(filename, dbfheader, idx, true);
+        dbfrecords = new DBFRecords(filename, charset, dbfheader, idx, true);
     }
 
-    DBF(String filename, String[] columns) {
+    DBF(String filename, Charset charset, String[] columns) {
         singleColumn = false;
 
         /* get file header */
@@ -1209,7 +1253,7 @@ class DBF extends Object implements Serializable {
         for (int i = 0; i < idx.length; i++) {
             idx[i] = dbfheader.getColumnIdx(columns[i]);
         }
-        dbfrecords = new DBFRecords(filename, dbfheader, idx, false);
+        dbfrecords = new DBFRecords(filename, charset, dbfheader, idx, false);
     }
 
     /**
@@ -1366,7 +1410,8 @@ class DBFHeader extends Object implements Serializable {
             fields = new ArrayList();
             byte nextfsr;
             while ((nextfsr = buffer.get()) != 0x0D) {
-                fields.add(new DBFField(nextfsr, buffer));
+                // Note headers are always in ISO-8859-1 encoding
+                fields.add(new DBFField(nextfsr, buffer, StandardCharsets.ISO_8859_1));
             }
             /* don't care dbc, skip */
 
@@ -1519,7 +1564,7 @@ class DBFField extends Object implements Serializable {
      * @param firstbyte first byte of .dbf field record as byte
      * @param buffer    remaining byes of .dbf field record as ByteBuffer
      */
-    public DBFField(byte firstbyte, ByteBuffer buffer) {
+    public DBFField(byte firstbyte, ByteBuffer buffer, Charset charset) {
         int i;
         byte[] ba = new byte[12];
         ba[0] = firstbyte;
@@ -1527,7 +1572,7 @@ class DBFField extends Object implements Serializable {
             ba[i] = buffer.get();
         }
         try {
-            name = convertToUTF8(new String(ba, "ISO-8859-1").trim().toUpperCase());
+            name = convertToUTF8(new String(ba, charset).trim().toUpperCase());
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }
@@ -1535,7 +1580,7 @@ class DBFField extends Object implements Serializable {
         byte[] ba2 = new byte[1];
         ba2[0] = buffer.get();
         try {
-            type = convertToUTF8(new String(ba2, "ISO-8859-1").trim()).charAt(0);
+            type = convertToUTF8(new String(ba2, charset).trim()).charAt(0);
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }
@@ -1622,7 +1667,7 @@ class DBFRecords extends Object implements Serializable {
      * @param filename .dbf file as String
      * @param header   dbf header from filename as DBFHeader
      */
-    public DBFRecords(String filename, DBFHeader header) {
+    public DBFRecords(String filename, Charset charset, DBFHeader header) {
         /* init */
         records = new ArrayList();
         isvalid = false;
@@ -1643,7 +1688,7 @@ class DBFRecords extends Object implements Serializable {
             int i = 0;
             ArrayList<DBFField> fields = header.getFields();
             while (i < header.getNumberOfRecords() && buffer.hasRemaining()) {
-                records.add(new DBFRecord(buffer, fields));
+                records.add(new DBFRecord(buffer, fields, charset));
                 i++;
             }
 
@@ -1661,7 +1706,7 @@ class DBFRecords extends Object implements Serializable {
         }
     }
 
-    DBFRecords(String filename, DBFHeader header, int[] columnIdx, boolean mergeColumns) {
+    DBFRecords(String filename, Charset charset, DBFHeader header, int[] columnIdx, boolean mergeColumns) {
         /* init */
         records = new ArrayList();
         isvalid = false;
@@ -1682,7 +1727,7 @@ class DBFRecords extends Object implements Serializable {
             int i = 0;
             ArrayList<DBFField> fields = header.getFields();
             while (i < header.getNumberOfRecords() && buffer.hasRemaining()) {
-                records.add(new DBFRecord(buffer, fields, columnIdx, mergeColumns));
+                records.add(new DBFRecord(buffer, fields, charset, columnIdx, mergeColumns));
                 i++;
             }
 
@@ -1761,7 +1806,7 @@ class DBFRecord extends Object implements Serializable {
      * @param buffer byte buffer for reading fields as ByteBuffer
      * @param fields fields in this record as ArrayList<DBFField>
      */
-    public DBFRecord(ByteBuffer buffer, ArrayList<DBFField> fields) {
+    public DBFRecord(ByteBuffer buffer, ArrayList<DBFField> fields, Charset charset) {
         deletionflag = (0xFF & buffer.get());
         record = new String[fields.size()];
 
@@ -1773,10 +1818,10 @@ class DBFRecord extends Object implements Serializable {
             try {
                 switch (f.getType()) {
                     case 'C':            //string
-                        record[i] = DBFField.convertToUTF8(new String(data, "ISO-8859-1").trim());
+                        record[i] = DBFField.convertToUTF8(new String(data, charset).trim());
                         break;
                     case 'N':            //number as string
-                        record[i] = DBFField.convertToUTF8(new String(data, "ISO-8859-1").trim());
+                        record[i] = DBFField.convertToUTF8(new String(data, charset).trim());
                         break;
                 }
             } catch (Exception e) {
@@ -1785,7 +1830,7 @@ class DBFRecord extends Object implements Serializable {
         }
     }
 
-    DBFRecord(ByteBuffer buffer, ArrayList<DBFField> fields, int[] columnIdx, boolean mergeColumns) {
+    DBFRecord(ByteBuffer buffer, ArrayList<DBFField> fields, Charset charset, int[] columnIdx, boolean mergeColumns) {
         deletionflag = (0xFF & buffer.get());
         record = mergeColumns ? new String[1] : new String[columnIdx.length];
         fieldValues = new String[fields.size()];
@@ -1799,10 +1844,10 @@ class DBFRecord extends Object implements Serializable {
             try {
                 switch (f.getType()) {
                     case 'C':            //string
-                        fieldValues[i] = DBFField.convertToUTF8(new String(data, "ISO-8859-1").trim());
+                        fieldValues[i] = DBFField.convertToUTF8(new String(data, charset).trim());
                         break;
                     case 'N':            //number as string
-                        fieldValues[i] = DBFField.convertToUTF8(new String(data, "ISO-8859-1").trim());
+                        fieldValues[i] = DBFField.convertToUTF8(new String(data, charset).trim());
                         break;
                 }
             } catch (Exception e) {
