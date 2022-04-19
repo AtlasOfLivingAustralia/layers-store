@@ -18,7 +18,6 @@ import au.org.ala.layers.dao.*;
 import au.org.ala.layers.dto.Layer;
 import org.apache.log4j.Logger;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.access.ContextSingletonBeanFactoryLocator;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 import java.util.Iterator;
@@ -58,13 +57,7 @@ public class Client {
 
     static void initContext() {
         if (gContext == null) {
-            Object obj = ContextSingletonBeanFactoryLocator.getInstance();
-            if (obj != null && obj instanceof ApplicationContext
-                    && ((ApplicationContext) obj).getBean("layerDao") != null) {
-                gContext = (ApplicationContext) obj;
-            } else {
                 gContext = new ClassPathXmlApplicationContext("spring/app-config.xml");
-            }
         }
     }
 

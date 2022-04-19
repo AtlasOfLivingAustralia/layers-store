@@ -42,7 +42,6 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceUtils;
-import org.springframework.jdbc.support.nativejdbc.C3P0NativeJdbcExtractor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -169,7 +168,7 @@ public class ObjectDAOImpl implements ObjectDAO, ApplicationContextAware {
         Connection conn = DataSourceUtils.getConnection(ds);
 
         try {
-            BaseConnection baseConn = (BaseConnection) new C3P0NativeJdbcExtractor().getNativeConnection(conn);
+            BaseConnection baseConn= conn.unwrap(BaseConnection.class);
             Writer csvOutput = new OutputStreamWriter(output);
             CopyManager copyManager = new CopyManager(baseConn);
             copyManager.copyOut(sql, csvOutput);
