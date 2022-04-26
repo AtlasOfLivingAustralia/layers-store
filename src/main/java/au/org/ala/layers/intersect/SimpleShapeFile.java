@@ -27,10 +27,13 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.stream.Collectors;
 
 /**
  * SimpleShapeFile is a representation of a Shape File for
@@ -2088,40 +2091,76 @@ class ShapesReference extends Object implements Serializable {
 
         int i;
 
-        List<ImmutablePair<Integer, Double>> hits = new ArrayList<>();
+        List<ImmutablePair<Integer, Double>> r;
 
-        /* TODO: test for mask
-        if (mask != null) {
+        if (mask != null && distance < mask_lat_multiplier && distance < mask_long_multiplier) {
+            Map<Integer, Double> hitsMap = new HashMap<>();
+
             // apply multipliers
-            int long1 = (int) Math.floor((longitude - boundingbox_all[0][0]) * mask_long_multiplier);
-            int lat1 = (int) Math.floor((latitude - boundingbox_all[0][1]) * mask_lat_multiplier);
+            int long1 = (int) Math.floor((longitude - distance - boundingbox_all[0][0]) * mask_long_multiplier);
+            int long2 = (int) Math.floor((longitude + distance - boundingbox_all[0][0]) * mask_long_multiplier);
+            int lat1 = (int) Math.floor((latitude - distance - boundingbox_all[0][1]) * mask_lat_multiplier);
+            int lat2 = (int) Math.floor((latitude + distance - boundingbox_all[0][1]) * mask_lat_multiplier);
             // check is within mask bounds
-            if (long1 >= 0 && long1 < mask[0].length // TODO distance here
+            if (long1 >= 0 && long1 < mask[0].length
                 && lat1 >= 0 && lat1 < mask.length
                 && mask[long1][lat1] != null) {
-
                 // get list of shapes to check at this mask cell
                 ArrayList<Integer> ali = mask[long1][lat1];
-
-                // check each potential cell
-                for (i = 0; i < ali.size(); i++) {
-                    Double x = sra.get(ali.get(i).intValue()).distance(longitude, latitude, distance);
-                    if (x != null) {
-                        hits.add(ImmutablePair.of(ali.get(i).intValue(), x));
-                    }
-                }
+                checkCells(hitsMap, sra, ali, longitude, latitude, distance);
             }
-        } else { */
+
+            if (long1 != long2
+                && long2 >= 0 && long2 < mask[0].length
+                && lat1 >= 0 && lat1 < mask.length
+                && mask[long2][lat1] != null) {
+                // get list of shapes to check at this mask cell
+                ArrayList<Integer> ali = mask[long2][lat1];
+                checkCells(hitsMap, sra, ali, longitude, latitude, distance);
+            }
+
+            if (lat1 != lat2
+                && long1 >= 0 && long1 < mask[0].length
+                && lat2 >= 0 && lat2 < mask.length
+                && mask[long1][lat2] != null) {
+                // get list of shapes to check at this mask cell
+                ArrayList<Integer> ali = mask[long1][lat2];
+                checkCells(hitsMap, sra, ali, longitude, latitude, distance);
+            }
+
+            if (long1 != long2 && lat1 != lat2
+                && long2 >= 0 && long2 < mask[0].length
+                && lat2 >= 0 && lat2 < mask.length
+                && mask[long2][lat2] != null) {
+                // get list of shapes to check at this mask cell
+                ArrayList<Integer> ali = mask[long2][lat2];
+                checkCells(hitsMap, sra, ali, longitude, latitude, distance);
+            }
+
+            r = hitsMap.entrySet().stream().map(e -> ImmutablePair.of(e.getKey(), e.getValue())).collect(Collectors.toList());
+        } else {
+            List<ImmutablePair<Integer, Double>> hits = new ArrayList<>();
             // no mask, check all shapes
             for (i = 0; i < sra.size(); i++) {
                 Double d = sra.get(i).distance(longitude, latitude, distance);
                 if (d != null) {
-                    //System.out.println("X "+i+" "+d);
                     hits.add(ImmutablePair.of(i, d));
                 }
             }
-        // }
-        return hits;
+            r = hits;
+         }
+
+        return r;
+    }
+
+    private void checkCells(Map<Integer, Double> hitsMap, ArrayList<ComplexRegion> sra, ArrayList<Integer> ali, double longitude, double latitude, double distance) {
+        // check each potential cell
+        for (int i = 0; i < ali.size(); i++) {
+            Double x = sra.get(ali.get(i).intValue()).distance(longitude, latitude, distance);
+            if (x != null) {
+                hitsMap.merge(ali.get(i).intValue(), x, Math::min);
+            }
+        }
     }
 }
 
