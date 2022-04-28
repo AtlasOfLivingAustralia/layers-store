@@ -15,10 +15,12 @@
 package au.org.ala.layers.client;
 
 import au.org.ala.layers.dao.*;
+import au.org.ala.layers.dto.Field;
 import au.org.ala.layers.dto.Layer;
 import org.apache.log4j.Logger;
+import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.access.ContextSingletonBeanFactoryLocator;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 import java.util.Iterator;
@@ -27,7 +29,7 @@ import java.util.List;
 /**
  * Main CLI class to hook into layers-store
  *
- * @author ajay
+ * @author ajay and Qifeng
  */
 public class Client {
 
@@ -36,20 +38,13 @@ public class Client {
     static ApplicationContext gContext = null;
 
     public static void main(String[] args) {
-
         logger.info("Layers Store CLI client");
 
-        ApplicationContext context =
-                new ClassPathXmlApplicationContext("spring/app-config.xml");
-
-        LayerDAO layerDao = (LayerDAO) context.getBean("layerDao");
-        List<Layer> layers = layerDao.getLayers();
-        logger.info("Got " + layers.size() + " layers");
-        Iterator<Layer> it = layers.iterator();
-        while (it.hasNext()) {
-            Layer l = it.next();
-            logger.info(" > " + l.getName());
-        }
+        //Test if ApplicationContext is autowired
+        List<Layer> layers = Client.getLayerDao().getLayers();
+        System.out.println(layers.size());
+        List<Field> fields = Client.getFieldDao().getFields();
+        System.out.println(fields.size());
     }
 
     public static void setContext(ApplicationContext context) {
@@ -58,7 +53,7 @@ public class Client {
 
     static void initContext() {
         if (gContext == null) {
-            Object obj = ContextSingletonBeanFactoryLocator.getInstance();
+            Object obj = DefaultContextLocator.getApplicationContext();
             if (obj != null && obj instanceof ApplicationContext
                     && ((ApplicationContext) obj).getBean("layerDao") != null) {
                 gContext = (ApplicationContext) obj;
@@ -100,3 +95,18 @@ public class Client {
         return (UserDataDAO) gContext.getBean("userDataDao");
     }
 }
+
+class DefaultContextLocator implements ApplicationContextAware {
+    private static ApplicationContext applicationContext;
+
+    @Override
+    public void setApplicationContext(ApplicationContext context) throws BeansException {
+        System.out.println("Inside setApplicationContext");
+        applicationContext = context;
+    }
+
+    public static ApplicationContext getApplicationContext() {
+        return applicationContext;
+    }
+}
+
