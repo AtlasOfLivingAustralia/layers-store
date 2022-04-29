@@ -14,21 +14,26 @@
  ***************************************************************************/
 package au.org.ala.layers.intersect;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
-
-import static java.nio.charset.StandardCharsets.ISO_8859_1;
+import java.util.stream.Collectors;
 
 /**
  * SimpleShapeFile is a representation of a Shape File for
@@ -54,6 +59,10 @@ public class SimpleShapeFile extends Object implements Serializable {
      */
     ShapeRecords shaperecords;
     /**
+     * Charset for .dbf (read from .cpg)
+     */
+    Charset charset;
+    /**
      * .dbf contents
      */
     DBF dbf;
@@ -64,7 +73,7 @@ public class SimpleShapeFile extends Object implements Serializable {
     /**
      * one dbf column, for use after loading from a file
      */
-    short[] singleColumn;
+    int[] singleColumn;
     /**
      * one lookup for a dbf column, for use after loading from a file
      */
@@ -73,7 +82,7 @@ public class SimpleShapeFile extends Object implements Serializable {
     /**
      * one dbf column, for use after loading from a file
      */
-    List<short[]> multiColumn;
+    List<int[]> multiColumn;
     /**
      * one lookup for a dbf column, for use after loading from a file
      */
@@ -92,19 +101,21 @@ public class SimpleShapeFile extends Object implements Serializable {
      * Constructor for a SimpleShapeFile, requires .dbf and .shp files present
      * on the fileprefix provided.
      *
-     * @param filename file path for valid files after appending .shp and .dbf
+     * @param fileprefix file path for valid files after appending .shp and .dbf
      */
     public SimpleShapeFile(String fileprefix, String column) {
         //If fileprefix exists as-is it is probably a saved SimpleShapeFile
         if (loadRegion(fileprefix)) {
             //previously saved region loaded
         } else {
+            /* read cpg (encoding) */
+            charset = new CPG(fileprefix + ".cpg").getCharset();
             /* read dbf */
-            dbf = new DBF(fileprefix + ".dbf", column);
+            dbf = new DBF(fileprefix + ".dbf", charset, column);
             singleLookup = getColumnLookup(0);
-            singleColumn = new short[dbf.dbfrecords.records.size()];
+            singleColumn = new int[dbf.dbfrecords.records.size()];
             for (int i = 0; i < singleColumn.length; i++) {
-                singleColumn[i] = (short) java.util.Arrays.binarySearch(singleLookup, dbf.getValue(i, 0));
+                singleColumn[i] = java.util.Arrays.binarySearch(singleLookup, dbf.getValue(i, 0));
             }
             dbf = null;
 
@@ -126,16 +137,18 @@ public class SimpleShapeFile extends Object implements Serializable {
         if (loadRegion(fileprefix)) {
             //previously saved region loaded
         } else {
+            /* read cpg (encoding) */
+            charset = new CPG(fileprefix + ".cpg").getCharset();
             /* read dbf */
-            multiColumn = new ArrayList<short[]>();
+            multiColumn = new ArrayList<int[]>();
             multiLookup = new ArrayList<String[]>();
             multiNames = new ArrayList<String>();
-            dbf = new DBF(fileprefix + ".dbf", columns);
+            dbf = new DBF(fileprefix + ".dbf", charset, columns);
             for (int j = 0; j < columns.length; j++) {
                 String[] names = dbf.getColumnLookup(j);
-                short[] ids = new short[dbf.dbfrecords.records.size()];
+                int[] ids = new int[dbf.dbfrecords.records.size()];
                 for (int i = 0; i < ids.length; i++) {
-                    ids[i] = (short) java.util.Arrays.binarySearch(names, dbf.getValue(i, j));
+                    ids[i] = java.util.Arrays.binarySearch(names, dbf.getValue(i, j));
                 }
                 multiColumn.add(ids);
                 multiLookup.add(names);
@@ -302,7 +315,7 @@ public class SimpleShapeFile extends Object implements Serializable {
 
                 singleLookup = (String[]) ois.readObject();
 
-                singleColumn = (short[]) ois.readObject();
+                singleColumn = (int[]) ois.readObject();
 
                 result = true;
             } catch (Exception e) {
@@ -377,7 +390,7 @@ public class SimpleShapeFile extends Object implements Serializable {
      * @param column_name
      * @return -1 if not found, otherwise column index number, zero base
      */
-    public short[] getColumnIdxs(String column_name) {
+    public int[] getColumnIdxs(String column_name) {
         if (singleColumn != null) {
             return singleColumn;
         }
@@ -486,7 +499,7 @@ public class SimpleShapeFile extends Object implements Serializable {
             }
         } else {
             for (i = 0; i < target.length; i++) {
-                short[] multiCol = multiColumn.get(column);
+                int[] multiCol = multiColumn.get(column);
                 if (target[i] >= 0 && target[i] < multiCol.length) {
                     target[i] = multiCol[target[i]];
                 } else {
@@ -508,6 +521,19 @@ public class SimpleShapeFile extends Object implements Serializable {
         return null;
     }
 
+    public List<ImmutablePair<String, Double>> intersect(double longitude, double latitude, double distance) {
+        List<ImmutablePair<Integer, Double>> distancesIndices = shapesreference.intersection(longitude, latitude, distance);
+        List<ImmutablePair<String, Double>> withValues = new ArrayList<>();
+
+        for (ImmutablePair<Integer, Double> r : distancesIndices) {
+            if (r.left >= 0 && r.left < singleColumn.length) {
+                withValues.add(ImmutablePair.of(singleLookup[singleColumn[r.left]], r.right));
+            }
+        }
+
+        return withValues;
+    }
+
     public int intersectInt(double longitude, double latitude) {
         if (singleColumn != null) {
             int v = shapesreference.intersection(longitude, latitude);
@@ -519,6 +545,23 @@ public class SimpleShapeFile extends Object implements Serializable {
         } else {
             return shapesreference.intersection(longitude, latitude);
         }
+    }
+
+    public List<ImmutablePair<Integer, Double>> intersectInt(double longitude, double latitude, double distance) {
+        List<ImmutablePair<Integer, Double>> distancesIndices = shapesreference.intersection(longitude, latitude, distance);
+        List<ImmutablePair<Integer, Double>> withValues = new ArrayList<>();
+        for (ImmutablePair<Integer, Double> r : distancesIndices) {
+            if (singleColumn != null) {
+                if (r.left >= 0) {
+                    withValues.add(ImmutablePair.of((int) singleColumn[r.left], r.right));
+                } else {
+                    withValues.add(ImmutablePair.of(-1, r.right));
+                }
+            } else {
+                withValues.add(ImmutablePair.of(r.left, r.right));
+            }
+        }
+        return withValues;
     }
 
     /**
@@ -1150,6 +1193,39 @@ class PolygonZ extends Shape {
 }
 
 /**
+ * .cpg file object, specifies character encoding for the DBF file.
+ *
+ * https://desktop.arcgis.com/en/arcmap/latest/manage-data/shapefiles/shapefile-file-extensions.htm
+ */
+class CPG extends Object implements Serializable {
+
+    private static final long serialVersionUID = -292802307279651655L;
+
+    private static final Logger logger = Logger.getLogger(CPG.class);
+
+    // Default charset would be the system, but use ISO-8859-1 to maintain backward compatibility of this library.
+    Charset charset = StandardCharsets.ISO_8859_1;
+
+    /**
+     * constructor for new CPG from .cpg filename
+     *
+     * @param filename path and file name of .cpg file
+     */
+    public CPG(String filename) {
+        try {
+            String cpg = Files.readAllLines(Paths.get(filename)).get(0);
+            charset = Charset.forName(cpg);
+        } catch (Exception e) {
+            logger.info("loading cpg issue, assuming default ISO-8859-1 encoding: " + filename + ": " + e.toString(), e);
+        }
+    }
+
+    public Charset getCharset() {
+        return charset;
+    }
+}
+
+/**
  * .dbf file object
  *
  * @author adam
@@ -1175,17 +1251,17 @@ class DBF extends Object implements Serializable {
      *
      * @param filename path and file name of .dbf file
      */
-    public DBF(String filename) {
+    public DBF(String filename, Charset charset) {
         singleColumn = false;
 
         /* get file header */
         dbfheader = new DBFHeader(filename);
 
         /* get records */
-        dbfrecords = new DBFRecords(filename, dbfheader);
+        dbfrecords = new DBFRecords(filename, charset, dbfheader);
     }
 
-    DBF(String filename, String column) {
+    DBF(String filename, Charset charset, String column) {
         singleColumn = true;
 
         /* get file header */
@@ -1196,11 +1272,14 @@ class DBF extends Object implements Serializable {
         int[] idx = new int[columns.length];
         for (int i = 0; i < idx.length; i++) {
             idx[i] = dbfheader.getColumnIdx(columns[i]);
+            if (idx[i] < 0) {
+                throw new RuntimeException("Column "+columns[i]+" not found in DBF");
+            }
         }
-        dbfrecords = new DBFRecords(filename, dbfheader, idx, true);
+        dbfrecords = new DBFRecords(filename, charset, dbfheader, idx, true);
     }
 
-    DBF(String filename, String[] columns) {
+    DBF(String filename, Charset charset, String[] columns) {
         singleColumn = false;
 
         /* get file header */
@@ -1210,8 +1289,11 @@ class DBF extends Object implements Serializable {
         int[] idx = new int[columns.length];
         for (int i = 0; i < idx.length; i++) {
             idx[i] = dbfheader.getColumnIdx(columns[i]);
+            if (idx[i] < 0) {
+                throw new RuntimeException("Column "+columns[i]+" not found in DBF. Columns are "+ String.join(", ", dbfheader.getColumnNames()));
+            }
         }
-        dbfrecords = new DBFRecords(filename, dbfheader, idx, false);
+        dbfrecords = new DBFRecords(filename, charset, dbfheader, idx, false);
     }
 
     /**
@@ -1368,7 +1450,8 @@ class DBFHeader extends Object implements Serializable {
             fields = new ArrayList();
             byte nextfsr;
             while ((nextfsr = buffer.get()) != 0x0D) {
-                fields.add(new DBFField(nextfsr, buffer));
+                // Note headers are always in ISO-8859-1 encoding
+                fields.add(new DBFField(nextfsr, buffer, StandardCharsets.ISO_8859_1));
             }
             /* don't care dbc, skip */
 
@@ -1521,7 +1604,7 @@ class DBFField extends Object implements Serializable {
      * @param firstbyte first byte of .dbf field record as byte
      * @param buffer    remaining byes of .dbf field record as ByteBuffer
      */
-    public DBFField(byte firstbyte, ByteBuffer buffer) {
+    public DBFField(byte firstbyte, ByteBuffer buffer, Charset charset) {
         int i;
         byte[] ba = new byte[12];
         ba[0] = firstbyte;
@@ -1529,7 +1612,7 @@ class DBFField extends Object implements Serializable {
             ba[i] = buffer.get();
         }
         try {
-            name = convertToUTF8(new String(ba, "ISO-8859-1").trim().toUpperCase());
+            name = convertToUTF8(new String(ba, charset).trim().toUpperCase());
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }
@@ -1537,7 +1620,7 @@ class DBFField extends Object implements Serializable {
         byte[] ba2 = new byte[1];
         ba2[0] = buffer.get();
         try {
-            type = convertToUTF8(new String(ba2, "ISO-8859-1").trim()).charAt(0);
+            type = convertToUTF8(new String(ba2, charset).trim()).charAt(0);
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }
@@ -1624,7 +1707,7 @@ class DBFRecords extends Object implements Serializable {
      * @param filename .dbf file as String
      * @param header   dbf header from filename as DBFHeader
      */
-    public DBFRecords(String filename, DBFHeader header) {
+    public DBFRecords(String filename, Charset charset, DBFHeader header) {
         /* init */
         records = new ArrayList();
         isvalid = false;
@@ -1645,7 +1728,7 @@ class DBFRecords extends Object implements Serializable {
             int i = 0;
             ArrayList<DBFField> fields = header.getFields();
             while (i < header.getNumberOfRecords() && buffer.hasRemaining()) {
-                records.add(new DBFRecord(buffer, fields));
+                records.add(new DBFRecord(buffer, fields, charset));
                 i++;
             }
 
@@ -1663,7 +1746,7 @@ class DBFRecords extends Object implements Serializable {
         }
     }
 
-    DBFRecords(String filename, DBFHeader header, int[] columnIdx, boolean mergeColumns) {
+    DBFRecords(String filename, Charset charset, DBFHeader header, int[] columnIdx, boolean mergeColumns) {
         /* init */
         records = new ArrayList();
         isvalid = false;
@@ -1684,7 +1767,7 @@ class DBFRecords extends Object implements Serializable {
             int i = 0;
             ArrayList<DBFField> fields = header.getFields();
             while (i < header.getNumberOfRecords() && buffer.hasRemaining()) {
-                records.add(new DBFRecord(buffer, fields, columnIdx, mergeColumns));
+                records.add(new DBFRecord(buffer, fields, charset, columnIdx, mergeColumns));
                 i++;
             }
 
@@ -1763,7 +1846,7 @@ class DBFRecord extends Object implements Serializable {
      * @param buffer byte buffer for reading fields as ByteBuffer
      * @param fields fields in this record as ArrayList<DBFField>
      */
-    public DBFRecord(ByteBuffer buffer, ArrayList<DBFField> fields) {
+    public DBFRecord(ByteBuffer buffer, ArrayList<DBFField> fields, Charset charset) {
         deletionflag = (0xFF & buffer.get());
         record = new String[fields.size()];
 
@@ -1775,10 +1858,10 @@ class DBFRecord extends Object implements Serializable {
             try {
                 switch (f.getType()) {
                     case 'C':            //string
-                        record[i] = DBFField.convertToUTF8(new String(data, "ISO-8859-1").trim());
+                        record[i] = DBFField.convertToUTF8(new String(data, charset).trim());
                         break;
                     case 'N':            //number as string
-                        record[i] = DBFField.convertToUTF8(new String(data, "ISO-8859-1").trim());
+                        record[i] = DBFField.convertToUTF8(new String(data, charset).trim());
                         break;
                 }
             } catch (Exception e) {
@@ -1787,7 +1870,7 @@ class DBFRecord extends Object implements Serializable {
         }
     }
 
-    DBFRecord(ByteBuffer buffer, ArrayList<DBFField> fields, int[] columnIdx, boolean mergeColumns) {
+    DBFRecord(ByteBuffer buffer, ArrayList<DBFField> fields, Charset charset, int[] columnIdx, boolean mergeColumns) {
         deletionflag = (0xFF & buffer.get());
         record = mergeColumns ? new String[1] : new String[columnIdx.length];
         fieldValues = new String[fields.size()];
@@ -1801,10 +1884,10 @@ class DBFRecord extends Object implements Serializable {
             try {
                 switch (f.getType()) {
                     case 'C':            //string
-                        fieldValues[i] = DBFField.convertToUTF8(new String(data, "ISO-8859-1").trim());
+                        fieldValues[i] = DBFField.convertToUTF8(new String(data, charset).trim());
                         break;
                     case 'N':            //number as string
-                        fieldValues[i] = DBFField.convertToUTF8(new String(data, "ISO-8859-1").trim());
+                        fieldValues[i] = DBFField.convertToUTF8(new String(data, charset).trim());
                         break;
                 }
             } catch (Exception e) {
@@ -1993,6 +2076,91 @@ class ShapesReference extends Object implements Serializable {
             }
         }
         return -1;
+    }
+
+    /**
+     * performs intersection with a distance on one point
+     *
+     * @param longitude longitude of point to intersect as double
+     * @param latitude  latitude of point to intersect as double
+     * @param distance  maximum distance from the shape
+     * @return shape indices and distances for intersections found within the distance
+     */
+    public List<ImmutablePair<Integer, Double>> intersection(double longitude, double latitude, double distance) {
+        ArrayList<ComplexRegion> sra = sr.getRegions();
+
+        int i;
+
+        List<ImmutablePair<Integer, Double>> r;
+
+        if (mask != null && distance < mask_lat_multiplier && distance < mask_long_multiplier) {
+            Map<Integer, Double> hitsMap = new HashMap<>();
+
+            // apply multipliers
+            int long1 = (int) Math.floor((longitude - distance - boundingbox_all[0][0]) * mask_long_multiplier);
+            int long2 = (int) Math.floor((longitude + distance - boundingbox_all[0][0]) * mask_long_multiplier);
+            int lat1 = (int) Math.floor((latitude - distance - boundingbox_all[0][1]) * mask_lat_multiplier);
+            int lat2 = (int) Math.floor((latitude + distance - boundingbox_all[0][1]) * mask_lat_multiplier);
+            // check is within mask bounds
+            if (long1 >= 0 && long1 < mask[0].length
+                && lat1 >= 0 && lat1 < mask.length
+                && mask[long1][lat1] != null) {
+                // get list of shapes to check at this mask cell
+                ArrayList<Integer> ali = mask[long1][lat1];
+                checkCells(hitsMap, sra, ali, longitude, latitude, distance);
+            }
+
+            if (long1 != long2
+                && long2 >= 0 && long2 < mask[0].length
+                && lat1 >= 0 && lat1 < mask.length
+                && mask[long2][lat1] != null) {
+                // get list of shapes to check at this mask cell
+                ArrayList<Integer> ali = mask[long2][lat1];
+                checkCells(hitsMap, sra, ali, longitude, latitude, distance);
+            }
+
+            if (lat1 != lat2
+                && long1 >= 0 && long1 < mask[0].length
+                && lat2 >= 0 && lat2 < mask.length
+                && mask[long1][lat2] != null) {
+                // get list of shapes to check at this mask cell
+                ArrayList<Integer> ali = mask[long1][lat2];
+                checkCells(hitsMap, sra, ali, longitude, latitude, distance);
+            }
+
+            if (long1 != long2 && lat1 != lat2
+                && long2 >= 0 && long2 < mask[0].length
+                && lat2 >= 0 && lat2 < mask.length
+                && mask[long2][lat2] != null) {
+                // get list of shapes to check at this mask cell
+                ArrayList<Integer> ali = mask[long2][lat2];
+                checkCells(hitsMap, sra, ali, longitude, latitude, distance);
+            }
+
+            r = hitsMap.entrySet().stream().map(e -> ImmutablePair.of(e.getKey(), e.getValue())).collect(Collectors.toList());
+        } else {
+            List<ImmutablePair<Integer, Double>> hits = new ArrayList<>();
+            // no mask, check all shapes
+            for (i = 0; i < sra.size(); i++) {
+                Double d = sra.get(i).distance(longitude, latitude, distance);
+                if (d != null) {
+                    hits.add(ImmutablePair.of(i, d));
+                }
+            }
+            r = hits;
+         }
+
+        return r;
+    }
+
+    private void checkCells(Map<Integer, Double> hitsMap, ArrayList<ComplexRegion> sra, ArrayList<Integer> ali, double longitude, double latitude, double distance) {
+        // check each potential cell
+        for (int i = 0; i < ali.size(); i++) {
+            Double x = sra.get(ali.get(i).intValue()).distance(longitude, latitude, distance);
+            if (x != null) {
+                hitsMap.merge(ali.get(i).intValue(), x, Math::min);
+            }
+        }
     }
 }
 

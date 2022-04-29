@@ -292,7 +292,7 @@ public class LayerIntersectDAOImpl implements LayerIntersectDAO {
                     if (ssf != null) {
                         int column_idx = ssf.getColumnIdx(f.getShapeFields());
                         String[] categories = ssf.getColumnLookup(column_idx);
-                        short[] idx = ssf.getColumnIdxs(f.getShapeFields());
+                        int[] idx = ssf.getColumnIdxs(f.getShapeFields());
                         int value = ssf.intersectInt(longitude, latitude);
                         if (value >= 0) {
                             sb.append(categories[idx[value]]);
