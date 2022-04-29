@@ -1,4 +1,4 @@
-### layers-store   [![Build Status](https://travis-ci.org/AtlasOfLivingAustralia/layers-store.svg?branch=master)](https://travis-ci.org/AtlasOfLivingAustralia/layers-store)
+### layers-store   [![Build Status](https://app.travis-ci.com/AtlasOfLivingAustralia/layers-store.svg?branch=master)](https://app.travis-ci.com/AtlasOfLivingAustralia/layers-store)
 
 The layers store provides a DAO layer on top of the PostGIS database used to house the layers within a living atlas.
 It includes various functions for:
