@@ -12,7 +12,7 @@ CREATE TABLE objects
   the_geom geometry,
   name_id integer,
   namesearch boolean DEFAULT false,
-  bbox character varying(200),
+  bbox character varying(300),
   area_km double precision,
   CONSTRAINT objects_pid_pk PRIMARY KEY (pid )
 )
