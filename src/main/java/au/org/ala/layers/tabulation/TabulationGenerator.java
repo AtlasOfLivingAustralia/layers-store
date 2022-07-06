@@ -28,14 +28,14 @@ import au.org.ala.layers.intersect.SimpleRegion;
 import au.org.ala.layers.intersect.SimpleShapeFile;
 import au.org.ala.layers.util.SpatialUtil;
 import au.org.ala.spatial.analysis.layers.Records;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.io.ParseException;
-import com.vividsolutions.jts.io.WKTReader;
 import org.apache.log4j.Logger;
 import org.geotools.data.DataStore;
 import org.geotools.data.DataStoreFinder;
 import org.geotools.data.FeatureSource;
 import org.geotools.feature.FeatureIterator;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.io.ParseException;
+import org.locationtech.jts.io.WKTReader;
 import org.opengis.feature.simple.SimpleFeature;
 import org.springframework.jdbc.core.JdbcTemplate;
 

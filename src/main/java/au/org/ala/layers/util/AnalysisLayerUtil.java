@@ -23,8 +23,6 @@ import au.org.ala.layers.dto.Field;
 import au.org.ala.layers.dto.Layer;
 import au.org.ala.layers.dto.Objects;
 import au.org.ala.layers.intersect.Grid;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.io.WKTReader;
 import org.apache.log4j.Logger;
 import org.geotools.data.*;
 import org.geotools.data.shapefile.ShapefileDataStore;
@@ -35,6 +33,8 @@ import org.geotools.feature.DefaultFeatureCollection;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.io.WKTReader;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 

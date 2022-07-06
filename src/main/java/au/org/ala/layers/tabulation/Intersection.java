@@ -1,10 +1,5 @@
 package au.org.ala.layers.tabulation;
 
-import com.vividsolutions.jts.geom.Envelope;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.MultiPolygon;
-import com.vividsolutions.jts.geom.Polygon;
-import com.vividsolutions.jts.io.WKTReader;
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 import org.geotools.data.*;
@@ -17,11 +12,16 @@ import org.geotools.feature.FeatureIterator;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.geotools.geometry.jts.GeometryBuilder;
-import org.geotools.graph.util.ZipUtil;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
+import org.locationtech.jts.geom.Envelope;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.MultiPolygon;
+import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.io.WKTReader;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.geometry.BoundingBox;
+import org.springframework.util.StreamUtils;
 
 import java.io.*;
 import java.util.*;
@@ -30,6 +30,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 /**
  * Created by a on 3/02/15.
@@ -430,11 +431,32 @@ public class Intersection {
 
                 logger.info("total time: " + outf.getName() + " = " + (System.currentTimeMillis() - startTime) + "ms");
                 //zip
+                ZipOutputStream zos = null;
+                BufferedInputStream bis = null;
                 try {
-                    ZipUtil.zip(outZip.getPath(), new String[]{outf.getPath()});
-                    FileUtils.deleteQuietly(outf);
+                    zos = new ZipOutputStream(new FileOutputStream(outZip));
+                    bis = new BufferedInputStream(new FileInputStream(outf));
+                    zos.putNextEntry(new ZipEntry(outf.getName()));
+                    StreamUtils.copy(bis, zos);
+                    zos.flush();
                 } catch (Exception e) {
                     logger.error(e.getMessage(), e);
+                } finally {
+                    if (zos != null) {
+                        try {
+                            zos.close();
+                        } catch (Exception e) {
+                            logger.error(e.getMessage(), e);
+                        }
+                    }
+                    if (bis != null) {
+                        try {
+                            bis.close();
+                        } catch (Exception e) {
+                            logger.error(e.getMessage(), e);
+                        }
+                    }
+                    FileUtils.deleteQuietly(outf);
                 }
             }
 

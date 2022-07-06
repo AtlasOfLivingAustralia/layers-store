@@ -14,9 +14,9 @@
  ***************************************************************************/
 package au.org.ala.layers.grid;
 
-import com.vividsolutions.jts.geom.*;
 import org.apache.log4j.Logger;
 import org.geotools.geometry.jts.JTSFactoryFinder;
+import org.locationtech.jts.geom.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -151,7 +151,7 @@ public class Grid2Shape {
 
         HashMap m = grid2WktIndexed(grid, rows, cols, minx + bbox[0] * resx, miny + (nrows - bbox[3] - 1) * resy, resx, resy, startKey);
 
-        //merge maps        
+        //merge maps
         int[] partial = (int[]) m.get("map");
         for (int i = 0; i < len; i++) {
             int x = i % cols;
@@ -593,7 +593,7 @@ public class Grid2Shape {
                     nlng = (float) coords.get(i + 1)[0];
                     nlat = (float) coords.get(i + 1)[1];
 
-                    //skip line midpoints                    
+                    //skip line midpoints
                     if (count == 0 || (!(plng == tlng && tlng == nlng)
                             && !(plat == tlat && tlat == nlat))) {
                         if (count > 0) {
@@ -630,7 +630,7 @@ public class Grid2Shape {
                     nlng = (float) coords.get(i - 1)[0];
                     nlat = (float) coords.get(i - 1)[1];
 
-                    //skip line midpoints                    
+                    //skip line midpoints
                     if (count == 0 || (!(plng == tlng && tlng == nlng)
                             && !(plat == tlat && tlat == nlat))) {
                         if (count > 0) {
